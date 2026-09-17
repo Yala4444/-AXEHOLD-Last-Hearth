@@ -15,6 +15,7 @@ var center: Vector2 = Vector2.ZERO
 var world: GameWorld = null
 var visible_for_test: bool = false
 var scan_timer: float = 0.0
+var test_input_active: bool = false
 
 func _ready() -> void:
     layer = 90
@@ -82,20 +83,20 @@ func _process(delta: float) -> void:
     scan_timer -= delta
     if scan_timer <= 0.0:
         scan_timer = 0.18
-        world = _find_world(get_tree().current_scene)
+        if world == null or not is_instance_valid(world):
+            world = _find_world(get_tree().current_scene)
 
     var should_show: bool = visible_for_test or (_touch_device() and _controls_allowed())
     if root != null:
         root.visible = should_show
 
     if not should_show:
-        if touch_index >= 0 or direction != Vector2.ZERO:
+        if touch_index >= 0 or direction != Vector2.ZERO or test_input_active:
             _release_control()
         return
 
-    if world != null and is_instance_valid(world) and world.player != null and is_instance_valid(world.player):
-        if touch_index >= 0:
-            world.player.set_move_input(direction)
+    if touch_index >= 0 or test_input_active:
+        _apply_direction_now()
 
 func _input(event: InputEvent) -> void:
     if root == null or not root.visible:
@@ -128,6 +129,16 @@ func _update_direction(position: Vector2) -> void:
         var scaled: float = inverse_lerp(DEADZONE, 1.0, raw.length())
         direction = raw.normalized() * clampf(scaled, 0.0, 1.0)
     _move_knob(direction)
+    _apply_direction_now()
+
+func _apply_direction_now() -> void:
+    if world == null or not is_instance_valid(world):
+        world = _find_world(get_tree().current_scene)
+    if world == null or not is_instance_valid(world):
+        return
+    if world.player == null or not is_instance_valid(world.player):
+        return
+    world.player.set_move_input(direction)
 
 func _move_knob(value: Vector2) -> void:
     if knob_panel == null:
@@ -137,10 +148,24 @@ func _move_knob(value: Vector2) -> void:
 
 func _release_control() -> void:
     touch_index = -1
+    test_input_active = false
     direction = Vector2.ZERO
     _move_knob(direction)
     if world != null and is_instance_valid(world) and world.player != null and is_instance_valid(world.player):
         world.player.release_move_input()
+
+func bind_world(value: GameWorld) -> void:
+    if value == null or not is_instance_valid(value):
+        return
+    world = value
+    if direction != Vector2.ZERO and (touch_index >= 0 or test_input_active):
+        _apply_direction_now()
+
+func unbind_world(value: GameWorld = null) -> void:
+    if value != null and world != value:
+        return
+    _release_control()
+    world = null
 
 func _touch_device() -> bool:
     return DisplayServer.is_touchscreen_available()
@@ -173,5 +198,10 @@ func force_visible_for_test(value: bool) -> void:
         root.visible = value
 
 func simulate_direction_for_test(value: Vector2) -> void:
+    test_input_active = true
     direction = value.limit_length(1.0)
     _move_knob(direction)
+    _apply_direction_now()
+
+func release_test_input() -> void:
+    _release_control()
