@@ -118,12 +118,14 @@ func _test_hammer_signature(game: GameWorld, director: Node) -> void:
     if enemy == null:
         return
     game.player.apply_weapon_profile("hammer")
+    enemy.max_hp = 999.0
+    enemy.hp = 999.0
     var hp_before: float = enemy.hp
     var fired: bool = bool(director.call("trigger_signature_now"))
     if not fired or enemy.hp >= hp_before:
         _fail("Hammer signature did not damage a nearby enemy")
     if not enemy.has_meta("expedition_slow_time"):
-        _fail("Hammer signature did not apply its slow")
+        _fail("Hammer signature did not apply its slow to a surviving target")
     else:
         print("[EXPEDITION] hammer signature + slow OK")
 
