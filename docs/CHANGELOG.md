@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0 — Commercial polish pass
+- Added a procedural `Soundscape` service with distinct day/night themes for Forgotten Forest, Frost Hollow and Ashlands.
+- Expanded biome atmosphere during both day and night: forest motes/fireflies and vines, frost snow/mist, ash heat shimmer/embers and stronger edge treatment.
+- Added two new enemy archetypes: the telegraphed surging Stalker and the armored Guardian.
+- Rebalanced biome enemy identities so Frost Hollow emphasizes Stalkers while Ashlands emphasizes Guardians and brutes.
+- Added stronger combat juice: enemy-hit sparks, shield response, player-damage edge feedback, hearth danger pulse and richer signature-attack shockwaves.
+- Expanded generated SFX with Stalker/danger/Guardian tones.
+- Updated gameplay regression for extensible enemy rosters and added dedicated commercial-polish regression covering six soundscapes, Guardian armor and Stalker surge behavior.
+
 ## 0.8.0 — Expedition wow pass
 - Added `ExpeditionDirector` and `ExpeditionFX` as isolated expedition-content layers.
 - Added automatic signature attacks for all four weapons: Storm Circle, Root Line, Frost Slam and Ash Dash.
