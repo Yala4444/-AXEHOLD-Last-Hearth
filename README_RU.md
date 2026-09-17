@@ -1,6 +1,6 @@
 # AXEHOLD: Last Hearth
 
-Играбельный production-oriented прототип для **Godot 4.7.2 stable**.
+Играбельный production-oriented прототип **v0.2.0** для **Godot 4.7.2 stable**.
 
 ## Что уже реализовано
 - Главное меню: лагерь, карта, кузница, задания, коллекция, настройки.
@@ -28,3 +28,11 @@
 
 ## Важно
 Это исходный vertical slice, а не подписанный APK/IPA. Перед коммерческим релизом нужны: настоящие art/audio ассеты, SDK рекламы, IAP при необходимости, crash/analytics SDK, privacy/consent flow, локализация, device QA и store signing.
+
+
+## Что добавлено в v0.2
+- Ежедневный reset каравана/миссий и миграция сохранений.
+- Отдельная шкала HP босса и улучшенный combat feedback.
+- Нормальная пауза, одноразовый onboarding, фазовые баннеры.
+- SVG app icon/logo и стартовые export presets Android/iOS.
+- Release checklist и документ баланса.

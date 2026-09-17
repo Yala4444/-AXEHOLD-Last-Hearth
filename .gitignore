@@ -1,0 +1,15 @@
+# Godot generated files
+.godot/
+.import/
+
+# Local/editor files
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Generated builds
+build/
+builds/
+
+# Local export credentials must never be committed
+export_credentials.cfg

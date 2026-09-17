@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="260" viewBox="0 0 1000 260">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F8D795"/><stop offset="1" stop-color="#D5844A"/></linearGradient></defs>
+  <g transform="translate(20 10)">
+    <circle cx="120" cy="120" r="104" fill="#1B252B" stroke="#3C4A4D" stroke-width="5"/>
+    <path d="M120 204c-48 0-84-31-84-70 0-36 23-59 46-82 18-18 31-36 37-62 29 35 66 66 75 109 12 55-28 105-74 105Z" fill="url(#g)"/>
+    <path d="M121 174c-23 0-42-16-42-36 0-19 13-33 25-46 9-9 16-19 19-32 14 18 32 35 36 55 6 29-15 59-38 59Z" fill="#FFF1B8"/>
+  </g>
+  <text x="260" y="118" font-family="Arial, Helvetica, sans-serif" font-size="88" font-weight="800" letter-spacing="4" fill="#F2F4F5">AXEHOLD</text>
+  <text x="266" y="178" font-family="Arial, Helvetica, sans-serif" font-size="35" font-weight="600" letter-spacing="9" fill="#D7B478">LAST HEARTH</text>
+</svg>

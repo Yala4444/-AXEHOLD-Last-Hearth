@@ -1,0 +1,34 @@
+; AXEHOLD: Last Hearth
+; Godot 4.7.2 project
+config_version=5
+
+[application]
+config/name="AXEHOLD: Last Hearth"
+config/icon="res://assets/ui/app_icon.svg"
+run/main_scene="res://scenes/app.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[autoload]
+GameState="*res://scripts/autoload/game_state.gd"
+AdService="*res://scripts/autoload/ad_service.gd"
+Analytics="*res://scripts/autoload/analytics.gd"
+
+[display]
+window/handheld/orientation=1
+window/size/viewport_width=390
+window/size/viewport_height=844
+window/size/window_width_override=390
+window/size/window_height_override=844
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+
+[input]
+pause_game={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194305,"unicode":0)]
+}

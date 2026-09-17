@@ -1,0 +1,76 @@
+name: AXEHOLD Godot CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: axehold-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  validate-and-build-web:
+    name: Validate + Web build
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.7.2
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Godot version
+        run: godot --version
+
+      - name: Import project assets
+        run: godot --headless --editor --path . --quit
+
+      - name: Smoke-test scenes
+        run: godot --headless --path . --script res://scripts/ci/smoke_test.gd
+
+      - name: Boot main scene briefly
+        run: godot --headless --path . --quit-after 10
+
+      - name: Export Web build
+        run: |
+          mkdir -p build/web
+          godot --headless --path . --export-release Web build/web/index.html
+
+      - name: Verify Web output
+        run: |
+          test -f build/web/index.html
+          ls -lah build/web
+
+      - name: Upload playable Web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: AXEHOLD-Web
+          path: build/web
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Prepare GitHub Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ENABLE_PAGES == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy-pages:
+    name: Deploy playable build to Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ENABLE_PAGES == 'true'
+    needs: validate-and-build-web
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
