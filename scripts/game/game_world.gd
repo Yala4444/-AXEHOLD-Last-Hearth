@@ -4,43 +4,43 @@ extends Node2D
 signal run_finished(result: Dictionary)
 signal quit_requested
 
-const PlayerScene := preload("res://scenes/player.tscn")
-const EnemyScene := preload("res://scenes/enemy.tscn")
-const ResourceScene := preload("res://scenes/resource_spot.tscn")
-const BuildPadScene := preload("res://scenes/build_pad.tscn")
+const PlayerScene: PackedScene = preload("res://scenes/player.tscn")
+const EnemyScene: PackedScene = preload("res://scenes/enemy.tscn")
+const ResourceScene: PackedScene = preload("res://scenes/resource_spot.tscn")
+const BuildPadScene: PackedScene = preload("res://scenes/build_pad.tscn")
 
-var biome_index := 0
+var biome_index: int = 0
 var biome: Dictionary = {}
 var player: AxPlayer
 var hud: GameHud
-var base_position := Vector2.ZERO
-var base_hp := 270.0
-var base_max_hp := 270.0
-var storage := {"wood":0,"stone":0,"ore":0}
-var built := {"wall":false,"forge":false,"turret":false,"shrine":false}
+var base_position: Vector2 = Vector2.ZERO
+var base_hp: float = 270.0
+var base_max_hp: float = 270.0
+var storage: Dictionary = {"wood": 0, "stone": 0, "ore": 0}
+var built: Dictionary = {"wall": false, "forge": false, "turret": false, "shrine": false}
 var pads: Array[BuildPad] = []
 var resources: Array[ResourceSpot] = []
 var enemies: Array[AxEnemy] = []
-var phase := "day"
-var phase_time := 28.0
-var phase_max := 28.0
-var wave := 0
-var spawn_left := 0
-var spawn_timer := 0.0
-var boss_spawned := false
-var boss_ref: AxEnemy
-var run_coins := 0
-var run_shards := 0
-var kills := 0
-var builds := 0
-var trees_cut := 0
-var revived := false
-var paused_local := false
-var finishing := false
-var turret_timer := 0.0
-var boss_warning_active := false
-var boss_warning_position := Vector2.ZERO
-var boss_warning_time := 0.0
+var phase: String = "day"
+var phase_time: float = 28.0
+var phase_max: float = 28.0
+var wave: int = 0
+var spawn_left: int = 0
+var spawn_timer: float = 0.0
+var boss_spawned: bool = false
+var boss_ref: AxEnemy = null
+var run_coins: int = 0
+var run_shards: int = 0
+var kills: int = 0
+var builds: int = 0
+var trees_cut: int = 0
+var revived: bool = false
+var paused_local: bool = false
+var finishing: bool = false
+var turret_timer: float = 0.0
+var boss_warning_active: bool = false
+var boss_warning_position: Vector2 = Vector2.ZERO
+var boss_warning_time: float = 0.0
 
 func configure(index: int) -> void:
     biome_index = index
@@ -58,20 +58,27 @@ func _start_run() -> void:
     player = PlayerScene.instantiate() as AxPlayer
     add_child(player)
     player.global_position = base_position + Vector2(0, 38)
-    player.setup(GameState.data["upgrades"], GameRules.skin(int(GameState.data.get("selected_skin", 0))))
+    var upgrades: Dictionary = GameState.data["upgrades"]
+    var skin_index: int = int(GameState.data.get("selected_skin", 0))
+    player.setup(upgrades, GameRules.skin(skin_index))
     player.died.connect(_on_player_died)
     player.damaged.connect(_on_player_damaged)
     player.level_up_requested.connect(_show_perks)
     _create_pads()
-    for i in range(23): _spawn_resource("tree")
-    for i in range(9): _spawn_resource("rock")
-    for i in range(6 if biome_index == 2 else 4): _spawn_resource("ore")
+    for _i in range(23):
+        _spawn_resource("tree")
+    for _i in range(9):
+        _spawn_resource("rock")
+    var initial_ore: int = 6 if biome_index == 2 else 4
+    for _i in range(initial_ore):
+        _spawn_resource("ore")
     Analytics.event("run_start", {"biome": biome_index})
     hud.show_banner(str(biome["name"]))
-    if bool(GameState.data["settings"].get("hints", true)) and not bool(GameState.data.get("tutorial_complete", false)):
+    var settings: Dictionary = GameState.data["settings"]
+    if bool(settings.get("hints", true)) and not bool(GameState.data.get("tutorial_complete", false)):
         GameState.data["tutorial_complete"] = true
         GameState.save()
-        hud.show_modal("🔥", "Последний Очаг", "Коснись места — герой побежит туда. Топоры сами добывают ресурсы и атакуют. Возвращайся к Очагу, чтобы выгрузить рюкзак.", [{"text":"Начать","action":"close"}])
+        hud.show_modal("🔥", "Последний Очаг", "Коснись места — герой побежит туда. Топоры сами добывают ресурсы и атакуют. Возвращайся к Очагу, чтобы выгрузить рюкзак.", [{"text": "Начать", "action": "close"}])
     _refresh_hud()
     queue_redraw()
 
@@ -84,7 +91,7 @@ func _process(delta: float) -> void:
     _maintain_resources()
     if phase == "day":
         phase_time -= delta
-        if built["shrine"]:
+        if bool(built["shrine"]):
             player.heal(delta * 0.9)
         if phase_time <= 0.0:
             _start_night()
@@ -100,73 +107,84 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
     if finishing or paused_local or hud.modal_open():
         return
-    if event is InputEventScreenTouch and event.pressed:
-        player.set_target(event.position)
+    if event is InputEventScreenTouch:
+        var touch := event as InputEventScreenTouch
+        if touch.pressed:
+            player.set_target(touch.position)
     elif event is InputEventScreenDrag:
-        player.set_target(event.position)
-    elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-        player.set_target(event.position)
+        var drag := event as InputEventScreenDrag
+        player.set_target(drag.position)
+    elif event is InputEventMouseButton:
+        var button := event as InputEventMouseButton
+        if button.button_index == MOUSE_BUTTON_LEFT and button.pressed:
+            player.set_target(button.position)
     elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-        player.set_target(event.position)
+        var motion := event as InputEventMouseMotion
+        player.set_target(motion.position)
 
 func _create_pads() -> void:
-    for spec in GameRules.BUILD_SPECS:
-        var pad := BuildPadScene.instantiate() as BuildPad
+    for spec_variant in GameRules.BUILD_SPECS:
+        var spec: Dictionary = spec_variant
+        var pad: BuildPad = BuildPadScene.instantiate() as BuildPad
         add_child(pad)
-        pad.global_position = base_position + Vector2(spec["offset"])
-        pad.configure(str(spec["id"]), str(spec["name"]), Dictionary(spec["cost"]), false)
+        var offset: Vector2 = spec.get("offset", Vector2.ZERO)
+        var build_cost: Dictionary = spec.get("cost", {})
+        pad.global_position = base_position + offset
+        pad.configure(str(spec.get("id", "wall")), str(spec.get("name", "ПОСТРОЙКА")), build_cost, false)
         pads.append(pad)
 
 func _spawn_resource(kind: String) -> void:
-    var spot := ResourceScene.instantiate() as ResourceSpot
+    var spot: ResourceSpot = ResourceScene.instantiate() as ResourceSpot
     add_child(spot)
     spot.global_position = _free_spawn_position()
     spot.configure(kind, randi() % 3)
     resources.append(spot)
 
 func _free_spawn_position() -> Vector2:
-    var size := get_viewport_rect().size
-    for i in range(40):
+    var size: Vector2 = get_viewport_rect().size
+    for _i in range(40):
         var point := Vector2(randf_range(28.0, size.x - 28.0), randf_range(100.0, size.y - 85.0))
         if point.distance_to(base_position) > 170.0:
             return point
     return Vector2(35, 120)
 
 func _maintain_resources() -> void:
-    var counts := {"tree":0,"rock":0,"ore":0}
+    var counts: Dictionary = {"tree": 0, "rock": 0, "ore": 0}
     for spot in resources:
         if is_instance_valid(spot):
             counts[spot.resource_type] = int(counts.get(spot.resource_type, 0)) + 1
     while int(counts["tree"]) < 19:
         _spawn_resource("tree")
-        counts["tree"] += 1
+        counts["tree"] = int(counts["tree"]) + 1
     while int(counts["rock"]) < 7:
         _spawn_resource("rock")
-        counts["rock"] += 1
-    var ore_target := 5 if biome_index == 2 else 3
+        counts["rock"] = int(counts["rock"]) + 1
+    var ore_target: int = 5 if biome_index == 2 else 3
     while int(counts["ore"]) < ore_target:
         _spawn_resource("ore")
-        counts["ore"] += 1
+        counts["ore"] = int(counts["ore"]) + 1
 
 func _harvest(delta: float) -> void:
     if player.inventory_total() >= player.capacity:
         return
-    var reach := player.orbit_radius + player.axes * 4.0
+    var reach: float = player.orbit_radius + player.axes * 4.0
     var removed: Array[ResourceSpot] = []
     for spot in resources:
         if not is_instance_valid(spot):
             continue
         if player.global_position.distance_to(spot.global_position) > reach + spot.radius:
             continue
-        if spot.damage(player.damage * delta * GameRules.harvest_multiplier(spot.resource_type)):
-            var kind := "wood" if spot.resource_type == "tree" else ("stone" if spot.resource_type == "rock" else "ore")
-            var amount := GameRules.resource_yield(spot.resource_type, biome_index)
-            var actual := player.add_resource(kind, amount)
+        var harvest_damage: float = player.damage * delta * GameRules.harvest_multiplier(spot.resource_type)
+        if spot.damage(harvest_damage):
+            var kind: String = "wood" if spot.resource_type == "tree" else ("stone" if spot.resource_type == "rock" else "ore")
+            var amount: int = GameRules.resource_yield(spot.resource_type, biome_index)
+            var actual: int = player.add_resource(kind, amount)
             if spot.resource_type == "tree":
                 trees_cut += 1
                 GameState.mission_add("trees")
             player.gain_xp(2)
-            hud.set_status("+%d %s" % [actual, "дерева" if kind == "wood" else ("камня" if kind == "stone" else "руды")])
+            var resource_name: String = "дерева" if kind == "wood" else ("камня" if kind == "stone" else "руды")
+            hud.set_status("+%d %s" % [actual, resource_name])
             removed.append(spot)
     for spot in removed:
         resources.erase(spot)
@@ -174,7 +192,7 @@ func _harvest(delta: float) -> void:
 
 func _deposit_and_build() -> void:
     if player.global_position.distance_to(base_position) < 45.0 and player.inventory_total() > 0:
-        var inv := player.clear_inventory()
+        var inv: Dictionary = player.clear_inventory()
         for key in storage.keys():
             storage[key] = int(storage[key]) + int(inv[key])
         hud.set_status("Ресурсы выгружены на склад")
@@ -192,7 +210,8 @@ func _deposit_and_build() -> void:
             "wall":
                 base_max_hp += 180.0
                 base_hp += 180.0
-            "forge": player.damage *= 1.30
+            "forge":
+                player.damage *= 1.30
             "shrine":
                 player.max_hp += 30.0
                 player.hp += 30.0
@@ -213,16 +232,16 @@ func _start_day() -> void:
     phase = "day"
     phase_max = GameRules.day_duration(wave)
     phase_time = phase_max
-    player.heal(18.0 + (12.0 if built["shrine"] else 0.0))
+    player.heal(18.0 + (12.0 if bool(built["shrine"]) else 0.0))
     run_coins += 5 + wave * 3
     hud.show_banner("РАССВЕТ", Color("fff0b4"))
     hud.set_status("Есть время укрепить лагерь")
 
 func _spawn_enemy(is_boss: bool = false) -> void:
-    var enemy := EnemyScene.instantiate() as AxEnemy
+    var enemy: AxEnemy = EnemyScene.instantiate() as AxEnemy
     add_child(enemy)
     enemy.global_position = _edge_position()
-    var kind := "boss" if is_boss else GameRules.random_enemy_type()
+    var kind: String = "boss" if is_boss else GameRules.random_enemy_type()
     enemy.configure(kind, float(biome["difficulty"]), wave, Color(str(biome["enemy"])), is_boss)
     if is_boss:
         enemy.max_hp *= 1.0 + biome_index * 0.28
@@ -233,12 +252,16 @@ func _spawn_enemy(is_boss: bool = false) -> void:
     enemies.append(enemy)
 
 func _edge_position() -> Vector2:
-    var size := get_viewport_rect().size
+    var size: Vector2 = get_viewport_rect().size
     match randi() % 4:
-        0: return Vector2(randf_range(10.0, size.x - 10.0), 92.0)
-        1: return Vector2(size.x - 8.0, randf_range(110.0, size.y - 80.0))
-        2: return Vector2(randf_range(10.0, size.x - 10.0), size.y - 72.0)
-        _: return Vector2(8.0, randf_range(110.0, size.y - 80.0))
+        0:
+            return Vector2(randf_range(10.0, size.x - 10.0), 92.0)
+        1:
+            return Vector2(size.x - 8.0, randf_range(110.0, size.y - 80.0))
+        2:
+            return Vector2(randf_range(10.0, size.x - 10.0), size.y - 72.0)
+        _:
+            return Vector2(8.0, randf_range(110.0, size.y - 80.0))
 
 func _update_night(delta: float) -> void:
     spawn_timer -= delta
@@ -250,28 +273,32 @@ func _update_night(delta: float) -> void:
         boss_spawned = true
         _spawn_enemy(true)
 
-    var reach := player.orbit_radius + player.axes * 4.0
-    for enemy in enemies.duplicate():
+    var reach: float = player.orbit_radius + player.axes * 4.0
+    var enemy_snapshot: Array[AxEnemy] = enemies.duplicate()
+    for enemy in enemy_snapshot:
         if not is_instance_valid(enemy):
             continue
         _update_boss_special(enemy, delta)
         if enemy.windup > 0.0:
             enemy.clear_target()
         else:
-            var target := player.global_position if enemy.global_position.distance_to(player.global_position) < 155.0 else base_position
+            var target: Vector2 = player.global_position if enemy.global_position.distance_to(player.global_position) < 155.0 else base_position
             enemy.set_target_position(target)
-        if player.global_position.distance_to(enemy.global_position) <= reach + (24.0 if enemy.boss else 12.0):
-            var hit := player.damage * delta * 1.34
+        var enemy_radius: float = 24.0 if enemy.boss else 12.0
+        if player.global_position.distance_to(enemy.global_position) <= reach + enemy_radius:
+            var hit: float = player.damage * delta * 1.34
             if randf() < player.crit_chance:
                 hit *= 2.0
             enemy.take_damage(hit)
         enemy.hit_cooldown = maxf(0.0, enemy.hit_cooldown - delta)
         if enemy.hit_cooldown <= 0.0:
-            if enemy.global_position.distance_to(player.global_position) < (34.0 if enemy.boss else 23.0):
+            var player_contact: float = 34.0 if enemy.boss else 23.0
+            if enemy.global_position.distance_to(player.global_position) < player_contact:
                 player.take_damage(enemy.contact_damage)
                 enemy.hit_cooldown = 0.78
             elif enemy.global_position.distance_to(base_position) < 52.0:
-                var amount := enemy.contact_damage * (0.5 if built["wall"] else 1.0)
+                var wall_multiplier: float = 0.5 if bool(built["wall"]) else 1.0
+                var amount: float = enemy.contact_damage * wall_multiplier
                 base_hp -= amount
                 enemy.hit_cooldown = 0.88
 
@@ -286,19 +313,20 @@ func _update_night(delta: float) -> void:
             _start_day()
 
 func _update_turret(delta: float) -> void:
-    if not built["turret"] or enemies.is_empty():
+    if not bool(built["turret"]) or enemies.is_empty():
         return
     turret_timer -= delta
     if turret_timer > 0.0:
         return
     turret_timer = 0.5
     var nearest: AxEnemy = null
-    var best := INF
+    var best: float = INF
     for enemy in enemies:
-        if not is_instance_valid(enemy): continue
-        var d := enemy.global_position.distance_to(base_position)
-        if d < best:
-            best = d
+        if not is_instance_valid(enemy):
+            continue
+        var distance_to_base: float = enemy.global_position.distance_to(base_position)
+        if distance_to_base < best:
+            best = distance_to_base
             nearest = enemy
     if nearest != null:
         nearest.take_damage(25.0 + wave * 3.0)
@@ -330,9 +358,10 @@ func _on_enemy_killed(enemy: AxEnemy) -> void:
     enemies.erase(enemy)
     kills += 1
     GameState.mission_add("kills")
-    var reward := 25 if enemy.boss else (3 if enemy.enemy_type == "brute" else 1)
+    var reward: int = 25 if enemy.boss else (3 if enemy.enemy_type == "brute" else 1)
     run_coins += reward
-    player.gain_xp(20 if enemy.boss else (6 if enemy.enemy_type == "brute" else 4))
+    var xp_reward: int = 20 if enemy.boss else (6 if enemy.enemy_type == "brute" else 4)
+    player.gain_xp(xp_reward)
     if enemy.boss:
         run_shards = int(biome["reward"])
         boss_ref = null
@@ -341,8 +370,10 @@ func _on_enemy_killed(enemy: AxEnemy) -> void:
 
 func _show_perks(level: int) -> void:
     var buttons: Array = []
-    for perk in GameRules.random_perks(3):
-        buttons.append({"text":"%s %s — %s" % [perk["icon"], perk["name"], perk["desc"]], "action":"perk:" + str(perk["id"])})
+    var choices: Array = GameRules.random_perks(3)
+    for perk_variant in choices:
+        var perk: Dictionary = perk_variant
+        buttons.append({"text": "%s %s — %s" % [perk["icon"], perk["name"], perk["desc"]], "action": "perk:" + str(perk["id"])})
     hud.show_modal("✨", "Уровень %d" % level, "Выбери усиление на этот забег", buttons)
 
 func _on_player_died() -> void:
@@ -351,9 +382,10 @@ func _on_player_died() -> void:
     finishing = true
     var buttons: Array = []
     if not revived:
-        buttons.append({"text":"▶ Воскреснуть с 50% HP","action":"revive"})
-    buttons.append({"text":"Завершить экспедицию","action":"end"})
-    hud.show_modal("💀", "Герой пал", "Одно rewarded-воскрешение доступно на забег." if not revived else "Второго воскрешения нет.", buttons)
+        buttons.append({"text": "▶ Воскреснуть с 50% HP", "action": "revive"})
+    buttons.append({"text": "Завершить экспедицию", "action": "end"})
+    var text: String = "Одно rewarded-воскрешение доступно на забег." if not revived else "Второго воскрешения нет."
+    hud.show_modal("💀", "Герой пал", text, buttons)
 
 func _on_player_damaged(_amount: float, blocked: bool) -> void:
     hud.damage_feedback(blocked)
@@ -363,10 +395,11 @@ func _finish_run(won: bool) -> void:
     if finishing and player.hp > 0.0:
         return
     finishing = true
-    var reward := 22 + wave * 15 + run_coins + builds * 3
+    var reward: int = 22 + wave * 15 + run_coins + builds * 3
     GameState.register_run(wave, won, biome_index, kills, builds, trees_cut)
-    Analytics.event("run_end", {"won":won,"wave":wave,"biome":biome_index,"kills":kills})
-    run_finished.emit({"won":won,"biome":biome_index,"wave":wave,"coins":reward,"shards":run_shards if won else 0,"kills":kills})
+    Analytics.event("run_end", {"won": won, "wave": wave, "biome": biome_index, "kills": kills})
+    var earned_shards: int = run_shards if won else 0
+    run_finished.emit({"won": won, "biome": biome_index, "wave": wave, "coins": reward, "shards": earned_shards, "kills": kills})
 
 func _refresh_hud() -> void:
     if player == null:
@@ -382,7 +415,7 @@ func _on_hud_action(action: String) -> void:
         hud.hide_modal()
     elif action == "pause":
         paused_local = true
-        hud.show_modal("Ⅱ", "Пауза", "Текущий забег не сохраняется после выхода.", [{"text":"Продолжить","action":"resume"},{"text":"В лагерь","action":"quit"}])
+        hud.show_modal("Ⅱ", "Пауза", "Текущий забег не сохраняется после выхода.", [{"text": "Продолжить", "action": "resume"}, {"text": "В лагерь", "action": "quit"}])
     elif action == "resume":
         paused_local = false
         hud.hide_modal()
@@ -408,28 +441,29 @@ func _on_revive_ad(_placement: String) -> void:
     hud.set_status("Воскрешение использовано")
 
 func _draw() -> void:
-    var size := get_viewport_rect().size
-    var night := phase == "night"
-    var top := Color(str(biome.get("sky", "dceabc")))
-    var bottom := Color(str(biome.get("ground", "9fc77c")))
+    var size: Vector2 = get_viewport_rect().size
+    var night: bool = phase == "night"
+    var top: Color = Color(str(biome.get("sky", "dceabc")))
+    var bottom: Color = Color(str(biome.get("ground", "9fc77c")))
     if night:
         top = Color("213647") if biome_index < 2 else Color("38262d")
         bottom = Color("304a40") if biome_index < 2 else Color("58322f")
     draw_rect(Rect2(Vector2.ZERO, size), bottom)
     for i in range(28):
-        var y := float(i) / 27.0 * size.y
+        var y: float = float(i) / 27.0 * size.y
         draw_rect(Rect2(0, y, size.x, size.y / 27.0 + 1.0), top.lerp(bottom, float(i) / 27.0))
     for i in range(70):
         draw_rect(Rect2(fmod(i * 97.0, size.x), fmod(i * 53.0, size.y), 2, 5), Color(0.2,0.35,0.18,0.12))
     draw_circle(base_position, 64, Color("b69a6b") if night else Color("d6be8c"))
-    draw_arc(base_position, 64, 0, TAU, 64, Color("684b31") if built["wall"] else Color("987f5b"), 8.0 if built["wall"] else 2.5)
+    var wall_width: float = 8.0 if bool(built["wall"]) else 2.5
+    draw_arc(base_position, 64, 0, TAU, 64, Color("684b31") if bool(built["wall"]) else Color("987f5b"), wall_width)
     draw_rect(Rect2(base_position - Vector2(23,17), Vector2(46,34)), Color("835f40"))
-    draw_colored_polygon(PackedVector2Array([base_position+Vector2(-29,-17),base_position+Vector2(0,-40),base_position+Vector2(29,-17)]), Color("5e402d"))
+    draw_colored_polygon(PackedVector2Array([base_position + Vector2(-29,-17), base_position + Vector2(0,-40), base_position + Vector2(29,-17)]), Color("5e402d"))
     draw_circle(base_position + Vector2(0,4), 7, Color("ffbd58"))
     draw_circle(base_position + Vector2(0,4), 32, Color(1.0,0.74,0.34,0.16))
-    var ratio := clampf(base_hp / maxf(1.0, base_max_hp), 0.0, 1.0)
-    draw_rect(Rect2(base_position+Vector2(-46,-80),Vector2(92,5)),Color(0.1,0.1,0.1,0.22))
-    draw_rect(Rect2(base_position+Vector2(-46,-80),Vector2(92*ratio,5)),Color("79aa6d"))
+    var ratio: float = clampf(base_hp / maxf(1.0, base_max_hp), 0.0, 1.0)
+    draw_rect(Rect2(base_position + Vector2(-46,-80), Vector2(92,5)), Color(0.1,0.1,0.1,0.22))
+    draw_rect(Rect2(base_position + Vector2(-46,-80), Vector2(92 * ratio,5)), Color("79aa6d"))
     if boss_warning_active:
         draw_circle(boss_warning_position, 64, Color(0.84,0.27,0.27,0.12))
         draw_arc(boss_warning_position, 64, 0, TAU, 64, Color(0.9,0.35,0.35,0.75), 3)
