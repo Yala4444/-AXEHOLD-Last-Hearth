@@ -83,11 +83,13 @@ func take_damage(amount: float) -> void:
     if shield_hits > 0:
         shield_hits -= 1
         block_flash = 1.0
+        Feedback.play("shield", 24)
         damaged.emit(0.0, true)
         queue_redraw()
         return
     hp = maxf(0.0, hp - amount)
     damage_flash = 1.0
+    Feedback.play("hit", 38)
     damaged.emit(amount, false)
     if hp <= 0.0:
         died.emit()
@@ -102,6 +104,7 @@ func gain_xp(amount: int) -> void:
         level += 1
         next_xp = int(round(next_xp * 1.38))
         perk_flash = 1.0
+        Feedback.play("level", 18)
         level_up_requested.emit(level)
 
 func apply_perk(id: String) -> void:
