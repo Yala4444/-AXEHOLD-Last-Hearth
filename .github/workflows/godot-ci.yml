@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+env:
+  GODOT_VERSION: 4.7.2
+
 concurrency:
   group: axehold-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -26,17 +29,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Godot export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          cp -a "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          ls -lah "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+
       - name: Godot version
         run: godot --version
 
-      - name: Import project assets
-        run: godot --headless --editor --path . --quit
+      - name: Import project assets and validate scripts
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --editor --path . --quit 2>&1 | tee /tmp/godot-import.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-import.log; then
+            echo "GDScript parse errors detected during import"
+            exit 1
+          fi
 
       - name: Smoke-test scenes
-        run: godot --headless --path . --script res://scripts/ci/smoke_test.gd
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script res://scripts/ci/smoke_test.gd 2>&1 | tee /tmp/godot-smoke.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-smoke.log; then
+            echo "GDScript parse errors detected during smoke test"
+            exit 1
+          fi
 
       - name: Boot main scene briefly
-        run: godot --headless --path . --quit-after 10
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --quit-after 10 2>&1 | tee /tmp/godot-boot.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-boot.log; then
+            echo "GDScript parse errors detected during boot"
+            exit 1
+          fi
 
       - name: Export Web build
         run: |
@@ -46,6 +78,7 @@ jobs:
       - name: Verify Web output
         run: |
           test -f build/web/index.html
+          test -f build/web/index.wasm
           ls -lah build/web
 
       - name: Upload playable Web build
