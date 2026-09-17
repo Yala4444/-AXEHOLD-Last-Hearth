@@ -14,7 +14,7 @@ func _run_tests() -> void:
     _test_ui_sanitizer()
 
     if failures.is_empty():
-        print("[MOBILE] AXEHOLD v0.9.1 mobile control validation passed")
+        print("[MOBILE] AXEHOLD v0.9.2 mobile web validation passed")
         get_tree().quit(0)
         return
 
@@ -25,6 +25,7 @@ func _run_tests() -> void:
 func _test_mobile_autoloads() -> void:
     var controls: Node = get_tree().root.get_node_or_null("MobileControls")
     var sanitizer: Node = get_tree().root.get_node_or_null("UISanitizer")
+    var web_runtime: Node = get_tree().root.get_node_or_null("WebRuntime")
     if controls == null:
         _fail("MobileControls autoload is missing")
     else:
@@ -36,8 +37,10 @@ func _test_mobile_autoloads() -> void:
         controls.call("force_visible_for_test", false)
     if sanitizer == null:
         _fail("UISanitizer autoload is missing")
+    if web_runtime == null:
+        _fail("WebRuntime autoload is missing")
     if failures.is_empty():
-        print("[MOBILE] mobile autoloads OK")
+        print("[MOBILE] mobile/web autoloads OK")
 
 func _test_analog_player_input() -> void:
     var player: AxPlayer = PlayerScene.instantiate() as AxPlayer
