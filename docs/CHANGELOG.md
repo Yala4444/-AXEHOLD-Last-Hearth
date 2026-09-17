@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.1 — Mobile control and visual polish hotfix
+- Added a dedicated touch joystick that appears only on touch-capable devices and preserves desktop tap-to-move behavior.
+- Added analog player movement so partial stick deflection produces partial movement speed and releasing the stick stops the hero cleanly.
+- Rebuilt the procedural hero silhouette with readable head, torso, arms, legs, boots, cape, belt, facing direction and walk animation.
+- Added a mobile-safe app shell with text navigation and compact currency labels instead of unsupported emoji-only controls.
+- Added `UISanitizer` to remove unsupported mobile glyphs and keep dynamic HUD text readable in Web/iOS browsers.
+- Updated mobile HUD labels to explicit HP, hearth, bag, night and resource abbreviations and rewrote first-run movement guidance around the joystick.
+- Added dedicated mobile regression coverage for autoload presence, analog input lifecycle and glyph sanitization.
+- Bumped Android/iOS release metadata to 0.9.1 / build 10.
+
 ## 0.9.0 — Commercial polish pass
 - Added a procedural `Soundscape` service with distinct day/night themes for Forgotten Forest, Frost Hollow and Ashlands.
 - Expanded biome atmosphere during both day and night: forest motes/fireflies and vines, frost snow/mist, ash heat shimmer/embers and stronger edge treatment.

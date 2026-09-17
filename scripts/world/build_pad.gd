@@ -47,17 +47,50 @@ func _draw() -> void:
             draw_arc(Vector2.ZERO, 31.0 + (1.0 - pulse) * 16.0, 0.0, TAU, 48, Color(1.0, 0.82, 0.42, pulse * 0.75), 2.5)
         return
 
-    draw_circle(Vector2.ZERO, 29.0, Color(0.96, 0.88, 0.72, 0.68))
-    draw_arc(Vector2.ZERO, 29.0, 0.0, TAU, 48, Color("9e8151"), 2.0)
+    # A real blueprint pad instead of an icon/text placeholder.
+    draw_circle(Vector2.ZERO, 31.0, Color(0.89, 0.81, 0.64, 0.74))
+    draw_circle(Vector2.ZERO, 27.0, Color(0.96, 0.90, 0.76, 0.84))
+    draw_arc(Vector2.ZERO, 31.0, 0.0, TAU, 48, Color("8c7048"), 2.0)
+    draw_arc(Vector2.ZERO, 25.0, 0.0, TAU, 48, Color(0.47, 0.38, 0.25, 0.28), 1.0)
     for i: int in range(4):
         var angle: float = float(i) * TAU / 4.0 + PI * 0.25
-        var a: Vector2 = Vector2(cos(angle), sin(angle)) * 22.0
-        var b: Vector2 = Vector2(cos(angle), sin(angle)) * 28.0
-        draw_line(a, b, Color("806840"), 2.0)
+        var a: Vector2 = Vector2(cos(angle), sin(angle)) * 23.0
+        var b: Vector2 = Vector2(cos(angle), sin(angle)) * 29.0
+        draw_line(a, b, Color("806840"), 1.6)
+
+    _draw_blueprint_preview()
+
     var font: Font = ThemeDB.fallback_font
-    draw_string(font, Vector2(-25, 1), label, HORIZONTAL_ALIGNMENT_CENTER, 50, 8, Color("40372e"))
-    var resource_text: String = "🪵%d  🪨%d  ⛏%d" % [int(cost.get("wood", 0)), int(cost.get("stone", 0)), int(cost.get("ore", 0))]
-    draw_string(font, Vector2(-31, 15), resource_text, HORIZONTAL_ALIGNMENT_CENTER, 62, 7, Color("5a4c3a"))
+    draw_string(font, Vector2(-26, -11), label, HORIZONTAL_ALIGNMENT_CENTER, 52, 8, Color("393028"))
+    var resource_text: String = "Д%d  К%d  Р%d" % [int(cost.get("wood", 0)), int(cost.get("stone", 0)), int(cost.get("ore", 0))]
+    draw_string(font, Vector2(-29, 22), resource_text, HORIZONTAL_ALIGNMENT_CENTER, 58, 7, Color("564735"))
+
+func _draw_blueprint_preview() -> void:
+    var ink := Color(0.38, 0.31, 0.22, 0.52)
+    match build_type:
+        "wall":
+            for x: float in [-8.0, 0.0, 8.0]:
+                draw_line(Vector2(x, -2), Vector2(x, 10), ink, 2.2)
+                draw_line(Vector2(x - 2, -2), Vector2(x, -6), ink, 1.4)
+                draw_line(Vector2(x + 2, -2), Vector2(x, -6), ink, 1.4)
+            draw_line(Vector2(-12, 4), Vector2(12, 4), ink, 1.8)
+        "forge":
+            draw_rect(Rect2(-10, 1, 20, 10), Color(ink, 0.18), false, 2.0)
+            draw_line(Vector2(-13, 1), Vector2(0, -7), ink, 2.0)
+            draw_line(Vector2(0, -7), Vector2(13, 1), ink, 2.0)
+            draw_line(Vector2(6, -7), Vector2(6, -1), ink, 2.0)
+        "turret":
+            draw_circle(Vector2(0, 4), 8.0, Color(ink, 0.12))
+            draw_arc(Vector2(0, 4), 8.0, 0.0, TAU, 18, ink, 1.8)
+            draw_line(Vector2(0, 1), Vector2(0, -10), ink, 2.3)
+            draw_line(Vector2(-5, 12), Vector2(5, 12), ink, 2.0)
+        "shrine":
+            var crystal := PackedVector2Array([
+                Vector2(0, -10), Vector2(6, 0), Vector2(3, 11),
+                Vector2(0, 14), Vector2(-3, 11), Vector2(-6, 0)
+            ])
+            draw_polyline(crystal, ink, 1.8)
+            draw_arc(Vector2.ZERO, 13.0, 0.0, TAU, 20, Color(ink, 0.66), 1.2)
 
 func _draw_built_structure() -> void:
     match build_type:

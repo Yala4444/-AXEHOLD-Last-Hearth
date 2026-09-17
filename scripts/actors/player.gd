@@ -6,6 +6,8 @@ signal damaged(amount: float, blocked: bool)
 signal level_up_requested(level: int)
 
 var target_position: Vector2 = Vector2.ZERO
+var move_input: Vector2 = Vector2.ZERO
+var direct_control: bool = false
 var move_speed: float = 126.0
 var max_hp: float = 100.0
 var hp: float = 100.0
@@ -71,13 +73,25 @@ func _physics_process(delta: float) -> void:
     block_flash = maxf(0.0, block_flash - delta * 3.6)
     perk_flash = maxf(0.0, perk_flash - delta * 2.0)
 
-    var direction: Vector2 = global_position.direction_to(target_position)
-    var distance: float = global_position.distance_to(target_position)
-    if distance > 4.0:
+    var movement: Vector2 = Vector2.ZERO
+    var analog_strength: float = 1.0
+
+    if direct_control:
+        movement = move_input
+        analog_strength = clampf(move_input.length(), 0.0, 1.0)
+    else:
+        var distance: float = global_position.distance_to(target_position)
+        if distance > 4.0:
+            movement = global_position.direction_to(target_position)
+
+    if movement.length_squared() > 0.0025:
+        var direction: Vector2 = movement.normalized()
         if absf(direction.x) > 0.08:
             facing_x = signf(direction.x)
-        velocity = direction * move_speed
+        velocity = direction * move_speed * analog_strength
         move_and_slide()
+        if direct_control:
+            target_position = global_position
     else:
         velocity = Vector2.ZERO
 
@@ -92,7 +106,20 @@ func _physics_process(delta: float) -> void:
     queue_redraw()
 
 func set_target(pos: Vector2) -> void:
+    if direct_control:
+        return
     target_position = pos
+
+func set_move_input(value: Vector2) -> void:
+    move_input = value.limit_length(1.0)
+    direct_control = true
+    target_position = global_position
+
+func release_move_input() -> void:
+    move_input = Vector2.ZERO
+    direct_control = false
+    target_position = global_position
+    velocity = Vector2.ZERO
 
 func inventory_total() -> int:
     return int(inventory["wood"]) + int(inventory["stone"]) + int(inventory["ore"])
@@ -160,10 +187,12 @@ func apply_perk(id: String) -> void:
 
 func _draw() -> void:
     var moving: bool = velocity.length_squared() > 36.0
-    var bob: float = sin(motion_time * 10.0) * 1.4 if moving else sin(motion_time * 2.5) * 0.45
-    var body_offset: Vector2 = Vector2(0, bob)
+    var bob: float = sin(motion_time * 10.5) * 1.15 if moving else sin(motion_time * 2.4) * 0.40
+    var stride: float = sin(motion_time * 11.5) * 3.0 if moving else 0.0
+    var arm_swing: float = -stride * 0.68
+    var body_offset := Vector2(0, bob)
 
-    _draw_shadow_ellipse(Vector2(3, 12), Vector2(13, 5), Color(0.08, 0.12, 0.08, 0.18))
+    _draw_shadow_ellipse(Vector2(2, 15), Vector2(14, 5), Color(0.05, 0.08, 0.06, 0.24))
 
     var radius: float = orbit_radius + axes * 4.0
     for i: int in range(axes):
@@ -173,21 +202,77 @@ func _draw() -> void:
         draw_arc(Vector2.ZERO, radius, weapon_angle - 0.42, weapon_angle - 0.08, 10, Color(0.76, 0.86, 0.94, trail_alpha), trail_width)
         draw_arc(Vector2.ZERO, radius, weapon_angle - 0.24, weapon_angle - 0.04, 8, Color(0.89, 0.95, 1.0, 0.16), 2.0)
 
-    var cape_shift: float = -facing_x * (3.0 if moving else 1.5)
-    var cape: PackedVector2Array = PackedVector2Array([
-        body_offset + Vector2(-8 + cape_shift, 2),
-        body_offset + Vector2(cape_shift, 18),
-        body_offset + Vector2(8 + cape_shift, 2)
+    # Cape behind the body. It leans opposite the direction of travel.
+    var cape_shift: float = -facing_x * (3.6 if moving else 1.8)
+    var cape_color: Color = skin_cape.darkened(0.04)
+    var cape := PackedVector2Array([
+        body_offset + Vector2(-8 + cape_shift, -2),
+        body_offset + Vector2(-10 + cape_shift, 13),
+        body_offset + Vector2(0 + cape_shift, 18),
+        body_offset + Vector2(10 + cape_shift, 13),
+        body_offset + Vector2(8 + cape_shift, -2)
     ])
-    draw_colored_polygon(cape, skin_cape)
+    draw_colored_polygon(cape, cape_color)
+    draw_polyline(cape, skin_cape.lightened(0.18), 1.2)
 
-    var body_color: Color = skin_body.lightened(damage_flash * 0.38)
-    draw_circle(body_offset, 11.0, body_color)
-    draw_circle(body_offset + Vector2(0, -8), 5.0, Color("e6be96").lightened(damage_flash * 0.28))
-    draw_circle(body_offset + Vector2(facing_x * 1.8, -9), 0.8, Color("40352e"))
+    # Legs and boots create a readable walking cycle.
+    var leg_color: Color = skin_body.darkened(0.32)
+    var boot_color := Color("302a28")
+    var left_hip := body_offset + Vector2(-4, 7)
+    var right_hip := body_offset + Vector2(4, 7)
+    var left_foot := body_offset + Vector2(-4 + stride * 0.48, 17)
+    var right_foot := body_offset + Vector2(4 - stride * 0.48, 17)
+    draw_line(left_hip, left_foot, leg_color, 4.2)
+    draw_line(right_hip, right_foot, leg_color, 4.2)
+    draw_line(left_foot + Vector2(-2, 0), left_foot + Vector2(3 * facing_x, 0), boot_color, 3.2)
+    draw_line(right_foot + Vector2(-2, 0), right_foot + Vector2(3 * facing_x, 0), boot_color, 3.2)
 
-    draw_line(body_offset + Vector2(-5, 8), body_offset + Vector2(-4, 14), skin_body.darkened(0.16), 3.0)
-    draw_line(body_offset + Vector2(5, 8), body_offset + Vector2(4, 14), skin_body.darkened(0.16), 3.0)
+    # Torso: layered tunic with dark outline and a warm belt.
+    var flash_body: Color = skin_body.lightened(damage_flash * 0.38)
+    var torso_outline := PackedVector2Array([
+        body_offset + Vector2(-9, -5),
+        body_offset + Vector2(9, -5),
+        body_offset + Vector2(8, 9),
+        body_offset + Vector2(0, 12),
+        body_offset + Vector2(-8, 9)
+    ])
+    draw_colored_polygon(torso_outline, Color(0.07, 0.09, 0.11, 0.90))
+    var torso := PackedVector2Array([
+        body_offset + Vector2(-7, -4),
+        body_offset + Vector2(7, -4),
+        body_offset + Vector2(6, 8),
+        body_offset + Vector2(0, 10),
+        body_offset + Vector2(-6, 8)
+    ])
+    draw_colored_polygon(torso, flash_body)
+    draw_line(body_offset + Vector2(-6, 5), body_offset + Vector2(6, 5), Color("a87b49"), 2.2)
+    draw_circle(body_offset + Vector2(0, 5), 1.6, Color("dfbd69"))
+
+    # Shoulders, arms and hands.
+    var sleeve: Color = skin_body.darkened(0.12).lightened(damage_flash * 0.25)
+    var left_shoulder := body_offset + Vector2(-7, -2)
+    var right_shoulder := body_offset + Vector2(7, -2)
+    var left_hand := body_offset + Vector2(-11, 6 + arm_swing * 0.34)
+    var right_hand := body_offset + Vector2(11, 6 - arm_swing * 0.34)
+    draw_line(left_shoulder, left_hand, sleeve, 4.0)
+    draw_line(right_shoulder, right_hand, sleeve, 4.0)
+    draw_circle(left_hand, 2.2, Color("dcae83"))
+    draw_circle(right_hand, 2.2, Color("dcae83"))
+    draw_circle(left_shoulder, 3.2, skin_body.lightened(0.12))
+    draw_circle(right_shoulder, 3.2, skin_body.lightened(0.12))
+
+    # Neck, head, hair/hood and face direction.
+    draw_line(body_offset + Vector2(0, -5), body_offset + Vector2(0, -8), Color("c99570"), 3.5)
+    var head_center := body_offset + Vector2(0, -12)
+    draw_circle(head_center, 6.9, Color("d8a77f").lightened(damage_flash * 0.22))
+    var hair_color := Color("49382e")
+    draw_arc(head_center + Vector2(0, -0.8), 6.5, PI + 0.10, TAU - 0.10, 14, hair_color, 4.0)
+    draw_line(head_center + Vector2(-5, -4), head_center + Vector2(5, -4), skin_cape.lightened(0.10), 2.2)
+    draw_circle(head_center + Vector2(facing_x * 2.2, -0.8), 0.9, Color("241f1c"))
+    draw_line(head_center + Vector2(facing_x * 1.0, 2.5), head_center + Vector2(facing_x * 3.0, 2.0), Color(0.30, 0.19, 0.15, 0.65), 1.1)
+
+    # Small shoulder clasp gives the silhouette a focal point.
+    draw_circle(body_offset + Vector2(-facing_x * 6.5, -3.0), 2.0, Color("e2b75e"))
 
     for i: int in range(axes):
         var weapon_angle: float = angle + float(i) * TAU / float(maxi(1, axes))
@@ -196,12 +281,12 @@ func _draw() -> void:
 
     if shield_hits > 0 or block_flash > 0.0:
         var shield_alpha: float = 0.48 + sin(motion_time * 4.5) * 0.12 + block_flash * 0.28
-        var shield_radius: float = 20.0 + block_flash * 4.0
+        var shield_radius: float = 22.0 + block_flash * 4.0
         draw_circle(Vector2.ZERO, shield_radius, Color(0.35, 0.76, 1.0, 0.05 + block_flash * 0.06))
         draw_arc(Vector2.ZERO, shield_radius, 0.0, TAU, 48, Color(0.55, 0.88, 1.0, shield_alpha), 2.2)
 
     if perk_flash > 0.0:
-        draw_arc(Vector2.ZERO, 24.0 + (1.0 - perk_flash) * 18.0, 0.0, TAU, 48, Color(1.0, 0.85, 0.42, perk_flash * 0.65), 2.0)
+        draw_arc(Vector2.ZERO, 25.0 + (1.0 - perk_flash) * 18.0, 0.0, TAU, 48, Color(1.0, 0.85, 0.42, perk_flash * 0.65), 2.0)
 
 func _draw_weapon(pos: Vector2, weapon_angle: float) -> void:
     match weapon_style:
@@ -254,9 +339,9 @@ func _draw_twin_blade(pos: Vector2, weapon_angle: float) -> void:
     draw_colored_polygon(PackedVector2Array([outer, tip, wing]), Color("e1a07c").lightened(perk_flash * 0.20))
     draw_circle(inner, 2.0, Color("f1c26f"))
 
-func _draw_shadow_ellipse(center: Vector2, radii: Vector2, color: Color) -> void:
+func _draw_shadow_ellipse(center_pos: Vector2, radii: Vector2, color: Color) -> void:
     var points: PackedVector2Array = PackedVector2Array()
     for i: int in range(24):
         var ellipse_angle: float = TAU * float(i) / 24.0
-        points.append(center + Vector2(cos(ellipse_angle) * radii.x, sin(ellipse_angle) * radii.y))
+        points.append(center_pos + Vector2(cos(ellipse_angle) * radii.x, sin(ellipse_angle) * radii.y))
     draw_colored_polygon(points, color)

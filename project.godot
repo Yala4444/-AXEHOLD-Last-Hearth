@@ -17,6 +17,8 @@ Soundscape="*res://scripts/autoload/soundscape.gd"
 RunDirector="*res://scripts/autoload/run_director.gd"
 MetaDirector="*res://scripts/autoload/meta_director_living_camp.gd"
 ExpeditionDirector="*res://scripts/autoload/expedition_director.gd"
+MobileControls="*res://scripts/autoload/mobile_controls.gd"
+UISanitizer="*res://scripts/autoload/ui_sanitizer.gd"
 
 [display]
 window/handheld/orientation=1

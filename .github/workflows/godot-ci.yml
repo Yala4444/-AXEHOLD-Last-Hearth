@@ -100,6 +100,16 @@ jobs:
             exit 1
           fi
 
+      - name: Mobile controls regression smoke-test
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_mobile_smoke.tscn 2>&1 | tee /tmp/godot-mobile.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-mobile.log; then
+            echo "GDScript parse errors detected during mobile smoke test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |
