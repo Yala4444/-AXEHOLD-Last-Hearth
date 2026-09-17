@@ -31,6 +31,8 @@ func clear_hazards() -> void:
 
 func _process(delta: float) -> void:
     ambience_time += delta
+    _refresh_boss_hud()
+
     if hazards.is_empty():
         queue_redraw()
         return
@@ -50,6 +52,18 @@ func _process(delta: float) -> void:
             next_hazards.append(hazard)
     hazards = next_hazards
     queue_redraw()
+
+func _refresh_boss_hud() -> void:
+    if world == null or not is_instance_valid(world) or world.hud == null:
+        return
+    if world.boss_ref == null or not is_instance_valid(world.boss_ref):
+        return
+    var biome_data: Dictionary = GameRules.biome(biome_index)
+    world.hud.show_boss(
+        str(biome_data.get("boss_name", "Хранитель")),
+        world.boss_ref.hp,
+        world.boss_ref.max_hp
+    )
 
 func _draw() -> void:
     if world == null or not is_instance_valid(world):
