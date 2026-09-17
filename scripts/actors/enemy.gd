@@ -101,6 +101,7 @@ func take_damage(amount: float) -> void:
         death_time = 0.18
         contact_damage = 0.0
         has_target = false
+        Feedback.play("victory" if boss else "enemy_down", 18 if boss else 0)
 
 func _draw() -> void:
     var shadow_radii: Vector2 = Vector2(20.0, 7.0) if boss else Vector2(12.0, 4.5)
