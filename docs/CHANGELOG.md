@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1-ci — Runtime validation foundation
+- Added Web export preset for browser playtests.
+- Added Godot 4.7.2 GitHub Actions validation/build pipeline.
+- Added scene smoke test executed by the real Godot runtime.
+- Added optional GitHub Pages deployment behind ENABLE_PAGES repository variable.
+- Added Git ignore rules for generated builds and local credentials.
+- Refactored runtime into GameRules, GameHud and GameWorld layers for safer iteration.
+
 ## 0.2.0 — Production pass
 - Save schema v2 + migration.
 - Daily missions/supply reset.
@@ -14,10 +22,3 @@
 
 ## 0.1.0
 - Initial Godot vertical slice.
-
-## 0.2.1-ci
-- Added Web export preset for browser playtests.
-- Added Godot 4.7.2 GitHub Actions validation/build pipeline.
-- Added scene smoke test executed by the real Godot runtime.
-- Added optional GitHub Pages deployment behind ENABLE_PAGES repository variable.
-- Added Git ignore rules for generated builds and local credentials.
