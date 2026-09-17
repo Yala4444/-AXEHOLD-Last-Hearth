@@ -14,7 +14,7 @@ AdService="*res://scripts/autoload/ad_service.gd"
 Analytics="*res://scripts/autoload/analytics.gd"
 Feedback="*res://scripts/autoload/feedback.gd"
 RunDirector="*res://scripts/autoload/run_director.gd"
-MetaDirector="*res://scripts/autoload/meta_director.gd"
+MetaDirector="*res://scripts/autoload/meta_director_living_camp.gd"
 
 [display]
 window/handheld/orientation=1
