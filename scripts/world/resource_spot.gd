@@ -43,6 +43,8 @@ func damage(amount: float) -> bool:
         hit_gate = 0.11
         hit_pulse = 1.0
         wobble_phase = 0.0
+    if hp <= 0.0:
+        Feedback.play("ore" if resource_type == "ore" else "harvest", 8)
     queue_redraw()
     return hp <= 0.0
 
