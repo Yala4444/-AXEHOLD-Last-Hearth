@@ -9,6 +9,8 @@ func _show_home() -> void:
     body.add_child(camp)
     camp.action_requested.connect(_on_camp_action)
 
+    _add_meta_notice_panel()
+
     selected_biome = clampi(selected_biome, 0, GameRules.BIOMES.size() - 1)
     var biome_data: Dictionary = GameRules.biome(selected_biome)
     var weapon_id: String = str(GameState.data.get("selected_weapon", "axes"))
@@ -73,6 +75,39 @@ func _show_home() -> void:
     var ad := _button(supply_row, "▶ +60 🪙", false)
     ad.disabled = bool(GameState.data.get("supply_claimed", false))
     ad.pressed.connect(_claim_supply.bind(true))
+
+func _add_meta_notice_panel() -> void:
+    var notices: Array = GameState.data.get("meta_notices", [])
+    if notices.is_empty():
+        return
+
+    var panel := _panel(body)
+    var box := VBoxContainer.new()
+    panel.add_child(box)
+    box.add_theme_constant_override("separation", 7)
+
+    var title := Label.new()
+    box.add_child(title)
+    title.text = "🏆 НОВОЕ В ЛАГЕРЕ"
+    title.add_theme_font_size_override("font_size", 12)
+    title.add_theme_color_override("font_color", Color("f0c778"))
+
+    var lines: Array[String] = []
+    for notice: Variant in notices:
+        lines.append(str(notice))
+    var message := Label.new()
+    box.add_child(message)
+    message.text = "\n".join(lines)
+    message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    message.add_theme_color_override("font_color", Color(0.88, 0.88, 0.84))
+
+    var acknowledge := _button(box, "Осмотреть трофеи", false)
+    acknowledge.pressed.connect(_acknowledge_meta_notices)
+
+func _acknowledge_meta_notices() -> void:
+    GameState.consume_meta_notices()
+    Feedback.play("level", 10)
+    _show_home()
 
 func _on_camp_action(action: String) -> void:
     match action:
