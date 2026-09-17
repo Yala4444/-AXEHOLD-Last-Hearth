@@ -8,6 +8,8 @@ var night_warning_shown: bool = false
 var full_bag_hint_cooldown: float = 0.0
 var danger_hint_cooldown: float = 0.0
 var highlighted_pad: BuildPad = null
+var last_phase: String = ""
+var last_wave: int = -1
 
 func _process(delta: float) -> void:
     if world == null or not is_instance_valid(world):
@@ -23,6 +25,7 @@ func _process(delta: float) -> void:
     full_bag_hint_cooldown = maxf(0.0, full_bag_hint_cooldown - delta)
     danger_hint_cooldown = maxf(0.0, danger_hint_cooldown - delta)
 
+    _handle_phase_transition()
     if first_run_coaching:
         _update_first_run_coaching()
     _update_contextual_hints()
@@ -46,6 +49,8 @@ func _attach_world(new_world: GameWorld) -> void:
     full_bag_hint_cooldown = 0.0
     danger_hint_cooldown = 0.0
     highlighted_pad = null
+    last_phase = world.phase
+    last_wave = world.wave
 
     world.phase_max = GameRules.day_duration(0)
     world.phase_time = world.phase_max
@@ -54,6 +59,53 @@ func _attach_world(new_world: GameWorld) -> void:
     first_run_coaching = bool(settings.get("hints", true)) and not bool(GameState.data.get("coach_complete", false))
     if first_run_coaching:
         Analytics.event("coach_start", {"biome": world.biome_index})
+
+func _handle_phase_transition() -> void:
+    if world == null:
+        return
+    if world.phase == last_phase and world.wave == last_wave:
+        return
+
+    var previous_phase: String = last_phase
+    last_phase = world.phase
+    last_wave = world.wave
+
+    if world.phase == "night":
+        _clear_highlight()
+        night_warning_shown = false
+        return
+
+    if previous_phase == "night" and world.phase == "day":
+        night_warning_shown = false
+        _show_dawn_priority(world.wave)
+
+func _show_dawn_priority(completed_wave: int) -> void:
+    if world == null or world.hud == null:
+        return
+    var settings: Dictionary = GameState.data.get("settings", {})
+    if not bool(settings.get("hints", true)):
+        return
+
+    if completed_wave == 1:
+        world.hud.show_banner("ПЕРВАЯ НОЧЬ ПЕРЕЖИТА", Color("fff0b4"))
+        if not bool(world.built.get("forge", false)):
+            _highlight_build("forge")
+            world.hud.set_status("⚒️ Следующий сильный шаг — Кузница. Она заметно ускорит убийство врагов.")
+        else:
+            world.hud.set_status("⚔️ Кузница уже работает. Собирай ресурсы на Турель или Святилище.")
+        return
+
+    if completed_wave == 2:
+        world.hud.show_banner("ПОСЛЕДНЯЯ ПОДГОТОВКА", Color("ffd79c"))
+        var base_ratio: float = world.base_hp / maxf(1.0, world.base_max_hp)
+        if base_ratio < 0.65 and not bool(world.built.get("shrine", false)):
+            _highlight_build("shrine")
+            world.hud.set_status("✨ Очаг потрёпан. Святилище даст тебе запас HP и лечение перед Хранителем.")
+        elif not bool(world.built.get("turret", false)):
+            _highlight_build("turret")
+            world.hud.set_status("🏹 Перед Хранителем выгодно поставить Турель — она сама снимает давление с центра.")
+        else:
+            world.hud.set_status("🔥 Оборона готова. Добери ресурсы и подготовься к Хранителю.")
 
 func _update_first_run_coaching() -> void:
     if world == null or world.player == null or world.hud == null:
@@ -118,6 +170,9 @@ func _update_contextual_hints() -> void:
     if world.hud.modal_open():
         return
 
+    if highlighted_pad != null and is_instance_valid(highlighted_pad) and highlighted_pad.built:
+        _clear_highlight()
+
     if world.player.inventory_total() >= world.player.capacity and full_bag_hint_cooldown <= 0.0:
         if world.player.global_position.distance_to(world.base_position) > 70.0:
             world.hud.set_status("🎒 Рюкзак заполнен — вернись к Очагу, чтобы не терять добычу.")
@@ -145,6 +200,7 @@ func _highlight_build(kind: String) -> void:
         if pad.build_type == kind and not pad.built:
             if highlighted_pad != null and highlighted_pad != pad and is_instance_valid(highlighted_pad):
                 highlighted_pad.modulate = Color.WHITE
+                highlighted_pad.z_index = 0
             highlighted_pad = pad
             pad.modulate = Color(1.25, 1.15, 0.72, 1.0)
             pad.z_index = 5
