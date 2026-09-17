@@ -19,15 +19,15 @@ var angle := 0.0
 var xp := 0
 var level := 1
 var next_xp := 16
-var inventory := {"wood": 0, "stone": 0, "ore": 0}
+var inventory: Dictionary = {"wood": 0, "stone": 0, "ore": 0}
 var skin_body := Color("466bc8")
 var skin_cape := Color("364f9c")
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
-    var hp_level := int(meta_upgrades.get("hp", 0))
-    var damage_level := int(meta_upgrades.get("damage", 0))
-    var bag_level := int(meta_upgrades.get("bag", 0))
-    var speed_level := int(meta_upgrades.get("speed", 0))
+    var hp_level: int = int(meta_upgrades.get("hp", 0))
+    var damage_level: int = int(meta_upgrades.get("damage", 0))
+    var bag_level: int = int(meta_upgrades.get("bag", 0))
+    var speed_level: int = int(meta_upgrades.get("speed", 0))
     max_hp = 100.0 + hp_level * 10.0
     hp = max_hp
     damage = 25.0 * pow(1.10, damage_level)
@@ -39,8 +39,8 @@ func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     queue_redraw()
 
 func _physics_process(delta: float) -> void:
-    var direction := global_position.direction_to(target_position)
-    var distance := global_position.distance_to(target_position)
+    var direction: Vector2 = global_position.direction_to(target_position)
+    var distance: float = global_position.distance_to(target_position)
     if distance > 4.0:
         velocity = direction * move_speed
         move_and_slide()
@@ -56,13 +56,13 @@ func inventory_total() -> int:
     return int(inventory["wood"]) + int(inventory["stone"]) + int(inventory["ore"])
 
 func add_resource(kind: String, amount: int) -> int:
-    var available := max(0, capacity - inventory_total())
-    var actual := min(amount, available)
+    var available: int = maxi(0, capacity - inventory_total())
+    var actual: int = mini(amount, available)
     inventory[kind] = int(inventory.get(kind, 0)) + actual
     return actual
 
 func clear_inventory() -> Dictionary:
-    var result := inventory.duplicate(true)
+    var result: Dictionary = inventory.duplicate(true)
     inventory = {"wood": 0, "stone": 0, "ore": 0}
     return result
 
@@ -72,13 +72,13 @@ func take_damage(amount: float) -> void:
         damaged.emit(0.0, true)
         queue_redraw()
         return
-    hp = max(0.0, hp - amount)
+    hp = maxf(0.0, hp - amount)
     damaged.emit(amount, false)
     if hp <= 0.0:
         died.emit()
 
 func heal(amount: float) -> void:
-    hp = min(max_hp, hp + amount)
+    hp = minf(max_hp, hp + amount)
 
 func gain_xp(amount: int) -> void:
     xp += amount
@@ -90,36 +90,36 @@ func gain_xp(amount: int) -> void:
 
 func apply_perk(id: String) -> void:
     match id:
-        "axe": axes = min(8, axes + 1)
+        "axe": axes = mini(8, axes + 1)
         "damage": damage *= 1.22
         "orbit": orbit_radius *= 1.16
         "speed": move_speed *= 1.14
         "hp":
             max_hp += 25.0
-            hp = min(max_hp, hp + 35.0)
+            hp = minf(max_hp, hp + 35.0)
         "bag": capacity += 8
-        "crit": crit_chance = min(0.50, crit_chance + 0.12)
+        "crit": crit_chance = minf(0.50, crit_chance + 0.12)
         "shield": shield_hits += 3
     queue_redraw()
 
 func _draw() -> void:
-    draw_ellipse(Vector2(3, 11), Vector2(12, 5), Color(0.08, 0.12, 0.08, 0.18))
+    _draw_shadow_ellipse(Vector2(3, 11), Vector2(12, 5), Color(0.08, 0.12, 0.08, 0.18))
     var cape := PackedVector2Array([Vector2(-8, 2), Vector2(0, 16), Vector2(8, 2)])
     draw_colored_polygon(cape, skin_cape)
     draw_circle(Vector2.ZERO, 11.0, skin_body)
     draw_circle(Vector2(0, -8), 5.0, Color("e6be96"))
-    var radius := orbit_radius + axes * 4.0
+    var radius: float = orbit_radius + axes * 4.0
     for i in range(axes):
-        var a := angle + float(i) * TAU / float(max(1, axes))
-        var pos := Vector2(cos(a), sin(a)) * radius
+        var a: float = angle + float(i) * TAU / float(maxi(1, axes))
+        var pos: Vector2 = Vector2(cos(a), sin(a)) * radius
         draw_line(pos + Vector2(-1, -8).rotated(a), pos + Vector2(1, 8).rotated(a), Color("68482f"), 4.0)
         draw_line(pos + Vector2(-7, -9).rotated(a), pos + Vector2(7, -9).rotated(a), Color("b8bec1"), 6.0)
     if shield_hits > 0:
         draw_arc(Vector2.ZERO, 20.0, 0.0, TAU, 48, Color(0.55, 0.88, 1.0, 0.82), 2.0)
 
-func draw_ellipse(center: Vector2, radii: Vector2, color: Color) -> void:
+func _draw_shadow_ellipse(center: Vector2, radii: Vector2, color: Color) -> void:
     var points := PackedVector2Array()
     for i in range(24):
-        var a := TAU * float(i) / 24.0
+        var a: float = TAU * float(i) / 24.0
         points.append(center + Vector2(cos(a) * radii.x, sin(a) * radii.y))
     draw_colored_polygon(points, color)
