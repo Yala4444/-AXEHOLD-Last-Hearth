@@ -80,6 +80,16 @@ jobs:
             exit 1
           fi
 
+      - name: Expedition wow regression smoke-test
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_expedition_smoke.tscn 2>&1 | tee /tmp/godot-expedition.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-expedition.log; then
+            echo "GDScript parse errors detected during expedition smoke test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |
