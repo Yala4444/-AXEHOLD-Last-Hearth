@@ -1,17 +1,17 @@
-extends SceneTree
+extends Node
 
 const GameScene: PackedScene = preload("res://scenes/game.tscn")
 
 var failures: Array[String] = []
 
-func _initialize() -> void:
+func _ready() -> void:
     call_deferred("_run_tests")
 
 func _run_tests() -> void:
-    await process_frame
+    await get_tree().process_frame
     _test_biome_rules()
 
-    var director: Node = root.get_node_or_null("RunDirector")
+    var director: Node = get_tree().root.get_node_or_null("RunDirector")
     if director == null:
         _fail("RunDirector autoload is missing")
     else:
@@ -30,12 +30,12 @@ func _run_tests() -> void:
 
     if failures.is_empty():
         print("[GAMEPLAY] AXEHOLD runtime mechanics validation passed")
-        quit(0)
+        get_tree().quit(0)
         return
 
     for failure: String in failures:
         push_error("[GAMEPLAY] %s" % failure)
-    quit(1)
+    get_tree().quit(1)
 
 func _test_biome_rules() -> void:
     if GameRules.BIOMES.size() != 3:
@@ -54,7 +54,9 @@ func _test_biome_rules() -> void:
 
     if float(GameRules.biome(1).get("night_speed", 1.0)) >= 1.0:
         _fail("Frost biome should slow the hero at night")
-    if float(GameRules.biome(2).get("enemy_weights", {}).get("brute", 0.0)) <= float(GameRules.biome(0).get("enemy_weights", {}).get("brute", 0.0)):
+    var ash_weights: Dictionary = GameRules.biome(2).get("enemy_weights", {})
+    var forest_weights: Dictionary = GameRules.biome(0).get("enemy_weights", {})
+    if float(ash_weights.get("brute", 0.0)) <= float(forest_weights.get("brute", 0.0)):
         _fail("Ashlands should bias toward brutes")
 
 func _test_biome_runtime(biome_index: int) -> void:
@@ -64,8 +66,8 @@ func _test_biome_runtime(biome_index: int) -> void:
         return
 
     game.configure(biome_index)
-    root.add_child(game)
-    current_scene = game
+    get_tree().root.add_child(game)
+    get_tree().current_scene = game
     await _wait_frames(5)
 
     if game.player == null or game.hud == null:
@@ -114,15 +116,15 @@ func _test_biome_runtime(biome_index: int) -> void:
     await _cleanup_game(game)
 
 func _cleanup_game(game: GameWorld) -> void:
-    if current_scene == game:
-        current_scene = null
+    if get_tree().current_scene == game:
+        get_tree().current_scene = self
     if is_instance_valid(game):
         game.queue_free()
     await _wait_frames(4)
 
 func _wait_frames(count: int) -> void:
     for _i: int in range(count):
-        await process_frame
+        await get_tree().process_frame
 
 func _fail(message: String) -> void:
     failures.append(message)
