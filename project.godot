@@ -19,6 +19,7 @@ MetaDirector="*res://scripts/autoload/meta_director_living_camp.gd"
 ExpeditionDirector="*res://scripts/autoload/expedition_director.gd"
 MobileControls="*res://scripts/autoload/mobile_controls.gd"
 UISanitizer="*res://scripts/autoload/ui_sanitizer.gd"
+WebRuntime="*res://scripts/autoload/web_runtime.gd"
 
 [display]
 window/handheld/orientation=1
