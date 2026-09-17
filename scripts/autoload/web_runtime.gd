@@ -36,8 +36,10 @@ func _process(delta: float) -> void:
             mobile_controls.call("unbind_world", last_bound_world)
             last_bound_world = null
 
-        var should_force: bool = OS.has_feature("web") and has_world
-        mobile_controls.call("force_visible_for_test", should_force)
+        # Only WebRuntime may force the joystick on Web builds. On native/headless
+        # platforms it must not overwrite touch detection or regression-test state.
+        if OS.has_feature("web"):
+            mobile_controls.call("force_visible_for_test", has_world)
 
     if version_label != null:
         version_label.visible = OS.has_feature("web")
