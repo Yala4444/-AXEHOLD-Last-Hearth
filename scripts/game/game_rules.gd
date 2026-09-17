@@ -13,7 +13,7 @@ const BIOMES := [
         "boss_name":"Лесной Хранитель",
         "rule":"Сбалансированный биом. Больше дерева, смешанные враги.",
         "night_speed":1.0,
-        "enemy_weights":{"normal":0.64,"runner":0.18,"brute":0.18}
+        "enemy_weights":{"normal":0.52,"runner":0.16,"brute":0.14,"stalker":0.12,"guardian":0.06}
     },
     {
         "id":"frost",
@@ -24,9 +24,9 @@ const BIOMES := [
         "ground":"8db8c3",
         "reward":1,
         "boss_name":"Ледяной Страж",
-        "rule":"Ночью холод замедляет героя. Больше бегунов и камня.",
+        "rule":"Ночью холод замедляет героя. Больше бегунов и Сталкеров.",
         "night_speed":0.90,
-        "enemy_weights":{"normal":0.56,"runner":0.32,"brute":0.12}
+        "enemy_weights":{"normal":0.40,"runner":0.27,"brute":0.10,"stalker":0.17,"guardian":0.06}
     },
     {
         "id":"ash",
@@ -37,9 +37,9 @@ const BIOMES := [
         "ground":"a66652",
         "reward":2,
         "boss_name":"Пепельный Тиран",
-        "rule":"Ночью земля извергает огонь. Больше тяжёлых врагов и руды.",
+        "rule":"Ночью земля извергает огонь. Больше тяжёлых и бронированных врагов.",
         "night_speed":1.0,
-        "enemy_weights":{"normal":0.56,"runner":0.12,"brute":0.32}
+        "enemy_weights":{"normal":0.38,"runner":0.08,"brute":0.25,"stalker":0.09,"guardian":0.20}
     }
 ]
 
@@ -115,14 +115,14 @@ static func random_enemy_type() -> String:
 
 static func enemy_type_for_biome(index: int) -> String:
     var data: Dictionary = biome(index)
-    var weights: Dictionary = data.get("enemy_weights", {"normal":0.64,"runner":0.18,"brute":0.18})
+    var weights: Dictionary = data.get("enemy_weights", {"normal":1.0})
     var roll: float = randf()
-    var runner_weight: float = float(weights.get("runner", 0.18))
-    var brute_weight: float = float(weights.get("brute", 0.18))
-    if roll < runner_weight:
-        return "runner"
-    if roll < runner_weight + brute_weight:
-        return "brute"
+    var cumulative: float = 0.0
+    var order: Array[String] = ["runner", "brute", "stalker", "guardian", "normal"]
+    for kind: String in order:
+        cumulative += float(weights.get(kind, 0.0))
+        if roll <= cumulative:
+            return kind
     return "normal"
 
 static func random_perks(count: int = 3) -> Array:
