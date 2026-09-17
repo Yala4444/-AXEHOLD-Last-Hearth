@@ -1,7 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://axehold_save.json"
-const SAVE_VERSION := 2
+const SAVE_VERSION := 3
 
 var data: Dictionary = {}
 
@@ -19,6 +19,7 @@ func defaults() -> Dictionary:
         "runs": 0,
         "selected_biome": 0,
         "tutorial_complete": false,
+        "coach_complete": false,
         "upgrades": {"damage": 0, "hp": 0, "bag": 0, "speed": 0},
         "biome_wins": [0, 0, 0],
         "skins_owned": [true, false, false, false],
@@ -28,9 +29,9 @@ func defaults() -> Dictionary:
         "settings": {"sound": true, "haptics": true, "hints": true},
         "stats": {"kills": 0, "trees": 0, "builds": 0},
         "missions": {
-            "trees": {"value": 0, "goal": 15, "reward": 35, "claimed": false},
-            "kills": {"value": 0, "goal": 14, "reward": 45, "claimed": false},
-            "builds": {"value": 0, "goal": 3, "reward": 40, "claimed": false}
+            "trees": {"value": 0, "goal": 12, "reward": 30, "claimed": false},
+            "kills": {"value": 0, "goal": 18, "reward": 45, "claimed": false},
+            "builds": {"value": 0, "goal": 2, "reward": 35, "claimed": false}
         },
         "trophies_claimed": []
     }
@@ -43,21 +44,23 @@ func _load_save() -> void:
     var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
     if file == null:
         return
-    var parsed = JSON.parse_string(file.get_as_text())
+    var parsed: Variant = JSON.parse_string(file.get_as_text())
     if parsed is Dictionary:
         _merge_dictionary(data, parsed)
         _migrate_save()
 
 func _migrate_save() -> void:
-    var version := int(data.get("save_version", 1))
+    var version: int = int(data.get("save_version", 1))
     if version < 2:
         data["daily_date"] = ""
         data["tutorial_complete"] = false
+    if version < 3:
+        data["coach_complete"] = false
     data["save_version"] = SAVE_VERSION
     save()
 
 func _merge_dictionary(base: Dictionary, incoming: Dictionary) -> void:
-    for key in incoming.keys():
+    for key: Variant in incoming.keys():
         if base.has(key) and base[key] is Dictionary and incoming[key] is Dictionary:
             _merge_dictionary(base[key], incoming[key])
         else:
@@ -67,7 +70,7 @@ func _today_key() -> String:
     return Time.get_date_string_from_system()
 
 func ensure_daily_state() -> void:
-    var today := _today_key()
+    var today: String = _today_key()
     if str(data.get("daily_date", "")) == today:
         return
     data["daily_date"] = today
@@ -91,16 +94,20 @@ func add_shards(amount: int) -> void:
 
 func upgrade_cost(kind: String) -> int:
     var levels: Dictionary = data["upgrades"]
-    var level := int(levels.get(kind, 0))
+    var level: int = int(levels.get(kind, 0))
     match kind:
-        "damage": return 80 + level * 70
-        "hp": return 70 + level * 60
-        "bag": return 60 + level * 50
-        "speed": return 65 + level * 55
+        "damage":
+            return 80 + level * 70
+        "hp":
+            return 70 + level * 60
+        "bag":
+            return 60 + level * 50
+        "speed":
+            return 65 + level * 55
     return 999999
 
 func buy_upgrade(kind: String) -> bool:
-    var cost := upgrade_cost(kind)
+    var cost: int = upgrade_cost(kind)
     if int(data["coins"]) < cost:
         return false
     data["coins"] = int(data["coins"]) - cost
@@ -119,11 +126,11 @@ func claim_mission(kind: String) -> bool:
     ensure_daily_state()
     if not data["missions"].has(kind):
         return false
-    var m: Dictionary = data["missions"][kind]
-    if bool(m["claimed"]) or int(m["value"]) < int(m["goal"]):
+    var mission: Dictionary = data["missions"][kind]
+    if bool(mission["claimed"]) or int(mission["value"]) < int(mission["goal"]):
         return false
-    m["claimed"] = true
-    add_coins(int(m["reward"]))
+    mission["claimed"] = true
+    add_coins(int(mission["reward"]))
     return true
 
 func register_run(wave: int, won: bool, biome: int, kills: int, builds: int, trees: int) -> void:
