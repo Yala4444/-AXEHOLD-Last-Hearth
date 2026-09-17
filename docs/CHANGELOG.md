@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.3 — Mobile movement bridge hotfix
+- Replaced passive GameWorld discovery with an explicit `MobileControls.bind_world()` bridge from the Web runtime.
+- Joystick direction is now applied to the live player immediately on touch/drag and reinforced while the stick is held.
+- Added a live integration regression that instantiates a real `GameWorld`, drives the joystick, waits for physics frames and verifies that the hero's position actually changes.
+- Added explicit release/unbind handling so the hero stops cleanly when the stick is released or a run ends.
+- Bumped visible Web build stamp and Android/iOS metadata to 0.9.3 / build 12.
+
 ## 0.9.1 — Mobile control and visual polish hotfix
 - Added a dedicated touch joystick that appears only on touch-capable devices and preserves desktop tap-to-move behavior.
 - Added analog player movement so partial stick deflection produces partial movement speed and releasing the stick stops the hero cleanly.
