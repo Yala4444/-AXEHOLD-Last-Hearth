@@ -90,6 +90,16 @@ jobs:
             exit 1
           fi
 
+      - name: Commercial polish regression smoke-test
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_polish_smoke.tscn 2>&1 | tee /tmp/godot-polish.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-polish.log; then
+            echo "GDScript parse errors detected during polish smoke test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |
