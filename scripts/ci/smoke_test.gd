@@ -1,6 +1,6 @@
 extends SceneTree
 
-const SCENES := [
+const SCENES: Array[String] = [
     "res://scenes/app.tscn",
     "res://scenes/game.tscn",
     "res://scenes/player.tscn",
@@ -12,15 +12,20 @@ const SCENES := [
 func _initialize() -> void:
     var failures: Array[String] = []
 
-    for scene_path in SCENES:
-        var packed := load(scene_path) as PackedScene
+    for scene_path: String in SCENES:
+        var packed: PackedScene = load(scene_path) as PackedScene
         if packed == null:
             failures.append("Cannot load %s" % scene_path)
             continue
 
-        var instance := packed.instantiate()
+        var instance: Node = packed.instantiate()
         if instance == null:
             failures.append("Cannot instantiate %s" % scene_path)
+            continue
+
+        if instance.get_script() == null:
+            failures.append("Root script is missing or failed to parse: %s" % scene_path)
+            instance.free()
             continue
 
         instance.free()
@@ -31,6 +36,6 @@ func _initialize() -> void:
         quit(0)
         return
 
-    for failure in failures:
+    for failure: String in failures:
         push_error("[SMOKE] %s" % failure)
     quit(1)

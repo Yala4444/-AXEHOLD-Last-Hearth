@@ -30,9 +30,9 @@ func damage(amount: float) -> bool:
 
 func _draw() -> void:
     if resource_type == "tree":
-        draw_ellipse(Vector2(5, 12), Vector2(14, 6), Color(0.08,0.12,0.06,0.15))
+        _draw_shadow_ellipse(Vector2(5, 12), Vector2(14, 6), Color(0.08,0.12,0.06,0.15))
         draw_rect(Rect2(-4,5,8,16), Color("735037"))
-        var greens := [Color("4d8950"), Color("5d9757"), Color("407b47")]
+        var greens: Array[Color] = [Color("4d8950"), Color("5d9757"), Color("407b47")]
         var c: Color = greens[variant % greens.size()]
         draw_circle(Vector2(0,-4),15,c)
         draw_circle(Vector2(-10,1),10,c)
@@ -43,13 +43,13 @@ func _draw() -> void:
         draw_colored_polygon(PackedVector2Array([Vector2(-13,8),Vector2(-8,-11),Vector2(4,-14),Vector2(14,3),Vector2(6,12)]), Color("8669a0"))
         draw_circle(Vector2(3,-3),4,Color("caa9e2"))
     if hp < max_hp:
-        var ratio := clamp(hp/max_hp,0.0,1.0)
+        var ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0)
         draw_rect(Rect2(-14,-24,28,4),Color(0.1,0.1,0.1,0.2))
-        draw_rect(Rect2(-14,-24,28*ratio,4),Color("72a66d"))
+        draw_rect(Rect2(-14,-24,28 * ratio,4),Color("72a66d"))
 
-func draw_ellipse(center: Vector2, radii: Vector2, color: Color) -> void:
+func _draw_shadow_ellipse(center: Vector2, radii: Vector2, color: Color) -> void:
     var points := PackedVector2Array()
     for i in range(24):
-        var a := TAU * float(i) / 24.0
+        var a: float = TAU * float(i) / 24.0
         points.append(center + Vector2(cos(a) * radii.x, sin(a) * radii.y))
     draw_colored_polygon(points, color)
