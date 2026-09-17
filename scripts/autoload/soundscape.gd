@@ -70,8 +70,8 @@ func _find_world(node: Node) -> GameWorld:
     return null
 
 func _make_track(biome_index: int, night: bool) -> AudioStreamWAV:
-    var chord: Array[float]
-    var pulse_frequency: float
+    var chord: Array = []
+    var pulse_frequency: float = 65.41
     var amplitude: float = 0.055 if night else 0.042
 
     match biome_index:
@@ -95,7 +95,8 @@ func _make_track(biome_index: int, night: bool) -> AudioStreamWAV:
         edge = clampf(edge, 0.0, 1.0)
         var slow_breathe: float = 0.72 + sin(seconds * TAU / TRACK_SECONDS) * 0.16
         var value: float = 0.0
-        for frequency: float in chord:
+        for frequency_variant: Variant in chord:
+            var frequency: float = float(frequency_variant)
             value += sin(TAU * frequency * seconds)
             value += sin(TAU * frequency * 2.002 * seconds) * 0.18
         value /= float(maxi(1, chord.size()))
