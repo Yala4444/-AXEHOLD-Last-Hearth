@@ -60,6 +60,16 @@ jobs:
             exit 1
           fi
 
+      - name: Gameplay mechanics smoke-test
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script res://scripts/ci/gameplay_smoke.gd 2>&1 | tee /tmp/godot-gameplay.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-gameplay.log; then
+            echo "GDScript parse errors detected during gameplay smoke test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |
