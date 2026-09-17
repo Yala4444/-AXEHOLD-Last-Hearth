@@ -45,6 +45,12 @@ func _test_autoloads() -> void:
     else:
         print("[GAMEPLAY] MetaDirector autoload present")
 
+    var soundscape: Node = get_tree().root.get_node_or_null("Soundscape")
+    if soundscape == null:
+        _fail("Soundscape autoload is missing")
+    else:
+        print("[GAMEPLAY] Soundscape autoload present")
+
 func _prepare_test_state() -> void:
     var settings: Dictionary = GameState.data.get("settings", {})
     settings["hints"] = false
@@ -71,16 +77,25 @@ func _test_biome_rules() -> void:
             if not biome.has(required_key):
                 _fail("Biome %d missing key %s" % [biome_index, required_key])
         var weights: Dictionary = biome.get("enemy_weights", {})
-        var total: float = float(weights.get("normal", 0.0)) + float(weights.get("runner", 0.0)) + float(weights.get("brute", 0.0))
+        var total: float = 0.0
+        for weight_variant: Variant in weights.values():
+            total += float(weight_variant)
         if absf(total - 1.0) > 0.001:
             _fail("Biome %d enemy weights do not sum to 1.0" % biome_index)
+        if not weights.has("stalker") or not weights.has("guardian"):
+            _fail("Biome %d is missing v0.9 enemy archetype weights" % biome_index)
 
     if float(GameRules.biome(1).get("night_speed", 1.0)) >= 1.0:
         _fail("Frost biome should slow the hero at night")
     var ash_weights: Dictionary = GameRules.biome(2).get("enemy_weights", {})
+    var frost_weights: Dictionary = GameRules.biome(1).get("enemy_weights", {})
     var forest_weights: Dictionary = GameRules.biome(0).get("enemy_weights", {})
     if float(ash_weights.get("brute", 0.0)) <= float(forest_weights.get("brute", 0.0)):
         _fail("Ashlands should bias toward brutes")
+    if float(ash_weights.get("guardian", 0.0)) <= float(forest_weights.get("guardian", 0.0)):
+        _fail("Ashlands should bias toward armored Guardians")
+    if float(frost_weights.get("stalker", 0.0)) <= float(forest_weights.get("stalker", 0.0)):
+        _fail("Frost Hollow should bias toward Stalkers")
 
 func _test_weapon_profiles() -> void:
     for required_weapon: String in ["axes", "spear", "hammer", "twin_blades"]:
