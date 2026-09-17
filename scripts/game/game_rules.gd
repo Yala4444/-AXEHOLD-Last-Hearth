@@ -2,9 +2,45 @@ class_name GameRules
 extends RefCounted
 
 const BIOMES := [
-    {"name":"Забытый лес","difficulty":1.0,"enemy":"6c5574","sky":"dceabc","ground":"9fc77c","reward":1},
-    {"name":"Морозная лощина","difficulty":1.18,"enemy":"577086","sky":"dcebed","ground":"8db8c3","reward":1},
-    {"name":"Пепельные земли","difficulty":1.40,"enemy":"783f46","sky":"dfbea6","ground":"a66652","reward":2}
+    {
+        "id":"forest",
+        "name":"Забытый лес",
+        "difficulty":1.0,
+        "enemy":"6c5574",
+        "sky":"dceabc",
+        "ground":"9fc77c",
+        "reward":1,
+        "boss_name":"Лесной Хранитель",
+        "rule":"Сбалансированный биом. Больше дерева, смешанные враги.",
+        "night_speed":1.0,
+        "enemy_weights":{"normal":0.64,"runner":0.18,"brute":0.18}
+    },
+    {
+        "id":"frost",
+        "name":"Морозная лощина",
+        "difficulty":1.18,
+        "enemy":"577086",
+        "sky":"dcebed",
+        "ground":"8db8c3",
+        "reward":1,
+        "boss_name":"Ледяной Страж",
+        "rule":"Ночью холод замедляет героя. Больше бегунов и камня.",
+        "night_speed":0.90,
+        "enemy_weights":{"normal":0.56,"runner":0.32,"brute":0.12}
+    },
+    {
+        "id":"ash",
+        "name":"Пепельные земли",
+        "difficulty":1.40,
+        "enemy":"783f46",
+        "sky":"dfbea6",
+        "ground":"a66652",
+        "reward":2,
+        "boss_name":"Пепельный Тиран",
+        "rule":"Ночью земля извергает огонь. Больше тяжёлых врагов и руды.",
+        "night_speed":1.0,
+        "enemy_weights":{"normal":0.56,"runner":0.12,"brute":0.32}
+    }
 ]
 
 const SKINS := [
@@ -75,11 +111,18 @@ static func harvest_multiplier(kind: String) -> float:
     return 0.70
 
 static func random_enemy_type() -> String:
+    return enemy_type_for_biome(0)
+
+static func enemy_type_for_biome(index: int) -> String:
+    var data: Dictionary = biome(index)
+    var weights: Dictionary = data.get("enemy_weights", {"normal":0.64,"runner":0.18,"brute":0.18})
     var roll: float = randf()
-    if roll < 0.16:
-        return "brute"
-    if roll < 0.34:
+    var runner_weight: float = float(weights.get("runner", 0.18))
+    var brute_weight: float = float(weights.get("brute", 0.18))
+    if roll < runner_weight:
         return "runner"
+    if roll < runner_weight + brute_weight:
+        return "brute"
     return "normal"
 
 static func random_perks(count: int = 3) -> Array:
