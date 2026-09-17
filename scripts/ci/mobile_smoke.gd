@@ -30,8 +30,8 @@ func _test_mobile_autoloads() -> void:
     else:
         controls.call("force_visible_for_test", true)
         controls.call("simulate_direction_for_test", Vector2(0.65, -0.25))
-        var direction_variant: Variant = controls.get("direction")
-        if not direction_variant is Vector2 or (direction_variant as Vector2).length() <= 0.1:
+        var direction_value: Vector2 = controls.get("direction")
+        if direction_value.length() <= 0.1:
             _fail("Mobile joystick did not retain simulated direction")
         controls.call("force_visible_for_test", false)
     if sanitizer == null:
