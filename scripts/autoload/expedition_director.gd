@@ -154,7 +154,10 @@ func _maybe_show_day_event() -> void:
         return
     if world.hud.modal_open():
         return
-    if world.phase_time > world.phase_max - 5.2:
+    # The first day is intentionally clean: learn harvest -> deposit -> build first.
+    if world.wave <= 0:
+        return
+    if world.phase_time > world.phase_max - 7.0:
         return
 
     var day_key: String = str(world.wave)
@@ -162,37 +165,26 @@ func _maybe_show_day_event() -> void:
         return
     day_events_shown[day_key] = true
 
-    match world.wave:
-        0:
-            world.hud.show_modal(
-                "🕯️",
-                "Тлеющий алтарь",
-                "Среди деревьев ещё горит древний огонь. Можно принять его силу ценой крови — или разобрать алтарь на припасы.",
-                [
-                    {"text":"🔥 Клятва огня — -20% HP, +22% урона", "action":"event:altar_power"},
-                    {"text":"🪵 Разобрать — +6 дерева, +4 камня", "action":"event:altar_supply"}
-                ]
-            )
-        1:
-            world.hud.show_modal(
-                "📦",
-                "Осквернённый сундук",
-                "Замок уже сломан. Внутри слышно шевеление Тьмы.",
-                [
-                    {"text":"⚡ Открыть — +26 🪙, элиты встречаются чаще", "action":"event:chest_open"},
-                    {"text":"🪙 Не рисковать — забрать 10 🪙", "action":"event:chest_safe"}
-                ]
-            )
-        _:
-            world.hud.show_modal(
-                "🛒",
-                "Разбитый караван",
-                "До последней ночи осталось мало времени. Тёмный груз богат, но его охраняют сильные твари.",
-                [
-                    {"text":"🔥 Забрать всё — +7 руды, +20 🪙, 2 элиты", "action":"event:caravan_dark"},
-                    {"text":"🎒 Взять безопасное — +3 руды, +5 дерева", "action":"event:caravan_safe"}
-                ]
-            )
+    if world.wave == 1:
+        world.hud.show_modal(
+            "",
+            "ТЛЕЮЩИЙ АЛТАРЬ",
+            "После первой ночи в лесу вспыхнул древний огонь. Рискнуть здоровьем ради силы или забрать припасы?",
+            [
+                {"text":"КЛЯТВА ОГНЯ  -20% HP  +22% УРОНА", "action":"event:altar_power"},
+                {"text":"РАЗОБРАТЬ  +6 ДЕРЕВА  +4 КАМНЯ", "action":"event:altar_supply"}
+            ]
+        )
+    else:
+        world.hud.show_modal(
+            "",
+            "ОСКВЕРНЁННЫЙ СУНДУК",
+            "Перед последней ночью можно рискнуть ради большой награды. Открытие привлечёт более сильных врагов.",
+            [
+                {"text":"ОТКРЫТЬ  +26 МОНЕТ  +ЭЛИТА", "action":"event:chest_open"},
+                {"text":"НЕ РИСКОВАТЬ  +10 МОНЕТ", "action":"event:chest_safe"}
+            ]
+        )
 
 func _on_hud_action(action: String) -> void:
     if action.begins_with("event:"):
