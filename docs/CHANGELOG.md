@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.12.0-alpha.1 — Dynamic World & Elites
+- Added daytime enemy combat for dynamic world events.
+- Added one scheduled dynamic event per day phase.
+- Added Caravan Under Attack with attackers, success/failure consequences and a guaranteed follow-up cache clue.
+- Added two-stage Survivor Rescue: clear enemies, then physically secure the survivor.
+- Added Elite Hunt rare targets and timed Ambush encounters.
+- Failed events now increase Darkness Threat and surviving attackers remain in the expedition.
+- Added the first chained world event: saved caravan → timed hidden cache.
+- Added four elite traits: Ravenous, Armored, Distorted and Herald of Darkness.
+- Herald elites use a telegraphed charge; Distorted elites can burst on death at close range.
+- Elites have visible titles, aura/readability treatment, stronger rewards and Mechanism Parts.
+- Added persistent Field Journal statistics for events, failures, elites, rescues and chains.
+- Added four new daily quest types tied to dynamic-world play.
+- Expedition results now summarize dynamic events and elite activity.
+- Added dedicated v1.12 regression coverage.
+- Bumped Android/iOS metadata to 1.12.0-alpha.1 / build 26.
+
 ## 1.11.0-alpha.1 — Living Camp & Expedition Contracts
 - Added a persistent daily three-offer Expedition Contract Board.
 - Contracts can now be selected before leaving the Last Hearth instead of always being random.
