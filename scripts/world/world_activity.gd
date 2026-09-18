@@ -25,6 +25,8 @@ func configure(kind: String, index: int) -> void:
             required_time = 0.76 if cursed else 0.58
         "altar":
             required_time = 0.0
+        "old_hearth":
+            required_time = 1.05
         "nest":
             max_hp = 110.0
             hp = max_hp
@@ -93,6 +95,8 @@ func _draw() -> void:
             _draw_nest()
         "altar":
             _draw_altar()
+        "old_hearth":
+            _draw_old_hearth()
         _:
             _draw_chest()
 
@@ -116,6 +120,8 @@ func _title() -> String:
             return "ГНЕЗДО"
         "altar":
             return "АЛТАРЬ"
+        "old_hearth":
+            return "ПОГАСШИЙ ОЧАГ"
         _:
             return "ТАЙНИК"
 
@@ -159,6 +165,16 @@ func _draw_altar() -> void:
     draw_rect(Rect2(-4, -20, 8, 11), glow.darkened(0.12))
     draw_circle(Vector2(0, -21), 4.0, Color(glow, 0.76))
 
+func _draw_old_hearth() -> void:
+    var pulse: float = (sin(elapsed * 2.7) + 1.0) * 0.5
+    for i: int in range(8):
+        var a: float = TAU * float(i) / 8.0
+        var p := Vector2(cos(a), sin(a)) * 16.0
+        draw_rect(Rect2(p - Vector2(3, 2), Vector2(6, 4)), Color("66675f"))
+    draw_line(Vector2(-8, 5), Vector2(8, -4), Color("4c3324"), 4.0)
+    draw_line(Vector2(8, 5), Vector2(-7, -4), Color("59402a"), 4.0)
+    draw_circle(Vector2.ZERO, 24.0 + pulse * 2.0, Color(0.90, 0.62, 0.28, 0.025))
+
 func _draw_finished() -> void:
     match activity_type:
         "nest":
@@ -169,5 +185,17 @@ func _draw_finished() -> void:
             draw_rect(Rect2(-13, -3, 12, 8), Color(0.36, 0.23, 0.14, 0.42))
         "altar":
             draw_rect(Rect2(-10, 5, 20, 5), Color(0.30, 0.29, 0.25, 0.30))
+        "old_hearth":
+            var pulse: float = (sin(elapsed * 4.0) + 1.0) * 0.5
+            draw_circle(Vector2.ZERO, 30.0 + pulse * 2.0, Color(1.0, 0.55, 0.18, 0.06))
+            for i: int in range(8):
+                var a: float = TAU * float(i) / 8.0
+                var p := Vector2(cos(a), sin(a)) * 16.0
+                draw_rect(Rect2(p - Vector2(3, 2), Vector2(6, 4)), Color("77776a"))
+            draw_colored_polygon(PackedVector2Array([
+                Vector2(-5, 5), Vector2(-1, -8 - pulse * 2.0), Vector2(2, -2),
+                Vector2(5, -11 + pulse), Vector2(7, 5)
+            ]), Color("f39a3d"))
+            draw_circle(Vector2(1, 1), 3.0, Color("ffe486"))
         _:
             draw_rect(Rect2(-14, 2, 28, 8), Color(0.34, 0.22, 0.13, 0.34))
