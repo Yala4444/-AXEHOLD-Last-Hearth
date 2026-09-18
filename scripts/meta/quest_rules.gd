@@ -22,7 +22,11 @@ const DAILY_POOL: Array[Dictionary] = [
     {"id":"no_tower","category":"build","event":"night_no_tower","title":"СВОИМИ СИЛАМИ","desc":"Переживи первую ночь без Башни.","goal":1,"reward_type":"coins","reward":62},
     {"id":"forest_clear","category":"biome","event":"run_win","filter_key":"biome","filter_value":0,"title":"СЕРДЦЕ ЛЕСА","desc":"Победи Хранителя Забытого леса.","goal":1,"reward_type":"coins","reward":72},
     {"id":"frost_clear","category":"biome","event":"run_win","filter_key":"biome","filter_value":1,"title":"СКВОЗЬ МЕТЕЛЬ","desc":"Победи Хранителя Морозной лощины.","goal":1,"reward_type":"coins","reward":78},
-    {"id":"ash_clear","category":"biome","event":"run_win","filter_key":"biome","filter_value":2,"title":"ПОД ПЕПЛОМ","desc":"Победи Хранителя Пепельных земель.","goal":1,"reward_type":"shards","reward":1}
+    {"id":"ash_clear","category":"biome","event":"run_win","filter_key":"biome","filter_value":2,"title":"ПОД ПЕПЛОМ","desc":"Победи Хранителя Пепельных земель.","goal":1,"reward_type":"shards","reward":1},
+    {"id":"elite_hunter","category":"combat","event":"elite_kill","title":"РЕДКАЯ ЦЕЛЬ","desc":"Уничтожь 2 элитных врагов.","goal":2,"reward_type":"coins","reward":68},
+    {"id":"field_rescue","category":"explore","event":"world_rescue","title":"НЕ БРОСАТЬ СВОИХ","desc":"Спаси выжившего во время динамического события.","goal":1,"reward_type":"coins","reward":62},
+    {"id":"event_runner","category":"explore","event":"dynamic_event","title":"ЖИВОЙ МИР","desc":"Заверши 3 динамических события.","goal":3,"reward_type":"coins","reward":64},
+    {"id":"follow_the_clue","category":"risk","event":"event_chain","title":"ИДТИ ПО СЛЕДУ","desc":"Заверши цепочку события и найди тайник.","goal":1,"reward_type":"coins","reward":72}
 ]
 
 static func spec(id: String) -> Dictionary:

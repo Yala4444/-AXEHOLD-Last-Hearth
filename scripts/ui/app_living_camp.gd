@@ -579,6 +579,30 @@ func _show_goals() -> void:
     var hall := TrophyHallView.new()
     body.add_child(hall)
 
+    var world_stats: Dictionary = GameState.dynamic_world_stats()
+    var field_panel := _panel(body)
+    var field_box := VBoxContainer.new()
+    field_panel.add_child(field_box)
+    field_box.add_theme_constant_override("separation", 3)
+
+    var field_title := Label.new()
+    field_box.add_child(field_title)
+    field_title.text = "ПОЛЕВОЙ ЖУРНАЛ"
+    field_title.add_theme_font_size_override("font_size", 10)
+    field_title.add_theme_color_override("font_color", Color("d7bb7a"))
+
+    var field_text := Label.new()
+    field_box.add_child(field_text)
+    field_text.text = "События %d · Элиты %d · Спасения %d · Цепочки %d" % [
+        int(world_stats.get("events", 0)),
+        int(world_stats.get("elites", 0)),
+        int(world_stats.get("rescues", 0)),
+        int(world_stats.get("chains", 0))
+    ]
+    field_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    field_text.add_theme_font_size_override("font_size", 9)
+    field_text.add_theme_color_override("font_color", Color("a9b6b2"))
+
     var relics: Array = GameState.data.get("boss_relics", [false, false, false])
     for i: int in range(3):
         if i >= relics.size() or not bool(relics[i]):

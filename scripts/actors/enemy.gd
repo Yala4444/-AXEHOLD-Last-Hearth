@@ -12,6 +12,10 @@ var movement_multiplier: float = 1.0
 var contact_damage: float = 8.0
 var armor: float = 0.0
 var boss: bool = false
+var elite: bool = false
+var elite_trait: String = ""
+var elite_title: String = ""
+var elite_glow: Color = Color("d9b36a")
 var target_position: Vector2 = Vector2.ZERO
 var has_target: bool = false
 var hit_cooldown: float = 0.0
@@ -38,6 +42,9 @@ func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss
     enemy_type = kind
     biome_index = clampi(region_index, 0, 2)
     boss = is_boss
+    elite = false
+    elite_trait = ""
+    elite_title = ""
     tint = color
     armor = 0.0
     movement_multiplier = 1.0
@@ -86,6 +93,56 @@ func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss
     scale = Vector2.ONE * base_scale
     queue_redraw()
 
+func configure_elite(trait_id: String) -> void:
+    if boss:
+        return
+    elite = true
+    elite_trait = trait_id
+    match trait_id:
+        "ravenous":
+            elite_title = "ГОЛОДНЫЙ"
+            elite_glow = Color("db8a64")
+            max_hp *= 1.35
+            hp = max_hp
+            move_speed *= 1.30
+            contact_damage *= 1.25
+            base_scale *= 1.08
+        "armored":
+            elite_title = "ЗАКОВАННЫЙ"
+            elite_glow = Color("d8c27b")
+            max_hp *= 1.80
+            hp = max_hp
+            move_speed *= 0.90
+            contact_damage *= 1.12
+            armor = minf(0.52, armor + 0.28)
+            base_scale *= 1.13
+        "volatile":
+            elite_title = "ИСКАЖЁННЫЙ"
+            elite_glow = Color("c987d6")
+            max_hp *= 1.42
+            hp = max_hp
+            move_speed *= 1.12
+            contact_damage *= 1.48
+            base_scale *= 1.10
+        "warlord":
+            elite_title = "ВЕСТНИК ТЬМЫ"
+            elite_glow = Color("e07058")
+            max_hp *= 2.25
+            hp = max_hp
+            move_speed *= 1.05
+            contact_damage *= 1.55
+            armor = minf(0.55, armor + 0.12)
+            base_scale *= 1.22
+            charge_cooldown = randf_range(3.8, 4.8)
+        _:
+            elite_title = "ЭЛИТА"
+            max_hp *= 1.55
+            hp = max_hp
+            contact_damage *= 1.25
+            base_scale *= 1.10
+    scale = Vector2.ONE * base_scale
+    queue_redraw()
+
 func _physics_process(delta: float) -> void:
     animation_time += delta
     hit_cooldown = maxf(0.0, hit_cooldown - delta)
@@ -95,7 +152,7 @@ func _physics_process(delta: float) -> void:
         _update_death(delta)
         return
 
-    if boss and _update_charge(delta):
+    if (boss or (elite and elite_trait == "warlord")) and _update_charge(delta):
         queue_redraw()
         return
 
@@ -227,16 +284,24 @@ func take_damage(amount: float) -> void:
 
 func _draw() -> void:
     # Modern 16-bit presentation: crisp silhouettes, integer blocks, smooth gameplay.
-    var shadow_w: float = 34.0 if boss else 22.0
+    var shadow_w: float = 34.0 if boss else (28.0 if elite else 22.0)
     if enemy_type == "guardian" and not boss:
         shadow_w = 30.0
     draw_rect(Rect2(-shadow_w * 0.5, 12, shadow_w, 5), Color(0.04, 0.04, 0.04, 0.22))
 
-    if boss and charge_windup > 0.0:
+    if elite and not boss:
+        var elite_pulse: float = (sin(animation_time * 4.8) + 1.0) * 0.5
+        draw_circle(Vector2(0, -2), 27.0 + elite_pulse * 2.0, Color(elite_glow.r, elite_glow.g, elite_glow.b, 0.055 + elite_pulse * 0.025))
+        draw_arc(Vector2(0, -2), 24.0 + elite_pulse, 0.0, TAU, 24, Color(elite_glow.r, elite_glow.g, elite_glow.b, 0.58), 1.5)
+        for pip_index: int in range(3):
+            var pip_angle: float = -2.45 + float(pip_index) * 0.40
+            draw_circle(Vector2(cos(pip_angle), sin(pip_angle)) * 27.0 + Vector2(0, -2), 2.0, elite_glow)
+
+    if (boss or (elite and elite_trait == "warlord")) and charge_windup > 0.0:
         var charge_alpha: float = clampf(1.0 - charge_windup / 0.72, 0.0, 1.0)
         draw_line(Vector2.ZERO, charge_direction * (54.0 + charge_alpha * 26.0), Color(1.0, 0.35, 0.28, 0.35 + charge_alpha * 0.55), 4.0)
         draw_rect(Rect2(-22, -22, 44, 44), Color(1.0, 0.42, 0.25, 0.25 + charge_alpha * 0.28), false, 2.0)
-    elif boss and charge_time > 0.0:
+    elif (boss or (elite and elite_trait == "warlord")) and charge_time > 0.0:
         for trail_index: int in range(3):
             var back: Vector2 = -charge_direction * float(18 + trail_index * 12)
             draw_rect(Rect2(back - Vector2(8, 8), Vector2(16, 16)), Color(0.92, 0.32, 0.25, 0.15 - trail_index * 0.035))
@@ -283,13 +348,16 @@ func _draw() -> void:
 
     if not dying:
         var ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0)
-        var width: float = 54.0 if boss else (32.0 if enemy_type == "guardian" else 26.0)
-        var bar_y: float = -39.0 if boss else -27.0
-        var bar_color: Color = Color("cf6165") if boss else (Color("c7b56e") if enemy_type == "guardian" else Color("8f7198"))
+        var width: float = 54.0 if boss else (38.0 if elite else (32.0 if enemy_type == "guardian" else 26.0))
+        var bar_y: float = -39.0 if boss else (-33.0 if elite else -27.0)
+        var bar_color: Color = Color("cf6165") if boss else (elite_glow if elite else (Color("c7b56e") if enemy_type == "guardian" else Color("8f7198")))
         draw_rect(Rect2(-width / 2.0, bar_y, width, 4.0), Color(0.08, 0.08, 0.08, 0.35))
         draw_rect(Rect2(-width / 2.0, bar_y, width * ratio, 4.0), bar_color)
         if armor > 0.0 and not boss:
             draw_rect(Rect2(-width / 2.0, bar_y + 6.0, width * armor, 2.0), Color("dfca78"))
+        if elite and not elite_title.is_empty():
+            var elite_font: Font = ThemeDB.fallback_font
+            draw_string(elite_font, Vector2(-34, bar_y - 5), elite_title, HORIZONTAL_ALIGNMENT_CENTER, 68, 6, elite_glow.lightened(0.16))
 
 func _draw_pixel_ghoul(body: Color, dark: Color, light: Color) -> void:
     draw_rect(Rect2(-9, -12, 18, 22), dark)
