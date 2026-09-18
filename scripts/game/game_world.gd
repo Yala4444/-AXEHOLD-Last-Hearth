@@ -13,6 +13,7 @@ var biome_index: int = 0
 var biome: Dictionary = {}
 var player: AxPlayer
 var hud: GameHud
+var core_fx: CoreFX
 var base_position: Vector2 = Vector2.ZERO
 var base_hp: float = 270.0
 var base_max_hp: float = 270.0
@@ -51,6 +52,8 @@ func configure(index: int) -> void:
     biome_index = index
 
 func _ready() -> void:
+    core_fx = CoreFX.new()
+    add_child(core_fx)
     hud = GameHud.new()
     add_child(hud)
     hud.action_requested.connect(_on_hud_action)
@@ -222,7 +225,9 @@ func _harvest(delta: float) -> void:
             player.gain_xp(2)
             if actual > 0:
                 var resource_name: String = "дерево" if kind == "wood" else ("камень" if kind == "stone" else "руда")
-                hud.set_status("+%d %s → рюкзак" % [actual, resource_name])
+                hud.set_status("+%d %s в рюкзак" % [actual, resource_name])
+                if core_fx != null:
+                    core_fx.harvest(kind, spot.global_position, actual)
             removed.append(spot)
 
     for spot: ResourceSpot in removed:
@@ -239,6 +244,8 @@ func _deposit_and_build(delta: float) -> void:
         hud.show_banner("ДОБЫЧА НА СКЛАДЕ", Color("d9c17e"))
         hud.set_status("Д +%d  К +%d  Р +%d" % [int(inv["wood"]), int(inv["stone"]), int(inv["ore"])])
         Feedback.play("level", 5)
+        if core_fx != null:
+            core_fx.deposit(inv, base_position)
 
     var nearest: BuildPad = null
     var nearest_distance: float = INF
@@ -250,6 +257,8 @@ func _deposit_and_build(delta: float) -> void:
         if distance < nearest_distance:
             nearest = pad
             nearest_distance = distance
+
+        pad.set_context_state(pad.can_build(storage), distance <= 92.0 and not pad.built)
 
         if pad.built:
             continue
@@ -301,6 +310,8 @@ func _complete_build(pad: BuildPad) -> void:
     hud.show_banner(pad.label + " ГОТОВ", Color("f4d486"))
     hud.set_status(pad.effect)
     Feedback.play("level", 12)
+    if core_fx != null:
+        core_fx.build_complete(pad.global_position, pad.label)
 
 func _update_building_passives(delta: float) -> void:
     if bool(built["shrine"]):
@@ -391,9 +402,12 @@ func _update_night(delta: float) -> void:
         var enemy_radius: float = 24.0 if enemy.boss else 12.0
         if player.global_position.distance_to(enemy.global_position) <= reach + enemy_radius:
             var hit: float = player.damage * delta * 1.34
-            if randf() < player.crit_chance:
+            var critical: bool = randf() < player.crit_chance
+            if critical:
                 hit *= 2.0
             enemy.take_damage(hit)
+            if core_fx != null and randf() < delta * 5.5:
+                core_fx.enemy_hit(enemy.global_position, critical)
 
         enemy.hit_cooldown = maxf(0.0, enemy.hit_cooldown - delta)
         if enemy.hit_cooldown <= 0.0:
@@ -405,6 +419,8 @@ func _update_night(delta: float) -> void:
                 var wall_multiplier: float = 0.35 if bool(built["wall"]) else 1.0
                 var amount: float = enemy.contact_damage * wall_multiplier
                 base_hp -= amount
+                if core_fx != null:
+                    core_fx.hearth_hit(base_position)
                 enemy.hit_cooldown = 0.88
 
     _update_turret(delta)
@@ -442,6 +458,8 @@ func _update_turret(delta: float) -> void:
         turret_shot_to = nearest.global_position
         turret_shot_time = 1.0
         nearest.take_damage(28.0 + wave * 4.0)
+        if core_fx != null:
+            core_fx.turret_hit(nearest.global_position)
         Feedback.play("hit", 2)
 
 func _pad_position(kind: String) -> Vector2:
