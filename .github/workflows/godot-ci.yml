@@ -160,6 +160,16 @@ jobs:
             exit 1
           fi
 
+      - name: V1.5 expedition diversity regression smoke-test
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_v15_run_diversity_smoke.tscn 2>&1 | tee /tmp/godot-v15-diversity.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v15-diversity.log; then
+            echo "GDScript parse errors detected during v1.5 diversity test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |
