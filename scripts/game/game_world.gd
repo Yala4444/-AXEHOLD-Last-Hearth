@@ -72,6 +72,10 @@ var weapon_combo: int = 0
 var weapon_combo_timeout: float = 0.0
 var weapon_last_hit_count: int = 0
 
+# Frontier Expedition state.
+var frontier_assignment_failed_announced: bool = false
+var run_support_id: String = ""
+
 func configure(index: int) -> void:
     biome_index = index
 
@@ -110,6 +114,8 @@ func _start_run() -> void:
     add_child(run_variation)
     run_variation.setup(self)
 
+    var frontier_assignment: Dictionary = QuestDirector.begin_frontier_assignment_run()
+
     phase_max = GameRules.day_duration(0)
     phase_time = phase_max
 
@@ -119,6 +125,13 @@ func _start_run() -> void:
     var upgrades: Dictionary = GameState.data["upgrades"]
     var skin_index: int = int(GameState.data.get("selected_skin", 0))
     player.setup(upgrades, GameRules.skin(skin_index))
+    run_support_id = GameState.consume_run_support()
+    if run_support_id == "mira_route":
+        player.move_speed *= 1.07
+        if run_variation != null:
+            run_variation.reduce_threat(1.0, "mira_route")
+    elif run_support_id == "thorn_kit":
+        storage["parts"] = int(storage.get("parts", 0)) + 1
     player.set_world_bounds(world_rect.grow(-34.0))
     player.set_home_target(base_position)
     _setup_camera()
@@ -137,7 +150,15 @@ func _start_run() -> void:
 
     Analytics.event("run_start", {"biome": biome_index, "weapon": player.weapon_id})
     hud.show_banner(str(biome["name"]).to_upper())
-    hud.set_status("Собирай добычу и возвращайся к Очагу.")
+    if not frontier_assignment.is_empty():
+        hud.set_status("ДАЛЬНИЙ ВЫХОД: %s · %s" % [
+            str(frontier_assignment.get("name", "")),
+            str(frontier_assignment.get("desc", ""))
+        ])
+    elif not run_support_id.is_empty():
+        hud.set_status("Поддержка лагеря: %s" % str(FrontierRules.support(run_support_id).get("name", "")))
+    else:
+        hud.set_status("Собирай добычу и возвращайся к Очагу.")
 
     var settings: Dictionary = GameState.data["settings"]
     if bool(settings.get("hints", true)) and not bool(GameState.data.get("v1_tutorial_complete", false)):
@@ -147,6 +168,24 @@ func _start_run() -> void:
         hud.set_status("Коснись свободного места и веди пальцем. Оружие работает само.")
     _refresh_hud()
     queue_redraw()
+
+func _update_frontier_assignment() -> void:
+    if QuestDirector.tick_frontier_assignment(wave) and not frontier_assignment_failed_announced:
+        frontier_assignment_failed_announced = true
+        hud.show_banner("ДАЛЬНИЙ ВЫХОД ПРОВАЛЕН", Color("c7786f"))
+        hud.set_status("Срок задания истёк. Следующий дальний выход можно выбрать в лагере.")
+
+    var result: Dictionary = QuestDirector.try_complete_frontier_assignment_at_hearth(
+        player.global_position.distance_to(base_position) <= 72.0,
+        phase
+    )
+    if not bool(result.get("ok", false)):
+        return
+
+    var reward_text: String = "%d оск." % int(result.get("reward", 0)) if str(result.get("reward_type", "coins")) == "shards" else "%d мон." % int(result.get("reward", 0))
+    hud.show_banner("ДАЛЬНИЙ ВЫХОД ЗАВЕРШЁН", Color("f0c878"))
+    hud.set_status("%s · +%s" % [str(result.get("name", "Задание")), reward_text])
+    Feedback.play("victory", 12)
 
 func _setup_camera() -> void:
     camera = Camera2D.new()
@@ -182,6 +221,7 @@ func _process(delta: float) -> void:
 
     _harvest(delta)
     _deposit_and_build(delta)
+    _update_frontier_assignment()
     _maintain_resources()
     _update_building_passives(delta)
     _update_camera_lookahead(delta)
@@ -468,7 +508,7 @@ func _apply_build_upgrade(build_type: String, branch_id: String) -> void:
     pad.apply_upgrade(branch_id)
     _apply_building_branch_effect(build_type, branch_id)
     builds += 1
-    QuestDirector.record("build_upgrade", 1, {"type":build_type, "branch":branch_id, "biome":biome_index})
+    QuestDirector.record("build_upgrade", 1, {"type":build_type, "branch":branch_id, "biome":biome_index, "wave":wave})
     Analytics.event("building_upgraded", {"type":build_type, "branch":branch_id, "wave":wave, "biome":biome_index})
     hud.hide_modal()
     pending_upgrade_pad = null
@@ -1015,6 +1055,7 @@ func _finish_run(won: bool) -> void:
     GameState.register_run(wave, won, biome_index, kills, builds, trees_cut)
     if won:
         QuestDirector.record("run_win", 1, {"biome":biome_index, "wave":wave})
+    QuestDirector.end_frontier_assignment_run()
     Analytics.event("run_end", {"won": won, "wave": wave, "biome": biome_index, "kills": kills, "parts_unused":unused_parts, "weapon":player.weapon_id})
     var earned_shards: int = run_shards if won else 0
     run_finished.emit({
@@ -1051,6 +1092,10 @@ func _refresh_hud() -> void:
     else:
         hud.hide_boss()
 
+    var assignment_text: String = QuestDirector.assignment_hud_text()
+    if not assignment_text.is_empty():
+        hud.set_run_objective(assignment_text)
+
 func _on_hud_action(action: String) -> void:
     if action == "close":
         hud.hide_modal()
@@ -1066,6 +1111,7 @@ func _on_hud_action(action: String) -> void:
     elif action == "quit":
         paused_local = false
         hud.hide_modal()
+        QuestDirector.end_frontier_assignment_run()
         quit_requested.emit()
     elif action == "end":
         hud.hide_modal()
