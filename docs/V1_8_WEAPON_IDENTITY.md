@@ -1,74 +1,114 @@
 # AXEHOLD v1.8 — Weapon Identity
 
 ## Goal
-Weapon choice must change how the player moves, positions and reads danger. The four weapons can no longer be the same circular DPS system with different percentages.
+Make weapon selection change how the player moves through danger instead of changing only four stat bars.
 
-Controls remain one-thumb and attacks remain automatic. Skill comes from movement and positioning.
+Each weapon now owns a distinct automatic combat grammar, exclusive run perks, visual feedback, sound identity and persistent mastery track.
 
-## Combat identities
+## Four combat identities
 
 ### Wanderer Axes — Circle Control
-- Continuous orbit damage.
-- Hits every enemy inside the orbit.
-- Best at holding a compact area and clearing groups.
-- Exclusive perks can enlarge the orbit or strengthen the Whirl.
+The original orbit remains the baseline weapon:
+- continuous damage to every enemy inside the orbit;
+- no attack cooldown;
+- benefits most from keeping several enemies in the control ring;
+- exclusive perks expand and intensify the whirl.
+
+Signature: **Whirl**.
 
 ### Root Spear — Line & Pierce
-- No radial damage.
-- Automatically aims at the nearest valid enemy.
-- Fires a long Root Thrust on a discrete rhythm.
-- The thrust pierces up to three enemies aligned behind the first target.
-- Exclusive perks increase pierce count or thrust damage.
+The Spear no longer behaves like a long-radius orbit:
+- selects the nearest target in front;
+- performs discrete automatic thrusts;
+- damages enemies aligned along the thrust line;
+- pierces up to three targets before perks/mastery;
+- enemies outside the line are not hit;
+- visible thrust trail, action pose and unique sound.
 
-### Frost Hammer — Burst & Knockback
-- No continuous orbit DPS.
-- Waits for an enemy to enter slam range.
-- Periodically creates an Ice Fracture around the hero.
-- Hits all nearby enemies in one burst and knocks them away.
-- Exclusive perks enlarge the crater or increase slam damage.
+Signature: **Root Thrust**.
+
+### Frost Hammer — Burst Slam
+The Hammer becomes a deliberate slow rhythm:
+- waits for an enemy to enter slam range;
+- damages every enemy in the circular impact zone;
+- knocks normal enemies away from the hero;
+- has the longest attack cooldown;
+- gains readable frost shockwave FX and heavy audio/haptic feedback.
+
+Signature: **Frost Fracture**.
 
 ### Ash Twin Blades — Risk & Combo
-- Very short attack range.
-- Rapid discrete strikes can hit the two closest targets.
-- Successful continued aggression builds a combo.
-- Each combo level increases following strike damage.
-- Leaving combat drops the combo.
-- Exclusive perks extend combo cap or increase damage per stack.
+Twin Blades are now the close-range aggression weapon:
+- rapid discrete attacks;
+- strike up to two nearby enemies;
+- every successful attack builds combo;
+- combo increases subsequent attack damage;
+- disengaging for too long resets combo;
+- combo is surfaced around the hero;
+- exclusive perks extend the chain and increase its scaling.
 
-## Harvesting identity
-The gathering loop also respects the weapon:
-- Axes and Hammer can work several nearby resource nodes.
-- Spear focuses one nearest node despite its long reach.
-- Twin Blades focus up to two nearby nodes.
-- Each weapon has an independent harvesting multiplier so combat balance does not automatically dominate gathering balance.
+Signature: **Ash Sequence**.
 
-## Weapon-exclusive perks
-Level-up choices can now surface one perk tied to the equipped weapon. Generic offense/survival/utility options remain in the same choice.
+## Weapon-exclusive level-up perks
+Every level-up offer now guarantees one perk for the currently equipped weapon.
 
-Current exclusive perks:
-- Axes: Dense Whirl, Wide Rim.
-- Spear: Forked Root, Deep Impale.
-- Hammer: Wide Crater, Frozen Core.
-- Twin Blades: Long Chain, Heat of the Chain.
+Current exclusive pool:
+- Axes: Dense Whirl / Wide Edge;
+- Spear: Branching Root / Deep Impale;
+- Hammer: Wide Crater / Frozen Core;
+- Twin Blades: Long Sequence / Sequence Heat.
 
-## Presentation
-- Arsenal now shows combat identity, signature and attack rhythm.
-- Spear has a visible thrust line.
-- Hammer produces a circular slam shockwave.
-- Twin Blades show their combo around the hero.
-- Preview animations now communicate Spear line play, Hammer slam and Twin-Blade combo rather than generic orbiting.
+This means run progression reinforces the selected weapon instead of offering the same generic build every time.
 
-## Analytics
-Run start/end now include selected weapon so completion, failure and duration can later be compared by weapon.
+## Persistent Weapon Mastery
+Every completed expedition now records runs, victories and kills for the equipped weapon.
+
+Mastery ranks from I to V and is displayed in the Arsenal.
+
+Mechanical milestones:
+- Axes II: +4 Whirl radius;
+- Axes IV: +8% Whirl damage;
+- Spear II: +1 pierced target;
+- Spear IV: -8% thrust cooldown;
+- Hammer II: +6 slam radius;
+- Hammer IV: +8% slam damage;
+- Twin Blades II: +1 combo cap;
+- Twin Blades IV: +0.12 s combo retention.
+
+Rank V is a prestige milestone for the current weapon identity and leaves room for future evolution/cosmetics.
+
+## Arsenal redesign
+The Arsenal now communicates:
+- weapon philosophy;
+- signature attack;
+- mechanical role;
+- real attack rhythm and range;
+- animated preview;
+- mastery stars;
+- current mastery bonus;
+- next mastery milestone.
+
+The intent is that the player can understand why they would choose a weapon before entering a run.
+
+## Audio / haptics
+Spear, Hammer and Twin Blades now have different synthetic attack feedback rather than sharing the generic hit tone.
+
+## Balance intent
+No weapon should be a strictly better progression tier.
+
+- Axes = safest all-purpose crowd control.
+- Spear = safest distance and lane control, weaker when surrounded.
+- Hammer = strongest burst/space reset, weakest cadence.
+- Twin Blades = highest aggression scaling, highest positioning risk.
 
 ## Definition of done
 v1.8 is complete when:
-- all four weapons use different combat resolvers;
-- Spear is directional and piercing, not radial;
-- Hammer is periodic AoE with knockback;
-- Twin Blades build and lose combo;
-- Axes preserve reliable continuous circle control;
-- weapon-exclusive perks affect runtime mechanics;
-- harvesting target patterns differ by weapon;
-- Arsenal explains the identity before the player enters a run;
-- all previous regressions remain green.
+- four weapons use four different runtime resolvers;
+- Spear line pierce is verified;
+- Hammer radial damage and knockback are verified;
+- Twin Blade combo build/decay is verified;
+- Axes retain continuous orbit identity;
+- each weapon has exclusive perks;
+- persistent mastery survives save migration;
+- Arsenal shows identity, signature and mastery;
+- dedicated v1.8 regression passes together with all previous tests.
