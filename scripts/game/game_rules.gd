@@ -103,13 +103,13 @@ static func build_effect(id: String) -> String:
 static func day_duration(wave: int) -> float:
     match wave:
         0:
-            return 46.0
+            return 58.0
         1:
-            return 40.0
+            return 52.0
         2:
-            return 34.0
+            return 46.0
         _:
-            return 30.0
+            return 42.0
 
 static func wave_count(wave: int, difficulty: float) -> int:
     var base_count: int = 8
