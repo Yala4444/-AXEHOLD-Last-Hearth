@@ -17,7 +17,7 @@ var core_fx: CoreFX
 var base_position: Vector2 = Vector2.ZERO
 var base_hp: float = 270.0
 var base_max_hp: float = 270.0
-var storage: Dictionary = {"wood": 0, "stone": 0, "ore": 0}
+var storage: Dictionary = {"wood": 0, "stone": 0, "ore": 0, "parts": 0}
 var built: Dictionary = {"wall": false, "forge": false, "turret": false, "shrine": false}
 var pads: Array[BuildPad] = []
 var resources: Array[ResourceSpot] = []
@@ -59,6 +59,12 @@ var resource_yield_multiplier: float = 1.0
 var turret_global_damage_mult: float = 1.0
 var turret_global_fire_mult: float = 1.0
 var turret_disabled_time: float = 0.0
+var wall_damage_multiplier: float = 0.35
+var wall_slow_multiplier: float = 0.58
+var wall_spike_dps: float = 0.0
+var shrine_regen_multiplier: float = 1.0
+var shrine_ward_active: bool = false
+var pending_upgrade_pad: BuildPad = null
 
 func configure(index: int) -> void:
     biome_index = index
@@ -303,8 +309,8 @@ func _harvest(delta: float) -> void:
 func _deposit_and_build(delta: float) -> void:
     if player.global_position.distance_to(base_position) < 68.0 and player.inventory_total() > 0:
         var inv: Dictionary = player.clear_inventory()
-        for key: String in storage.keys():
-            storage[key] = int(storage[key]) + int(inv[key])
+        for key: String in ["wood", "stone", "ore"]:
+            storage[key] = int(storage.get(key, 0)) + int(inv.get(key, 0))
         deposit_pulse = 1.0
         bag_full_announced = false
         hud.show_banner("ДОБЫЧА НА СКЛАДЕ", Color("d9c17e"))
@@ -319,26 +325,36 @@ func _deposit_and_build(delta: float) -> void:
     for pad: BuildPad in pads:
         if not is_instance_valid(pad):
             continue
+
         var distance: float = player.global_position.distance_to(pad.global_position)
         if distance < nearest_distance:
             nearest = pad
             nearest_distance = distance
 
-        pad.set_context_state(pad.can_build(storage), distance <= 92.0 and not pad.built)
-
-        if pad.built:
+        if not pad.built:
+            pad.set_context_state(pad.can_build(storage), distance <= 92.0)
+            if distance <= 38.0 and pad.can_build(storage):
+                if pad.advance_construction(delta):
+                    _complete_build(pad)
+            elif distance > 45.0:
+                pad.reset_construction()
             continue
 
-        if distance <= 38.0 and pad.can_build(storage):
-            if pad.advance_construction(delta):
-                _complete_build(pad)
-        elif distance > 45.0:
-            pad.reset_construction()
+        var upgrade_unlocked: bool = GameState.has_building_project(pad.build_type)
+        var can_upgrade_now: bool = upgrade_unlocked and pad.level == 1 and pad.can_upgrade(storage, int(storage.get("parts", 0)))
+        pad.set_context_state(can_upgrade_now, distance <= 92.0)
+
+        if pad.level == 1 and upgrade_unlocked and phase == "day" and pending_upgrade_pad == null:
+            if distance <= 38.0 and can_upgrade_now:
+                if pad.advance_upgrade(delta):
+                    _show_build_upgrade_choices(pad)
+            elif distance > 45.0:
+                pad.reset_upgrade()
+        elif pad.level == 1 and distance > 45.0:
+            pad.reset_upgrade()
 
     if nearest != null and nearest_distance <= 92.0:
-        if nearest.built:
-            hud.set_built_context(nearest.label, nearest.effect)
-        else:
+        if not nearest.built:
             hud.set_build_context(
                 nearest.label,
                 nearest.effect,
@@ -347,8 +363,125 @@ func _deposit_and_build(delta: float) -> void:
                 nearest.can_build(storage),
                 nearest.construction_progress
             )
+        elif nearest.level == 1 and GameState.has_building_project(nearest.build_type):
+            var upgrade_cost: Dictionary = BuildingRules.upgrade_cost(nearest.build_type)
+            var ready: bool = nearest.can_upgrade(storage, int(storage.get("parts", 0)))
+            var branch_names: Array[String] = []
+            for branch: Dictionary in BuildingRules.branches(nearest.build_type):
+                branch_names.append(str(branch.get("name", "ВЕТКА")))
+            hud.set_build_context(
+                nearest.label + " I → II",
+                "Выбор: " + " / ".join(branch_names),
+                upgrade_cost,
+                storage,
+                ready,
+                nearest.upgrade_progress,
+                int(upgrade_cost.get("parts", 0)),
+                int(storage.get("parts", 0))
+            )
+        elif nearest.level == 1:
+            hud.set_built_context(nearest.label + " I", nearest.effect + " · Ур. II открывается чертежом в Кузнице лагеря")
+        else:
+            hud.set_built_context(
+                nearest.label + " II · " + BuildingRules.branch_title(nearest.build_type, nearest.upgrade_branch),
+                BuildingRules.branch_effect(nearest.build_type, nearest.upgrade_branch)
+            )
     else:
         hud.hide_build_context()
+
+func add_mechanism_parts(amount: int, source: Vector2 = Vector2.ZERO) -> void:
+    if amount <= 0:
+        return
+    storage["parts"] = int(storage.get("parts", 0)) + amount
+    hud.show_banner("+%d ДЕТАЛЬ" % amount if amount == 1 else "+%d ДЕТАЛИ" % amount, Color("c7d0cf"))
+    hud.set_status("Редкая деталь хранится отдельно и нужна для построек II.")
+    if core_fx != null and source != Vector2.ZERO:
+        core_fx.enemy_hit(source, false)
+    Feedback.play("level", 4)
+
+func _show_build_upgrade_choices(pad: BuildPad) -> void:
+    if pad == null or not is_instance_valid(pad) or pad.level != 1:
+        return
+    pending_upgrade_pad = pad
+    var buttons: Array = []
+    for branch: Dictionary in BuildingRules.branches(pad.build_type):
+        buttons.append({
+            "text":"%s — %s" % [str(branch.get("name", "ВЕТКА")), str(branch.get("desc", ""))],
+            "action":"build_upgrade:%s:%s" % [pad.build_type, str(branch.get("id", ""))]
+        })
+    buttons.append({"text":"ПОКА НЕ УЛУЧШАТЬ","action":"build_upgrade:cancel"})
+    hud.show_modal(
+        "",
+        pad.label + " · УРОВЕНЬ II",
+        "Редкая деталь позволяет специализировать постройку. Выбор действует до конца экспедиции.",
+        buttons
+    )
+
+func _apply_build_upgrade(build_type: String, branch_id: String) -> void:
+    if pending_upgrade_pad == null or not is_instance_valid(pending_upgrade_pad):
+        hud.hide_modal()
+        pending_upgrade_pad = null
+        return
+    var pad: BuildPad = pending_upgrade_pad
+    if pad.build_type != build_type or pad.level != 1:
+        hud.hide_modal()
+        pending_upgrade_pad = null
+        return
+
+    var upgrade_cost: Dictionary = BuildingRules.upgrade_cost(build_type)
+    if not pad.can_upgrade(storage, int(storage.get("parts", 0))):
+        hud.hide_modal()
+        pending_upgrade_pad = null
+        hud.set_status("Ресурсов для улучшения уже не хватает.")
+        return
+
+    for key: String in ["wood", "stone", "ore"]:
+        storage[key] = int(storage.get(key, 0)) - int(upgrade_cost.get(key, 0))
+    storage["parts"] = int(storage.get("parts", 0)) - int(upgrade_cost.get("parts", 0))
+
+    pad.apply_upgrade(branch_id)
+    _apply_building_branch_effect(build_type, branch_id)
+    builds += 1
+    QuestDirector.record("build_upgrade", 1, {"type":build_type, "branch":branch_id, "biome":biome_index})
+    Analytics.event("building_upgraded", {"type":build_type, "branch":branch_id, "wave":wave, "biome":biome_index})
+    hud.hide_modal()
+    pending_upgrade_pad = null
+    hud.show_banner("%s II · %s" % [pad.label, BuildingRules.branch_title(build_type, branch_id)], Color("f3d58d"))
+    hud.set_status(BuildingRules.branch_effect(build_type, branch_id))
+    Feedback.play("level", 16)
+    if core_fx != null:
+        core_fx.build_complete(pad.global_position, pad.label + " II")
+
+func _apply_building_branch_effect(build_type: String, branch_id: String) -> void:
+    match branch_id:
+        "bastion":
+            base_max_hp += 140.0
+            base_hp = minf(base_max_hp, base_hp + 140.0)
+            wall_damage_multiplier = 0.22
+            wall_slow_multiplier = 0.42
+        "spikes":
+            base_max_hp += 80.0
+            base_hp = minf(base_max_hp, base_hp + 80.0)
+            wall_damage_multiplier = 0.30
+            wall_slow_multiplier = 0.48
+            wall_spike_dps = 9.0
+        "temper":
+            player.damage *= 1.22
+        "reach":
+            player.orbit_radius += 12.0
+            player.crit_chance = minf(0.65, player.crit_chance + 0.04)
+        "ballista":
+            turret_global_damage_mult *= 1.75
+            turret_global_fire_mult *= 1.28
+        "repeater":
+            turret_global_damage_mult *= 0.88
+            turret_global_fire_mult *= 0.58
+        "renewal":
+            shrine_regen_multiplier *= 2.0
+        "ward":
+            shrine_regen_multiplier *= 1.35
+            shrine_ward_active = true
+            player.shield_hits = mini(5, player.shield_hits + 2)
 
 func _complete_build(pad: BuildPad) -> void:
     if pad.built or not pad.can_build(storage):
@@ -382,8 +515,8 @@ func _complete_build(pad: BuildPad) -> void:
 
 func _update_building_passives(delta: float) -> void:
     if bool(built["shrine"]):
-        player.heal(delta * (0.75 if phase == "day" else 0.35))
-        var base_regen: float = 0.85 if phase == "day" else 0.22
+        player.heal(delta * (0.75 if phase == "day" else 0.35) * shrine_regen_multiplier)
+        var base_regen: float = (0.85 if phase == "day" else 0.22) * shrine_regen_multiplier
         base_hp = minf(base_max_hp, base_hp + delta * base_regen)
 
 func _start_night() -> void:
@@ -423,7 +556,10 @@ func _start_day() -> void:
         backdrop.set_night(false)
     phase_max = GameRules.day_duration(wave)
     phase_time = phase_max
-    player.heal(18.0 + (10.0 if bool(built["shrine"]) else 0.0))
+    player.heal(18.0 + (10.0 * shrine_regen_multiplier if bool(built["shrine"]) else 0.0))
+    if shrine_ward_active:
+        player.shield_hits = mini(5, player.shield_hits + 1)
+        hud.set_status("Оберег Святилища восстановил 1 защитный заряд.")
     run_coins += 5 + wave * 3
     hud.show_banner("РАССВЕТ • СНОВА ЗА РЕСУРСАМИ", Color("fff0b4"))
     hud.set_status("Укрепи слабое место лагеря до следующей ночи.")
@@ -475,7 +611,9 @@ func _update_night(delta: float) -> void:
         _update_boss_special(enemy, delta)
 
         var dist_to_base: float = enemy.global_position.distance_to(base_position)
-        enemy.movement_multiplier = 0.58 if bool(built["wall"]) and dist_to_base < 102.0 else 1.0
+        enemy.movement_multiplier = wall_slow_multiplier if bool(built["wall"]) and dist_to_base < 102.0 else 1.0
+        if wall_spike_dps > 0.0 and dist_to_base < 96.0 and not enemy.dying:
+            enemy.take_damage(wall_spike_dps * delta)
 
         if enemy.windup > 0.0:
             enemy.clear_target()
@@ -514,7 +652,7 @@ func _update_night(delta: float) -> void:
                 player.take_damage(enemy.contact_damage)
                 enemy.hit_cooldown = 0.78
             elif dist_to_base < 53.0:
-                var wall_multiplier: float = 0.35 if bool(built["wall"]) else 1.0
+                var wall_multiplier: float = wall_damage_multiplier if bool(built["wall"]) else 1.0
                 var night_damage_mult: float = run_variation.base_damage_multiplier() if run_variation != null else 1.0
                 var amount: float = enemy.contact_damage * wall_multiplier * night_damage_mult
                 base_hp -= amount
@@ -611,7 +749,10 @@ func _on_enemy_killed(enemy: AxEnemy) -> void:
     run_coins += reward
     var xp_reward: int = 20 if enemy.boss else (6 if enemy.enemy_type == "brute" or enemy.enemy_type == "guardian" else 4)
     player.gain_xp(xp_reward)
+    if enemy.enemy_type == "guardian" and not enemy.boss:
+        add_mechanism_parts(1, enemy.global_position)
     if enemy.boss:
+        add_mechanism_parts(2, enemy.global_position)
         run_shards = int(biome["reward"])
         boss_ref = null
         hud.hide_boss()
@@ -646,11 +787,12 @@ func _finish_run(won: bool) -> void:
     finishing = true
     if run_variation != null:
         run_variation.on_run_finished(won)
-    var reward: int = 22 + wave * 15 + run_coins + builds * 4
+    var unused_parts: int = int(storage.get("parts", 0))
+    var reward: int = 22 + wave * 15 + run_coins + builds * 4 + unused_parts * 8
     GameState.register_run(wave, won, biome_index, kills, builds, trees_cut)
     if won:
         QuestDirector.record("run_win", 1, {"biome":biome_index, "wave":wave})
-    Analytics.event("run_end", {"won": won, "wave": wave, "biome": biome_index, "kills": kills})
+    Analytics.event("run_end", {"won": won, "wave": wave, "biome": biome_index, "kills": kills, "parts_unused":unused_parts})
     var earned_shards: int = run_shards if won else 0
     run_finished.emit({
         "won": won,
@@ -706,6 +848,15 @@ func _on_hud_action(action: String) -> void:
     elif action == "revive":
         AdService.rewarded_completed.connect(_on_revive_ad, CONNECT_ONE_SHOT)
         AdService.show_rewarded("revive")
+    elif action == "build_upgrade:cancel":
+        if pending_upgrade_pad != null and is_instance_valid(pending_upgrade_pad):
+            pending_upgrade_pad.reset_upgrade()
+        pending_upgrade_pad = null
+        hud.hide_modal()
+    elif action.begins_with("build_upgrade:"):
+        var parts: PackedStringArray = action.split(":")
+        if parts.size() >= 3:
+            _apply_build_upgrade(parts[1], parts[2])
     elif action.begins_with("perk:"):
         player.apply_perk(action.trim_prefix("perk:"))
         hud.hide_modal()
