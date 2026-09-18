@@ -14,6 +14,7 @@ func _run_tests() -> void:
     _test_analog_player_input()
     await _test_joystick_moves_live_player()
     await _test_touch_scroll_container()
+    await _test_hud_layout_and_modal_controls()
     _test_ui_sanitizer()
 
     if failures.is_empty():
@@ -133,6 +134,50 @@ func _test_touch_scroll_container() -> void:
         print("[MOBILE] touch-safe web menu scrolling OK, offset=", scroll.scroll_vertical)
 
     scroll.queue_free()
+    await get_tree().process_frame
+
+func _test_hud_layout_and_modal_controls() -> void:
+    var world: GameWorld = GameScene.instantiate() as GameWorld
+    if world == null:
+        _fail("Cannot instantiate GameWorld for HUD regression test")
+        return
+    world.configure(1)
+    add_child(world)
+    await get_tree().process_frame
+    await get_tree().process_frame
+
+    world.hud.set_build_context(
+        "КУЗНИЦА",
+        "+30% урон · +6 радиус атаки",
+        {"wood": 14, "stone": 6, "ore": 0},
+        {"wood": 0, "stone": 0, "ore": 0},
+        false
+    )
+    await get_tree().process_frame
+
+    if world.hud.build_title.get_parent() == world.hud.build_panel:
+        _fail("Build HUD labels are still direct PanelContainer children and can overlap")
+    elif world.hud.build_title.position.y >= world.hud.build_effect.position.y or world.hud.build_effect.position.y >= world.hud.build_cost.position.y:
+        _fail("Build HUD rows are not vertically separated")
+    else:
+        print("[MOBILE] build HUD rows are separated")
+
+    var controls: Node = get_tree().root.get_node_or_null("MobileControls")
+    if controls != null:
+        controls.call("bind_world", world)
+        controls.call("simulate_direction_for_test", Vector2(0.7, 0.0))
+        world.hud.show_modal("", "ТЕСТ", "Модальное окно скрывает управление.", [{"text":"OK", "action":"close"}])
+        for _i: int in range(12):
+            await get_tree().process_frame
+        var controls_root: Control = controls.get("root") as Control
+        if controls_root != null and controls_root.visible:
+            _fail("Joystick remained visible under a gameplay modal")
+        else:
+            print("[MOBILE] joystick hides under modal")
+        world.hud.hide_modal()
+        controls.call("unbind_world", world)
+
+    world.queue_free()
     await get_tree().process_frame
 
 func _test_ui_sanitizer() -> void:
