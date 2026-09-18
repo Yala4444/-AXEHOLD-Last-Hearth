@@ -50,6 +50,7 @@ var deposit_pulse: float = 0.0
 var world_size: Vector2 = Vector2(1170, 2532)
 var world_rect: Rect2 = Rect2(Vector2.ZERO, world_size)
 var camera: Camera2D
+var backdrop: WorldBackdrop
 
 func configure(index: int) -> void:
     biome_index = index
@@ -72,6 +73,11 @@ func _start_run() -> void:
     )
     world_rect = Rect2(Vector2.ZERO, world_size)
     base_position = world_size * 0.5
+
+    backdrop = WorldBackdrop.new()
+    add_child(backdrop)
+    backdrop.setup(world_size, base_position, biome, biome_index)
+
     phase_max = GameRules.day_duration(0)
     phase_time = phase_max
 
@@ -370,6 +376,8 @@ func _update_building_passives(delta: float) -> void:
 
 func _start_night() -> void:
     phase = "night"
+    if backdrop != null:
+        backdrop.set_night(true)
     wave += 1
     spawn_left = GameRules.wave_count(wave, float(biome["difficulty"]))
     spawn_timer = 0.1
@@ -388,6 +396,8 @@ func _start_night() -> void:
 
 func _start_day() -> void:
     phase = "day"
+    if backdrop != null:
+        backdrop.set_night(false)
     phase_max = GameRules.day_duration(wave)
     phase_time = phase_max
     player.heal(18.0 + (10.0 if bool(built["shrine"]) else 0.0))
@@ -649,25 +659,7 @@ func _on_revive_ad(_placement: String) -> void:
     hud.set_status("Воскрешение использовано.")
 
 func _draw() -> void:
-    var size: Vector2 = world_size
     var night: bool = phase == "night"
-    var top: Color = Color(str(biome.get("sky", "b9cf8d")))
-    var bottom: Color = Color(str(biome.get("ground", "7fa268")))
-    if night:
-        top = Color("20313a") if biome_index < 2 else Color("34242a")
-        bottom = Color("30483d") if biome_index < 2 else Color("57332f")
-
-    draw_rect(Rect2(Vector2.ZERO, size), bottom)
-
-    var band_h: float = 14.0
-    var bands: int = int(ceil(size.y / band_h))
-    for i: int in range(bands):
-        var t: float = float(i) / float(maxi(1, bands - 1))
-        var band_color: Color = top.lerp(bottom, t)
-        draw_rect(Rect2(0, float(i) * band_h, size.x, band_h + 1.0), band_color)
-
-    _draw_ground_detail(size, night)
-    _draw_clearing(night)
     _draw_hearth(night)
 
     if bool(built["wall"]):
