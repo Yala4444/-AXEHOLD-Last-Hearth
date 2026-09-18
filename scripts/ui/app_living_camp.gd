@@ -455,7 +455,7 @@ func _show_forge() -> void:
             branch_names.append(str(branch_spec.get("name", "ВЕТКА")))
         var branch_label := Label.new()
         project_box.add_child(branch_label)
-        branch_label.text = "В экспедиции: " + branch_names.join(" / ")
+        branch_label.text = "В экспедиции: " + " / ".join(branch_names)
         branch_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         branch_label.add_theme_font_size_override("font_size", 8)
         branch_label.add_theme_color_override("font_color", Color("8fa0a2"))
