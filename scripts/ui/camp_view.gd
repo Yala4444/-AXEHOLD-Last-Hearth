@@ -15,7 +15,7 @@ var weapon_label: Label
 var action_buttons: Dictionary = {}
 
 func _ready() -> void:
-    custom_minimum_size = Vector2(0, 300)
+    custom_minimum_size = Vector2(0, 455)
     size_flags_horizontal = Control.SIZE_EXPAND_FILL
     clip_contents = true
     mouse_filter = Control.MOUSE_FILTER_PASS
@@ -117,37 +117,40 @@ func _emit_action(action: String) -> void:
 
 func _layout_overlay() -> void:
     var width: float = maxf(size.x, 320.0)
-    title_label.position = Vector2(12, 8)
+    var height: float = maxf(size.y, 455.0)
+    title_label.position = Vector2(12, 10)
     title_label.size = Vector2(width - 24.0, 22)
-    meta_label.position = Vector2(12, 30)
+    meta_label.position = Vector2(12, 32)
     meta_label.size = Vector2(width - 24.0, 18)
-    weapon_label.position = Vector2(width * 0.5 - 82.0, 265)
-    weapon_label.size = Vector2(164, 17)
+
+    weapon_label.position = Vector2(width * 0.5 - 88.0, height - 54.0)
+    weapon_label.size = Vector2(176, 18)
     weapon_label.add_theme_font_size_override("font_size", 8)
 
     var forge: Button = action_buttons.get("forge") as Button
     if forge != null:
-        forge.position = Vector2(width * 0.27 - 33.0, 247)
-        forge.size = Vector2(66, 24)
+        forge.position = Vector2(width * 0.27 - 34.0, height - 128.0)
+        forge.size = Vector2(68, 24)
 
     var arsenal: Button = action_buttons.get("arsenal") as Button
     if arsenal != null:
-        arsenal.position = Vector2(width * 0.73 - 36.0, 247)
-        arsenal.size = Vector2(72, 24)
+        arsenal.position = Vector2(width * 0.73 - 37.0, height - 128.0)
+        arsenal.size = Vector2(74, 24)
 
     var goals: Button = action_buttons.get("goals") as Button
     if goals != null:
-        goals.position = Vector2(width * 0.50 - 34.0, 145)
-        goals.size = Vector2(68, 23)
+        goals.position = Vector2(width * 0.50 - 35.0, 181.0)
+        goals.size = Vector2(70, 23)
 
     var map: Button = action_buttons.get("map") as Button
     if map != null:
-        map.position = Vector2(width * 0.88 - 30.0, 247)
-        map.size = Vector2(60, 24)
+        map.position = Vector2(width * 0.88 - 31.0, height - 113.0)
+        map.size = Vector2(62, 24)
 
 func _draw() -> void:
     var width: float = maxf(size.x, 320.0)
-    var height: float = maxf(size.y, 300.0)
+    var height: float = maxf(size.y, 455.0)
+    var hearth_y: float = height - 155.0
     _draw_background(width, height)
     _draw_path(width)
 
@@ -156,55 +159,86 @@ func _draw() -> void:
     if mastery >= 9:
         _draw_stronghold(width)
 
-    _draw_tent(Vector2(width * 0.16, 208.0), 1.0 + minf(0.20, float(mastery) * 0.02))
+    _draw_tent(Vector2(width * 0.15, hearth_y + 6.0), 1.0 + minf(0.20, float(mastery) * 0.02))
     if mastery >= 1 or _has_relic(0):
-        _draw_forge(Vector2(width * 0.27, 213.0))
+        _draw_forge(Vector2(width * 0.27, hearth_y + 12.0))
     if weapons_owned.size() > 1:
-        _draw_weapon_rack(Vector2(width * 0.73, 213.0))
+        _draw_weapon_rack(Vector2(width * 0.73, hearth_y + 12.0))
     if mastery >= 5:
-        _draw_watchtower(Vector2(width * 0.88, 174.0))
+        _draw_watchtower(Vector2(width * 0.88, hearth_y - 35.0))
 
-    _draw_hearth(Vector2(width * 0.50, 211.0))
+    _draw_hearth(Vector2(width * 0.50, hearth_y + 5.0))
     _draw_trophies(width)
-    _draw_map_board(Vector2(width * 0.88, 220.0))
+    _draw_map_board(Vector2(width * 0.88, hearth_y + 18.0))
+    _draw_wanderer(Vector2(width * 0.52, hearth_y + 68.0))
     _draw_residents(width)
 
 func _draw_background(width: float, height: float) -> void:
-    draw_rect(Rect2(Vector2.ZERO, Vector2(width, height)), Color("111a20"))
-    for i: int in range(18):
-        var t: float = float(i) / 17.0
-        var color: Color = Color("22343c").lerp(Color("4b4a39"), t)
-        draw_rect(Rect2(0, 58.0 + t * 155.0, width, 10.0), color)
+    draw_rect(Rect2(Vector2.ZERO, Vector2(width, height)), Color("0e171b"))
+    for i: int in range(20):
+        var t: float = float(i) / 19.0
+        var color: Color = Color("18262d").lerp(Color("3f4735"), t)
+        draw_rect(Rect2(0, 54.0 + t * (height - 54.0), width, (height - 54.0) / 19.0 + 1.0), color)
 
     var hill_back := PackedVector2Array([
-        Vector2(0, 160), Vector2(width * 0.16, 118), Vector2(width * 0.33, 154),
-        Vector2(width * 0.52, 112), Vector2(width * 0.72, 150), Vector2(width * 0.88, 105),
-        Vector2(width, 146), Vector2(width, 230), Vector2(0, 230)
+        Vector2(0, 174), Vector2(width * 0.14, 120), Vector2(width * 0.31, 163),
+        Vector2(width * 0.50, 106), Vector2(width * 0.70, 157), Vector2(width * 0.87, 112),
+        Vector2(width, 158), Vector2(width, 265), Vector2(0, 265)
     ])
-    draw_colored_polygon(hill_back, Color("263f38"))
-    draw_rect(Rect2(0, 185, width, height - 185), Color("3f513a"))
-    draw_rect(Rect2(0, 245, width, height - 245), Color("364733"))
+    draw_colored_polygon(hill_back, Color("213a34"))
+    var hill_front := PackedVector2Array([
+        Vector2(0, 224), Vector2(width * 0.18, 171), Vector2(width * 0.38, 222),
+        Vector2(width * 0.58, 164), Vector2(width * 0.77, 220), Vector2(width, 178),
+        Vector2(width, 310), Vector2(0, 310)
+    ])
+    draw_colored_polygon(hill_front, Color("2f4537"))
+    draw_rect(Rect2(0, 252, width, height - 252), Color("3b4c36"))
 
-    for i: int in range(10):
+    # Dark tree curtains at the edges frame the warm center.
+    for i: int in range(5):
+        var left_x: float = 13.0 + float(i) * 19.0
+        var right_x: float = width - 13.0 - float(i) * 19.0
+        var y: float = 173.0 + float(i % 3) * 27.0
+        _draw_background_tree(Vector2(left_x, y), 0.82 + float(i % 2) * 0.18)
+        _draw_background_tree(Vector2(right_x, y + 8.0), 0.78 + float((i + 1) % 2) * 0.20)
+
+    var center := Vector2(width * 0.5, height - 150.0)
+    draw_circle(center, 132.0, Color(0.95, 0.63, 0.25, 0.028))
+    draw_circle(center, 82.0, Color(0.95, 0.63, 0.25, 0.034))
+
+    for i: int in range(14):
         var x: float = fmod(31.0 + float(i) * 79.0, width)
-        var y: float = 86.0 + fmod(float(i) * 31.0, 68.0)
-        draw_circle(Vector2(x, y), 1.1, Color(0.92, 0.88, 0.69, 0.28))
+        var y: float = 82.0 + fmod(float(i) * 41.0, 120.0)
+        var pulse: float = 0.5 + sin(elapsed * 2.1 + float(i)) * 0.5
+        draw_circle(Vector2(x, y), 1.0 + pulse * 0.5, Color(0.92, 0.82, 0.53, 0.12 + pulse * 0.10))
+
+func _draw_background_tree(pos: Vector2, scale_value: float) -> void:
+    draw_rect(Rect2(pos + Vector2(-3, 12) * scale_value, Vector2(6, 31) * scale_value), Color(0.10, 0.16, 0.13, 0.72))
+    draw_circle(pos + Vector2(0, 0) * scale_value, 19.0 * scale_value, Color(0.08, 0.18, 0.14, 0.78))
+    draw_circle(pos + Vector2(-10, 8) * scale_value, 14.0 * scale_value, Color(0.10, 0.23, 0.16, 0.72))
+    draw_circle(pos + Vector2(10, 8) * scale_value, 14.0 * scale_value, Color(0.10, 0.23, 0.16, 0.72))
 
 func _draw_path(width: float) -> void:
+    var height: float = maxf(size.y, 455.0)
     var center: float = width * 0.5
+    var hearth_y: float = height - 150.0
     var path := PackedVector2Array([
-        Vector2(center - 23, 299), Vector2(center - 31, 262), Vector2(center - 26, 246),
-        Vector2(center + 27, 246), Vector2(center + 32, 262), Vector2(center + 23, 299)
+        Vector2(center - 24, height), Vector2(center - 38, height - 72),
+        Vector2(center - 28, hearth_y + 26), Vector2(center + 29, hearth_y + 26),
+        Vector2(center + 39, height - 72), Vector2(center + 24, height)
     ])
     draw_colored_polygon(path, Color(0.47, 0.39, 0.28, 0.52))
     for i: int in range(7):
-        var y: float = 263.0 + float(i) * 12.0
-        var spread: float = 16.0 + float(i) * 1.8
-        draw_line(Vector2(center - spread, y), Vector2(center + spread, y), Color(0.62, 0.53, 0.38, 0.23), 1.5)
+        var y: float = hearth_y + 48.0 + float(i) * 18.0
+        if y >= height:
+            break
+        var spread: float = 17.0 + float(i) * 1.7
+        draw_line(Vector2(center - spread, y), Vector2(center + spread, y), Color(0.62, 0.53, 0.38, 0.18), 1.4)
 
 func _draw_hearth(pos: Vector2) -> void:
     var pulse: float = (sin(elapsed * 3.6) + 1.0) * 0.5
-    draw_circle(pos, 41.0 + pulse * 3.0, Color(1.0, 0.52, 0.18, 0.055 + pulse * 0.025))
+    draw_circle(pos, 78.0 + pulse * 4.0, Color(1.0, 0.52, 0.18, 0.030 + pulse * 0.012))
+    draw_circle(pos, 50.0 + pulse * 3.0, Color(1.0, 0.52, 0.18, 0.045 + pulse * 0.018))
     draw_circle(pos, 24.0, Color(0.20, 0.16, 0.12, 0.82))
     for i: int in range(8):
         var angle: float = TAU * float(i) / 8.0
@@ -317,12 +351,16 @@ func _draw_trophies(width: float) -> void:
             draw_arc(pos, 13.0, 3.5, 5.9, 16, Color("f2b46e"), 2.0)
 
 func _draw_palisade(width: float) -> void:
+    var height: float = maxf(size.y, 455.0)
+    var base_y: float = height - 76.0
     for i: int in range(14):
         var x: float = 12.0 + float(i) * ((width - 24.0) / 13.0)
-        var y: float = 257.0 + sin(float(i) * 1.8) * 3.0
-        draw_line(Vector2(x, y), Vector2(x, y - 28), Color("58432f"), 6.0)
+        if absf(x - width * 0.5) < 42.0:
+            continue
+        var y: float = base_y + sin(float(i) * 1.8) * 3.0
+        draw_line(Vector2(x, y), Vector2(x, y - 29), Color("58432f"), 6.0)
         var tip := PackedVector2Array([
-            Vector2(x - 3, y - 27), Vector2(x, y - 34), Vector2(x + 3, y - 27)
+            Vector2(x - 3, y - 28), Vector2(x, y - 35), Vector2(x + 3, y - 28)
         ])
         draw_colored_polygon(tip, Color("6a5037"))
 
@@ -337,7 +375,8 @@ func _draw_watchtower(pos: Vector2) -> void:
     draw_line(pos + Vector2(-18, 11), pos + Vector2(18, 11), Color("6e5136"), 4.0)
 
 func _draw_stronghold(width: float) -> void:
-    var center: Vector2 = Vector2(width * 0.50, 184)
+    var height: float = maxf(size.y, 455.0)
+    var center: Vector2 = Vector2(width * 0.50, height - 220.0)
     draw_rect(Rect2(center + Vector2(-59, -44), Vector2(118, 57)), Color("474944"))
     draw_rect(Rect2(center + Vector2(-67, -53), Vector2(24, 68)), Color("3b403d"))
     draw_rect(Rect2(center + Vector2(43, -53), Vector2(24, 68)), Color("3b403d"))
@@ -349,11 +388,27 @@ func _draw_stronghold(width: float) -> void:
     ]), Color("585d56"))
     draw_rect(Rect2(center + Vector2(-10, -17), Vector2(20, 30)), Color("242a28"))
 
+func _draw_wanderer(pos: Vector2) -> void:
+    var bob: float = sin(elapsed * 2.0) * 0.7
+    pos.y += bob
+    draw_rect(Rect2(pos + Vector2(-8, 12), Vector2(17, 4)), Color(0.02, 0.03, 0.03, 0.22))
+    draw_colored_polygon(PackedVector2Array([
+        pos + Vector2(-6, -1), pos + Vector2(-7, 12), pos + Vector2(0, 16),
+        pos + Vector2(7, 12), pos + Vector2(6, -1)
+    ]), Color("344f73"))
+    draw_rect(Rect2(pos + Vector2(-6, -3), Vector2(12, 12)), Color("4b6fc1"))
+    draw_rect(Rect2(pos + Vector2(-5, 7), Vector2(10, 3)), Color("956d43"))
+    draw_rect(Rect2(pos + Vector2(-5, -14), Vector2(10, 11)), Color("d4a077"))
+    draw_rect(Rect2(pos + Vector2(-6, -16), Vector2(12, 4)), Color("3d5685"))
+    draw_rect(Rect2(pos + Vector2(-5, 10), Vector2(4, 9)), Color("28343d"))
+    draw_rect(Rect2(pos + Vector2(2, 10), Vector2(4, 9)), Color("28343d"))
+
 func _draw_residents(width: float) -> void:
+    var height: float = maxf(size.y, 455.0)
     var positions: Array[Vector2] = [
-        Vector2(width * 0.34, 248), Vector2(width * 0.66, 250),
-        Vector2(width * 0.12, 263), Vector2(width * 0.83, 265),
-        Vector2(width * 0.42, 276), Vector2(width * 0.58, 277)
+        Vector2(width * 0.34, height - 104.0), Vector2(width * 0.66, height - 102.0),
+        Vector2(width * 0.12, height - 84.0), Vector2(width * 0.84, height - 82.0),
+        Vector2(width * 0.40, height - 65.0), Vector2(width * 0.61, height - 64.0)
     ]
     var count: int = mini(_resident_count(), positions.size())
     for i: int in range(count):
