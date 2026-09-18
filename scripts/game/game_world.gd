@@ -800,7 +800,9 @@ func _finish_run(won: bool) -> void:
         "wave": wave,
         "coins": reward,
         "shards": earned_shards,
-        "kills": kills
+        "kills": kills,
+        "parts_unused": unused_parts,
+        "parts_bonus": unused_parts * 8
     })
 
 func _refresh_hud() -> void:
