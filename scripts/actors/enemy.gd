@@ -287,7 +287,7 @@ func _draw() -> void:
     var shadow_w: float = 34.0 if boss else (28.0 if elite else 22.0)
     if enemy_type == "guardian" and not boss:
         shadow_w = 30.0
-    draw_rect(Rect2(-shadow_w * 0.5, 12, shadow_w, 5), Color(0.04, 0.04, 0.04, 0.22))
+    _draw_shadow_ellipse(Vector2(0, 15), Vector2(shadow_w * 0.52, 4.8), Color(0.03, 0.035, 0.035, 0.28))
 
     if elite and not boss:
         var elite_pulse: float = (sin(animation_time * 4.8) + 1.0) * 0.5
@@ -360,121 +360,203 @@ func _draw() -> void:
             draw_string(elite_font, Vector2(-34, bar_y - 5), elite_title, HORIZONTAL_ALIGNMENT_CENTER, 68, 6, elite_glow.lightened(0.16))
 
 func _draw_pixel_ghoul(body: Color, dark: Color, light: Color) -> void:
-    draw_rect(Rect2(-9, -12, 18, 22), dark)
-    draw_rect(Rect2(-7, -14, 14, 22), body)
-    draw_rect(Rect2(-5, -11, 10, 5), light)
-    draw_rect(Rect2(-5, 9, 4, 7), dark)
-    draw_rect(Rect2(2, 9, 4, 7), dark)
-    _pixel_eyes(3.0, Color("efe8d6"))
-
-func _draw_pixel_runner(body: Color, dark: Color, light: Color) -> void:
-    draw_rect(Rect2(-7, -14, 14, 18), body)
-    draw_rect(Rect2(-10, -8, 20, 9), dark)
-    draw_rect(Rect2(-5, 3, 4, 12), dark)
-    draw_rect(Rect2(2, 3, 4, 12), dark)
-    draw_rect(Rect2(-8, 14, 7, 3), light)
-    draw_rect(Rect2(2, 14, 8, 3), light)
-    _pixel_eyes(3.0, Color("f6f0df"))
-
-func _draw_pixel_brute(body: Color, dark: Color, light: Color) -> void:
-    draw_rect(Rect2(-15, -12, 30, 24), dark)
-    draw_rect(Rect2(-12, -15, 24, 27), body)
-    draw_rect(Rect2(-18, -6, 7, 16), body)
-    draw_rect(Rect2(11, -6, 7, 16), body)
-    draw_colored_polygon(PackedVector2Array([Vector2(-9,-14),Vector2(-16,-23),Vector2(-4,-17)]), Color("c7b18b"))
-    draw_colored_polygon(PackedVector2Array([Vector2(9,-14),Vector2(16,-23),Vector2(4,-17)]), Color("c7b18b"))
-    draw_rect(Rect2(-7, 7, 14, 4), light)
-    _pixel_eyes(4.0, Color("f0ddc4"))
-
-func _draw_pixel_stalker(body: Color, dark: Color, light: Color) -> void:
+    # Basic husk: hunched, asymmetrical, obviously corrupted.
     draw_colored_polygon(PackedVector2Array([
-        Vector2(0,-19),Vector2(11,-7),Vector2(8,11),Vector2(0,16),Vector2(-9,10),Vector2(-11,-7)
+        Vector2(-8,-11),Vector2(-3,-17),Vector2(6,-15),Vector2(10,-8),
+        Vector2(8,8),Vector2(2,14),Vector2(-7,10),Vector2(-11,-2)
     ]), dark)
     draw_colored_polygon(PackedVector2Array([
-        Vector2(0,-15),Vector2(8,-5),Vector2(6,9),Vector2(0,13),Vector2(-6,8),Vector2(-8,-5)
+        Vector2(-5,-10),Vector2(0,-14),Vector2(5,-12),Vector2(7,-5),
+        Vector2(5,8),Vector2(0,11),Vector2(-5,7),Vector2(-7,-2)
     ]), body)
-    draw_rect(Rect2(-15, 8, 8, 3), light)
-    draw_rect(Rect2(7, 8, 8, 3), light)
-    draw_colored_polygon(PackedVector2Array([Vector2(-6,-12),Vector2(-12,-21),Vector2(-2,-15)]), Color("bca0d9"))
-    draw_colored_polygon(PackedVector2Array([Vector2(6,-12),Vector2(12,-21),Vector2(2,-15)]), Color("bca0d9"))
-    _pixel_eyes(3.0, Color("d7b8ff"))
+    draw_line(Vector2(-5,5),Vector2(-10,15),dark,4.0)
+    draw_line(Vector2(4,7),Vector2(8,16),dark,4.0)
+    draw_line(Vector2(-7,-1),Vector2(-14,7),body.darkened(0.08),4.0)
+    draw_line(Vector2(7,-3),Vector2(13,2),body.darkened(0.08),4.0)
+    draw_rect(Rect2(-5,-10,10,4),light)
+    draw_line(Vector2(-2,2),Vector2(5,5),light.darkened(0.18),1.4)
+    _pixel_eyes(3.2, Color("f3e7d0"))
+
+func _draw_pixel_runner(body: Color, dark: Color, light: Color) -> void:
+    # Runner: low forward silhouette with long limbs and swept ears.
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-9,-9),Vector2(-2,-17),Vector2(7,-14),Vector2(11,-6),
+        Vector2(7,7),Vector2(2,10),Vector2(-7,6),Vector2(-12,-1)
+    ]), dark)
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-6,-8),Vector2(0,-14),Vector2(6,-11),Vector2(8,-5),
+        Vector2(5,5),Vector2(0,7),Vector2(-5,4),Vector2(-8,-1)
+    ]), body)
+    draw_colored_polygon(PackedVector2Array([Vector2(-4,-12),Vector2(-11,-22),Vector2(-1,-16)]),light.darkened(0.12))
+    draw_colored_polygon(PackedVector2Array([Vector2(4,-12),Vector2(12,-20),Vector2(2,-15)]),light.darkened(0.12))
+    draw_line(Vector2(-5,5),Vector2(-13,14),dark,4.0)
+    draw_line(Vector2(2,7),Vector2(10,16),dark,4.0)
+    draw_line(Vector2(-11,14),Vector2(-17,14),light,2.0)
+    draw_line(Vector2(10,16),Vector2(16,16),light,2.0)
+    _pixel_eyes(3.1, Color("f5efd9"))
+
+func _draw_pixel_brute(body: Color, dark: Color, light: Color) -> void:
+    # Brute: broad wedge, massive shoulders, tiny head.
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-20,-7),Vector2(-13,-18),Vector2(-5,-22),Vector2(6,-21),
+        Vector2(15,-16),Vector2(21,-6),Vector2(18,13),Vector2(8,19),
+        Vector2(-9,19),Vector2(-19,12)
+    ]), dark)
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-15,-5),Vector2(-10,-15),Vector2(-3,-18),Vector2(5,-17),
+        Vector2(12,-12),Vector2(16,-3),Vector2(13,11),Vector2(5,15),
+        Vector2(-6,15),Vector2(-14,9)
+    ]), body)
+    draw_circle(Vector2(-16,-3),6.0,body.darkened(0.08))
+    draw_circle(Vector2(16,-3),6.0,body.darkened(0.08))
+    draw_colored_polygon(PackedVector2Array([Vector2(-8,-16),Vector2(-18,-25),Vector2(-4,-20)]),Color("c8b38d"))
+    draw_colored_polygon(PackedVector2Array([Vector2(8,-16),Vector2(18,-25),Vector2(4,-20)]),Color("c8b38d"))
+    draw_rect(Rect2(-7,-11,14,5),light)
+    draw_line(Vector2(-10,6),Vector2(10,6),light.darkened(0.18),2.0)
+    draw_line(Vector2(-8,15),Vector2(-11,22),dark,5.0)
+    draw_line(Vector2(8,15),Vector2(11,22),dark,5.0)
+    _pixel_eyes(4.0, Color("f2dec0"))
+
+func _draw_pixel_stalker(body: Color, dark: Color, light: Color) -> void:
+    # Stalker: tall crescent silhouette, blades/ears and luminous mask.
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(0,-23),Vector2(11,-13),Vector2(14,-2),Vector2(10,13),
+        Vector2(1,19),Vector2(-10,13),Vector2(-14,-2),Vector2(-10,-13)
+    ]), dark)
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(0,-18),Vector2(8,-10),Vector2(10,-2),Vector2(7,10),
+        Vector2(0,14),Vector2(-7,9),Vector2(-9,-2),Vector2(-7,-10)
+    ]), body)
+    draw_colored_polygon(PackedVector2Array([Vector2(-7,-13),Vector2(-15,-24),Vector2(-3,-17)]),Color("b89bd5"))
+    draw_colored_polygon(PackedVector2Array([Vector2(7,-13),Vector2(15,-24),Vector2(3,-17)]),Color("b89bd5"))
+    draw_line(Vector2(-9,8),Vector2(-18,15),light,3.0)
+    draw_line(Vector2(9,8),Vector2(18,15),light,3.0)
+    draw_arc(Vector2(0,-5),7.0,0.2,PI-0.2,14,light.lightened(0.14),1.5)
+    _pixel_eyes(3.2, Color("e1c7ff"))
 
 func _draw_pixel_guardian(body: Color, dark: Color, light: Color) -> void:
-    draw_rect(Rect2(-16, -14, 32, 28), dark)
-    draw_rect(Rect2(-13, -11, 26, 24), body)
-    draw_rect(Rect2(-15, -9, 30, 5), Color("c7c2a7"))
-    draw_rect(Rect2(-12, 1, 24, 5), Color("aaa78f"))
-    draw_rect(Rect2(-18, -4, 6, 17), Color("8f8d7d"))
-    draw_rect(Rect2(12, -4, 6, 17), Color("8f8d7d"))
-    draw_rect(Rect2(-9, 12, 7, 7), dark)
-    draw_rect(Rect2(2, 12, 7, 7), dark)
-    _pixel_eyes(4.0, Color("f4e6bf"))
+    # Heavy ancient construct, visibly different from living mobs.
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-17,-15),Vector2(-8,-22),Vector2(8,-22),Vector2(17,-14),
+        Vector2(20,8),Vector2(12,19),Vector2(-12,19),Vector2(-20,8)
+    ]), Color("4e5350"))
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-13,-12),Vector2(-6,-18),Vector2(7,-18),Vector2(13,-11),
+        Vector2(15,6),Vector2(8,14),Vector2(-8,14),Vector2(-15,6)
+    ]), body)
+    draw_circle(Vector2(-15,-2),6.0,Color("77766a"))
+    draw_circle(Vector2(15,-2),6.0,Color("77766a"))
+    draw_rect(Rect2(-10,-10,20,5),light)
+    draw_rect(Rect2(-11,1,22,4),Color("aaa78f"))
+    draw_line(Vector2(-6,14),Vector2(-9,22),dark,6.0)
+    draw_line(Vector2(6,14),Vector2(9,22),dark,6.0)
+    draw_circle(Vector2(0,7),4.0,Color("d0ba72"))
+    _pixel_eyes(4.2, Color("f4e6bf"))
 
 func _draw_boss_aura() -> void:
     var pulse: float = (sin(animation_time * 3.2) + 1.0) * 0.5
     var aura: Color
     match biome_index:
         1:
-            aura = Color(0.52, 0.84, 0.96, 0.09 + pulse * 0.05)
+            aura = Color(0.52,0.84,0.96,0.09 + pulse*0.05)
         2:
-            aura = Color(1.0, 0.30, 0.12, 0.10 + pulse * 0.07)
+            aura = Color(1.0,0.30,0.12,0.10 + pulse*0.07)
         _:
-            aura = Color(0.52, 0.78, 0.36, 0.08 + pulse * 0.05)
-    draw_circle(Vector2(0, -2), 38.0 + pulse * 4.0, aura)
-    draw_arc(Vector2(0, -2), 31.0 + pulse * 2.0, 0.0, TAU, 28, Color(aura.r, aura.g, aura.b, aura.a * 2.8), 1.5)
+            aura = Color(0.52,0.78,0.36,0.08 + pulse*0.05)
+    draw_circle(Vector2(0,-3), 48.0 + pulse*5.0, aura)
+    draw_arc(Vector2(0,-3), 39.0 + pulse*3.0, 0.0, TAU, 36, Color(aura.r,aura.g,aura.b,aura.a*2.6), 2.0)
 
 func _draw_pixel_boss(body: Color, dark: Color, light: Color) -> void:
-    draw_rect(Rect2(-24, -20, 48, 39), dark)
-    draw_rect(Rect2(-20, -23, 40, 40), body)
-    draw_rect(Rect2(-27, -9, 8, 22), body)
-    draw_rect(Rect2(19, -9, 8, 22), body)
-    draw_rect(Rect2(-14, 5, 28, 6), light)
-    draw_rect(Rect2(-12, 16, 9, 8), dark)
-    draw_rect(Rect2(3, 16, 9, 8), dark)
-
+    # Bosses share scale, not anatomy. Each biome gets a distinct silhouette.
     match biome_index:
         1:
-            # Frost Guardian: ice crown and frozen core.
-            draw_colored_polygon(PackedVector2Array([
-                Vector2(-16,-20),Vector2(-11,-35),Vector2(-4,-24)
-            ]), Color("b9e5f2"))
-            draw_colored_polygon(PackedVector2Array([
-                Vector2(-4,-23),Vector2(0,-40),Vector2(6,-23)
-            ]), Color("d8f4fb"))
-            draw_colored_polygon(PackedVector2Array([
-                Vector2(5,-24),Vector2(13,-34),Vector2(17,-19)
-            ]), Color("9fd2e4"))
-            draw_colored_polygon(PackedVector2Array([
-                Vector2(0,-5),Vector2(7,3),Vector2(4,12),Vector2(-5,12),Vector2(-8,3)
-            ]), Color("86cfe8").lightened(hit_flash * 0.28))
-            draw_line(Vector2(-17, 0), Vector2(-26, 10), Color("d7f2f8"), 3.0)
-            draw_line(Vector2(17, 0), Vector2(26, 10), Color("d7f2f8"), 3.0)
+            _draw_frost_boss(body,dark,light)
         2:
-            # Ash Guardian: broken horns and furnace core.
-            draw_colored_polygon(PackedVector2Array([
-                Vector2(-13,-20),Vector2(-28,-33),Vector2(-20,-15)
-            ]), Color("684239"))
-            draw_colored_polygon(PackedVector2Array([
-                Vector2(13,-20),Vector2(30,-29),Vector2(19,-14)
-            ]), Color("684239"))
-            draw_circle(Vector2(0, 3), 9.0, Color("7b2c22"))
-            draw_circle(Vector2(0, 3), 5.0, Color("ff7c2f"))
-            draw_rect(Rect2(-3, 11, 6, 5), Color("e14a25"))
-            for i: int in range(3):
-                var x: float = -9.0 + float(i) * 9.0
-                draw_line(Vector2(x, -18), Vector2(x + 2, -9), Color("e26a3b"), 2.0)
+            _draw_ash_boss(body,dark,light)
         _:
-            # Forest Guardian: antlers, root mantle and living heart.
-            draw_colored_polygon(PackedVector2Array([Vector2(-13,-21),Vector2(-27,-34),Vector2(-18,-17)]), Color("8f7651"))
-            draw_colored_polygon(PackedVector2Array([Vector2(13,-21),Vector2(27,-34),Vector2(18,-17)]), Color("8f7651"))
-            draw_line(Vector2(-23,-29), Vector2(-31,-21), Color("8f7651"), 3.0)
-            draw_line(Vector2(23,-29), Vector2(31,-21), Color("8f7651"), 3.0)
-            draw_line(Vector2(-17, 7), Vector2(-28, 17), Color("4e6d3f"), 4.0)
-            draw_line(Vector2(17, 7), Vector2(28, 17), Color("4e6d3f"), 4.0)
-            draw_circle(Vector2(0, 3), 7.0, Color("6ca752"))
-            draw_circle(Vector2(0, 3), 3.0, Color("b6e781"))
+            _draw_forest_boss(body,dark,light)
 
-    _pixel_eyes(7.0, Color("ffe2c8"))
+func _draw_forest_boss(body: Color, dark: Color, light: Color) -> void:
+    var bark := Color("544b36").lightened(hit_flash*0.16)
+    var moss := Color("547b48")
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-22,-19),Vector2(-12,-31),Vector2(0,-35),Vector2(13,-30),
+        Vector2(24,-18),Vector2(27,8),Vector2(16,26),Vector2(0,31),
+        Vector2(-17,25),Vector2(-28,7)
+    ]), dark)
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-17,-17),Vector2(-9,-26),Vector2(0,-29),Vector2(10,-25),
+        Vector2(18,-15),Vector2(20,7),Vector2(11,20),Vector2(0,24),
+        Vector2(-12,19),Vector2(-21,6)
+    ]), bark)
+    # Antlers and roots.
+    draw_line(Vector2(-12,-25),Vector2(-30,-42),Color("8b7652"),4.0)
+    draw_line(Vector2(-25,-37),Vector2(-35,-29),Color("8b7652"),3.0)
+    draw_line(Vector2(12,-25),Vector2(31,-41),Color("8b7652"),4.0)
+    draw_line(Vector2(26,-36),Vector2(36,-27),Color("8b7652"),3.0)
+    draw_line(Vector2(-18,13),Vector2(-34,27),moss,5.0)
+    draw_line(Vector2(18,13),Vector2(34,27),moss,5.0)
+    # Living core.
+    draw_circle(Vector2(0,3),10.0,Color("365f37"))
+    draw_circle(Vector2(0,3),6.0,Color("6faa55"))
+    draw_circle(Vector2(0,3),2.5,Color("c0ec91"))
+    draw_line(Vector2(-12,-8),Vector2(12,-8),moss.darkened(0.08),3.0)
+    _pixel_eyes(8.0,Color("e4f6c7"))
+
+func _draw_frost_boss(body: Color, dark: Color, light: Color) -> void:
+    var ice := Color("8bbfce").lightened(hit_flash*0.18)
+    var bright := Color("d7f1f6")
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-23,-15),Vector2(-16,-30),Vector2(-7,-28),Vector2(0,-43),
+        Vector2(8,-29),Vector2(18,-32),Vector2(25,-14),Vector2(23,12),
+        Vector2(13,27),Vector2(0,31),Vector2(-14,26),Vector2(-25,10)
+    ]), dark)
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-17,-13),Vector2(-11,-24),Vector2(0,-31),Vector2(12,-24),
+        Vector2(18,-12),Vector2(17,10),Vector2(9,21),Vector2(0,24),
+        Vector2(-10,20),Vector2(-18,9)
+    ]), ice)
+    # Crown / ice blades.
+    for spike: PackedVector2Array in [
+        PackedVector2Array([Vector2(-15,-23),Vector2(-23,-44),Vector2(-7,-28)]),
+        PackedVector2Array([Vector2(-5,-28),Vector2(0,-50),Vector2(6,-28)]),
+        PackedVector2Array([Vector2(9,-26),Vector2(23,-45),Vector2(16,-20)])
+    ]:
+        draw_colored_polygon(spike,bright)
+    draw_line(Vector2(-19,0),Vector2(-34,14),bright,4.0)
+    draw_line(Vector2(19,0),Vector2(34,14),bright,4.0)
+    # Crystal heart.
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(0,-8),Vector2(9,3),Vector2(5,15),Vector2(-5,15),Vector2(-10,3)
+    ]),Color("67b8d1"))
+    draw_line(Vector2(0,-5),Vector2(0,11),bright,2.0)
+    _pixel_eyes(8.0,Color("effcff"))
+
+func _draw_ash_boss(body: Color, dark: Color, light: Color) -> void:
+    var iron := Color("5a3631").lightened(hit_flash*0.16)
+    var ember := Color("ff7c32")
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-25,-15),Vector2(-18,-31),Vector2(-5,-35),Vector2(8,-33),
+        Vector2(21,-25),Vector2(29,-9),Vector2(26,14),Vector2(15,28),
+        Vector2(0,31),Vector2(-17,26),Vector2(-29,10)
+    ]), dark)
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-19,-13),Vector2(-13,-25),Vector2(-4,-29),Vector2(8,-27),
+        Vector2(17,-19),Vector2(21,-7),Vector2(19,11),Vector2(10,21),
+        Vector2(0,24),Vector2(-12,20),Vector2(-22,8)
+    ]),iron)
+    # Broken horns.
+    draw_colored_polygon(PackedVector2Array([Vector2(-13,-25),Vector2(-32,-42),Vector2(-24,-18)]),Color("7a5144"))
+    draw_colored_polygon(PackedVector2Array([Vector2(14,-23),Vector2(34,-36),Vector2(24,-14)]),Color("7a5144"))
+    # Furnace vents / cracks.
+    draw_circle(Vector2(0,4),11.0,Color("72291f"))
+    draw_circle(Vector2(0,4),6.0,ember)
+    draw_circle(Vector2(0,4),2.4,Color("ffd06a"))
+    for x: float in [-12.0,-4.0,5.0,13.0]:
+        draw_line(Vector2(x,-17),Vector2(x + 3, -7),Color("e65d35"),2.0)
+    draw_line(Vector2(-18,13),Vector2(-27,24),Color("8d4434"),5.0)
+    draw_line(Vector2(18,13),Vector2(28,24),Color("8d4434"),5.0)
+    _pixel_eyes(8.0,Color("ffe1c0"))
 
 func _pixel_eyes(offset: float, color: Color) -> void:
     draw_rect(Rect2(-offset - 2.0, -5, 3, 3), color)

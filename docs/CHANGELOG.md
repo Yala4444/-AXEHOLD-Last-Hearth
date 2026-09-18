@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.13.0-alpha.1 — Visual Reboot
+- Rebuilt the mobile shell around a lighter header and icon-driven bottom navigation.
+- Added a unified VisualSystem for colors, surfaces, buttons and spacing.
+- Added authored procedural UiIcon symbols and removed emoji dependence from primary navigation.
+- Rebuilt the gameplay HUD with compact HP/Hearth bars, phase hierarchy and contextual panels.
+- Simplified Camp home into living scene + story ribbon + departure surface.
+- Replaced large floating Camp hotspot labels with compact icon markers.
+- Reworked Arsenal into responsive previews and compact weapon rows.
+- Redesigned the world map around route readability with smaller node callouts.
+- Redesigned Trophy Hall as physical relic alcoves with compact mastery indicators.
+- Redrew the Wanderer silhouette with hood, cape, shoulders and visible satchel.
+- Redrew Husk, Runner, Brute, Stalker and Guardian enemy silhouettes.
+- Redrew all three biome Guardians as distinct boss anatomies.
+- Redrew resource icons for small-screen readability.
+- Reduced joystick size and opacity.
+- Removed the legacy runtime build watermark completely.
+- Bumped Android/iOS metadata to 1.13.0-alpha.1 / build 27.
+
 ## 1.12.0-alpha.1 — Dynamic World & Elites
 - Added daytime enemy combat for dynamic world events.
 - Added one scheduled dynamic event per day phase.

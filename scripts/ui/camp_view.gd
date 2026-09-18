@@ -42,7 +42,7 @@ func refresh() -> void:
         _relic_count()
     ]
     var profile: Dictionary = WeaponRules.profile(selected_weapon)
-    weapon_label.text = "%s %s" % [str(profile.get("icon", "⚔️")), str(profile.get("name", "Оружие"))]
+    weapon_label.text = str(profile.get("name", "Оружие"))
 
     var arsenal_button: Button = action_buttons.get("arsenal") as Button
     if arsenal_button != null:
@@ -77,20 +77,20 @@ func _on_resized() -> void:
 func _build_overlay() -> void:
     title_label = Label.new()
     add_child(title_label)
-    title_label.add_theme_font_size_override("font_size", 16)
-    title_label.add_theme_color_override("font_color", Color("f3d39a"))
+    title_label.add_theme_font_size_override("font_size", 14)
+    title_label.add_theme_color_override("font_color", VisualSystem.GOLD_BRIGHT)
     title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
     meta_label = Label.new()
     add_child(meta_label)
-    meta_label.add_theme_font_size_override("font_size", 11)
-    meta_label.add_theme_color_override("font_color", Color(0.82, 0.85, 0.87, 0.86))
+    meta_label.add_theme_font_size_override("font_size", 8)
+    meta_label.add_theme_color_override("font_color", Color(0.72, 0.78, 0.78, 0.86))
     meta_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
     weapon_label = Label.new()
     add_child(weapon_label)
-    weapon_label.add_theme_font_size_override("font_size", 11)
-    weapon_label.add_theme_color_override("font_color", Color("e9d6b5"))
+    weapon_label.add_theme_font_size_override("font_size", 8)
+    weapon_label.add_theme_color_override("font_color", Color("cbb88e"))
     weapon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
     _make_action_button("forge", "КУЗНЯ")
@@ -105,14 +105,34 @@ func _make_action_button(action: String, text: String) -> void:
     var button := Button.new()
     add_child(button)
     action_buttons[action] = button
-    button.text = text
+    button.text = ""
+    button.tooltip_text = text
     button.focus_mode = Control.FOCUS_NONE
-    button.add_theme_font_size_override("font_size", 7)
-    button.add_theme_color_override("font_color", Color("f0eadf"))
-    button.add_theme_color_override("font_hover_color", Color.WHITE)
-    button.add_theme_stylebox_override("normal", _button_style(Color(0.05, 0.08, 0.08, 0.62), Color(0.48, 0.52, 0.46, 0.30)))
-    button.add_theme_stylebox_override("hover", _button_style(Color(0.10, 0.15, 0.14, 0.88), Color(0.78, 0.62, 0.34, 0.80)))
-    button.add_theme_stylebox_override("pressed", _button_style(Color(0.09, 0.14, 0.13, 0.94), Color("d1a862")))
+    button.add_theme_stylebox_override("normal", VisualSystem.panel(Color(0.03,0.05,0.05,0.50), Color(0.55,0.66,0.60,0.22), 14, 0, 1))
+    button.add_theme_stylebox_override("hover", VisualSystem.panel(Color(0.08,0.13,0.12,0.82), Color(VisualSystem.GOLD,0.70), 14, 0, 1))
+    button.add_theme_stylebox_override("pressed", VisualSystem.panel(Color(0.08,0.13,0.12,0.94), VisualSystem.GOLD, 14, 0, 1))
+
+    var icon := UiIcon.new()
+    button.add_child(icon)
+    icon.name = "Icon"
+    var icon_kind: String = action
+    match action:
+        "forge":
+            icon_kind = "forge"
+        "arsenal":
+            icon_kind = "arsenal"
+        "goals":
+            icon_kind = "trophy"
+        "quests":
+            icon_kind = "quest"
+        "contracts":
+            icon_kind = "contract"
+        "chronicle":
+            icon_kind = "star"
+        "map":
+            icon_kind = "map"
+    icon.configure(icon_kind, VisualSystem.TEXT_SOFT, 0.70)
+    icon.position = Vector2(7, 6)
     button.pressed.connect(_emit_action.bind(action))
 
 func _button_style(bg: Color, border: Color) -> StyleBoxFlat:
@@ -131,54 +151,53 @@ func _emit_action(action: String) -> void:
 
 func _layout_overlay() -> void:
     var width: float = maxf(size.x, 320.0)
-    var height: float = maxf(size.y, 455.0)
-    title_label.position = Vector2(12, 10)
-    title_label.size = Vector2(width - 24.0, 22)
-    meta_label.position = Vector2(12, 32)
-    meta_label.size = Vector2(width - 24.0, 18)
+    var height: float = maxf(size.y, 360.0)
+    title_label.position = Vector2(12, 8)
+    title_label.size = Vector2(width - 24.0, 20)
+    meta_label.position = Vector2(12, 28)
+    meta_label.size = Vector2(width - 24.0, 15)
 
-    weapon_label.position = Vector2(width * 0.5 - 88.0, height - 54.0)
-    weapon_label.size = Vector2(176, 18)
-    weapon_label.add_theme_font_size_override("font_size", 8)
+    weapon_label.position = Vector2(width * 0.5 - 80.0, height - 28.0)
+    weapon_label.size = Vector2(160, 15)
 
     var chronicle: Button = action_buttons.get("chronicle") as Button
     if chronicle != null:
-        chronicle.position = Vector2(width * 0.50 - 38.0, 56.0)
-        chronicle.size = Vector2(76, 22)
+        chronicle.position = Vector2(width * 0.50 - 14.0, 48.0)
+        chronicle.size = Vector2(28, 28)
 
     var forge: Button = action_buttons.get("forge") as Button
     if forge != null:
-        forge.position = Vector2(width * 0.27 - 34.0, height - 128.0)
-        forge.size = Vector2(68, 24)
+        forge.position = Vector2(width * 0.27 - 14.0, height - 116.0)
+        forge.size = Vector2(28, 28)
 
     var arsenal: Button = action_buttons.get("arsenal") as Button
     if arsenal != null:
-        arsenal.position = Vector2(width * 0.73 - 37.0, height - 128.0)
-        arsenal.size = Vector2(74, 24)
+        arsenal.position = Vector2(width * 0.73 - 14.0, height - 116.0)
+        arsenal.size = Vector2(28, 28)
 
     var goals: Button = action_buttons.get("goals") as Button
     if goals != null:
-        goals.position = Vector2(width * 0.50 - 35.0, 181.0)
-        goals.size = Vector2(70, 23)
+        goals.position = Vector2(width * 0.50 - 14.0, 155.0)
+        goals.size = Vector2(28, 28)
 
     var quests: Button = action_buttons.get("quests") as Button
     if quests != null:
-        quests.position = Vector2(width * 0.14 - 35.0, height - 187.0)
-        quests.size = Vector2(70, 23)
+        quests.position = Vector2(width * 0.14 - 14.0, height - 166.0)
+        quests.size = Vector2(28, 28)
 
     var contracts: Button = action_buttons.get("contracts") as Button
     if contracts != null:
-        contracts.position = Vector2(width * 0.86 - 39.0, height - 187.0)
-        contracts.size = Vector2(78, 23)
+        contracts.position = Vector2(width * 0.86 - 14.0, height - 166.0)
+        contracts.size = Vector2(28, 28)
 
     var map: Button = action_buttons.get("map") as Button
     if map != null:
-        map.position = Vector2(width * 0.88 - 31.0, height - 113.0)
-        map.size = Vector2(62, 24)
+        map.position = Vector2(width * 0.88 - 14.0, height - 100.0)
+        map.size = Vector2(28, 28)
 
 func _draw() -> void:
     var width: float = maxf(size.x, 320.0)
-    var height: float = maxf(size.y, 455.0)
+    var height: float = maxf(size.y, 360.0)
     var hearth_y: float = height - 155.0
     _draw_background(width, height)
     _draw_path(width)
@@ -256,7 +275,7 @@ func _draw_background_tree(pos: Vector2, scale_value: float) -> void:
     draw_circle(pos + Vector2(10, 8) * scale_value, 14.0 * scale_value, Color(0.10, 0.23, 0.16, 0.72))
 
 func _draw_path(width: float) -> void:
-    var height: float = maxf(size.y, 455.0)
+    var height: float = maxf(size.y, 360.0)
     var center: float = width * 0.5
     var hearth_y: float = height - 150.0
     var path := PackedVector2Array([
@@ -423,7 +442,7 @@ func _draw_trophies(width: float) -> void:
             draw_arc(pos, 13.0, 3.5, 5.9, 16, Color("f2b46e"), 2.0)
 
 func _draw_palisade(width: float) -> void:
-    var height: float = maxf(size.y, 455.0)
+    var height: float = maxf(size.y, 360.0)
     var base_y: float = height - 76.0
     for i: int in range(14):
         var x: float = 12.0 + float(i) * ((width - 24.0) / 13.0)
@@ -447,7 +466,7 @@ func _draw_watchtower(pos: Vector2) -> void:
     draw_line(pos + Vector2(-18, 11), pos + Vector2(18, 11), Color("6e5136"), 4.0)
 
 func _draw_stronghold(width: float) -> void:
-    var height: float = maxf(size.y, 455.0)
+    var height: float = maxf(size.y, 360.0)
     var center: Vector2 = Vector2(width * 0.50, height - 220.0)
     draw_rect(Rect2(center + Vector2(-59, -44), Vector2(118, 57)), Color("474944"))
     draw_rect(Rect2(center + Vector2(-67, -53), Vector2(24, 68)), Color("3b403d"))
@@ -476,7 +495,7 @@ func _draw_wanderer(pos: Vector2) -> void:
     draw_rect(Rect2(pos + Vector2(2, 10), Vector2(4, 9)), Color("28343d"))
 
 func _draw_residents(width: float) -> void:
-    var height: float = maxf(size.y, 455.0)
+    var height: float = maxf(size.y, 360.0)
     var named_positions: Dictionary = {
         "mira":Vector2(width * 0.34, height - 104.0),
         "thorn":Vector2(width * 0.66, height - 102.0)

@@ -7,7 +7,7 @@ func _show_home() -> void:
 
     var camp: CampView = CampViewScene.instantiate() as CampView
     body.add_child(camp)
-    camp.custom_minimum_size = Vector2(0, 455)
+    camp.custom_minimum_size = Vector2(0, 392)
     camp.action_requested.connect(_on_camp_action)
 
     selected_biome = clampi(selected_biome, 0, GameRules.BIOMES.size() - 1)
@@ -15,85 +15,122 @@ func _show_home() -> void:
     var weapon_id: String = str(GameState.data.get("selected_weapon", "axes"))
     var weapon: Dictionary = WeaponRules.profile(weapon_id)
     var relic_count: int = _camp_relic_count()
+    var chapter_one_complete: bool = GameState.chapter_one_complete()
 
-    var story_panel := _panel(body)
-    var story_box := VBoxContainer.new()
-    story_panel.add_child(story_box)
-    story_box.add_theme_constant_override("separation", 3)
+    # Story is a ribbon, not another large dashboard card.
+    var story := _panel(body)
+    var story_row := HBoxContainer.new()
+    story.add_child(story_row)
+    story_row.add_theme_constant_override("separation", 8)
+
+    var story_icon := UiIcon.new()
+    story_row.add_child(story_icon)
+    story_icon.configure("star", VisualSystem.GOLD_BRIGHT, 0.76)
+
+    var story_copy := VBoxContainer.new()
+    story_row.add_child(story_copy)
+    story_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    story_copy.add_theme_constant_override("separation", 1)
 
     var chapter := Label.new()
-    story_box.add_child(chapter)
-    var chapter_one_complete: bool = GameState.chapter_one_complete()
+    story_copy.add_child(chapter)
     chapter.text = LoreRules.chapter_title(chapter_one_complete)
     chapter.add_theme_font_size_override("font_size", 9)
-    chapter.add_theme_color_override("font_color", Color("d0ac68"))
+    chapter.add_theme_color_override("font_color", VisualSystem.GOLD_BRIGHT)
 
     var whisper := Label.new()
-    story_box.add_child(whisper)
+    story_copy.add_child(whisper)
     whisper.text = LoreRules.chapter_promise(true) if chapter_one_complete else LoreRules.camp_whisper(relic_count)
     whisper.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    whisper.add_theme_font_size_override("font_size", 10)
-    whisper.add_theme_color_override("font_color", Color("c5cec9"))
+    whisper.add_theme_font_size_override("font_size", 8)
+    whisper.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
 
-    var chronicle_text: String = "ХРОНИКА · ГЛАВА II" if chapter_one_complete else ("ХРОНИКА · ФИНАЛ ГЛАВЫ I" if GameState.chapter_one_ready() else "ОТКРЫТЬ ХРОНИКУ")
-    var chronicle_button := _button(body, chronicle_text, false)
-    chronicle_button.custom_minimum_size = Vector2(0, 38)
-    chronicle_button.pressed.connect(_show_chronicle)
+    var chronicle := Button.new()
+    story_row.add_child(chronicle)
+    chronicle.text = "ХРОНИКА"
+    chronicle.custom_minimum_size = Vector2(72, 34)
+    chronicle.focus_mode = Control.FOCUS_NONE
+    chronicle.add_theme_font_size_override("font_size", 7)
+    chronicle.add_theme_stylebox_override("normal", VisualSystem.panel(VisualSystem.SURFACE_2, VisualSystem.BORDER_SOFT, 5, 6, 1))
+    chronicle.add_theme_stylebox_override("pressed", VisualSystem.panel(VisualSystem.SURFACE_3, VisualSystem.GOLD, 5, 6, 1))
+    chronicle.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
+    chronicle.pressed.connect(_show_chronicle)
 
-    var quest_button := _button(body, "ДОСКА ЗАДАНИЙ · %d АКТИВНЫХ" % QuestDirector.active_quests().size(), false)
-    quest_button.custom_minimum_size = Vector2(0, 40)
-    quest_button.pressed.connect(_show_quests)
-
+    # One departure surface contains the information needed to leave.
     var departure := _panel(body)
     var departure_box := VBoxContainer.new()
     departure.add_child(departure_box)
     departure_box.add_theme_constant_override("separation", 5)
 
+    var departure_top := HBoxContainer.new()
+    departure_box.add_child(departure_top)
+    departure_top.add_theme_constant_override("separation", 7)
+
+    var route_copy := VBoxContainer.new()
+    departure_top.add_child(route_copy)
+    route_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    route_copy.add_theme_constant_override("separation", 0)
+
     var eyebrow := Label.new()
-    departure_box.add_child(eyebrow)
+    route_copy.add_child(eyebrow)
     eyebrow.text = "СЛЕДУЮЩИЙ ВЫХОД"
-    eyebrow.add_theme_font_size_override("font_size", 8)
-    eyebrow.add_theme_color_override("font_color", Color("c6a566"))
+    eyebrow.add_theme_font_size_override("font_size", 7)
+    eyebrow.add_theme_color_override("font_color", VisualSystem.TEXT_MUTED)
 
     var route := Label.new()
-    departure_box.add_child(route)
-    route.text = "%s   •   %s" % [
+    route_copy.add_child(route)
+    route.text = "%s · %s" % [
         str(biome_data.get("name", "Забытый лес")),
         str(weapon.get("name", "Топоры Странника"))
     ]
-    route.add_theme_font_size_override("font_size", 14)
-    route.add_theme_color_override("font_color", Color("f0e7d2"))
+    route.add_theme_font_size_override("font_size", 12)
+    route.add_theme_color_override("font_color", VisualSystem.TEXT)
     route.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
     var progress := Label.new()
-    departure_box.add_child(progress)
-    progress.text = "%s · Слава %d%s   •   Реликвии %d/3" % [
-        GameState.camp_level_name(),
+    departure_top.add_child(progress)
+    progress.text = "СЛАВА\n%d%s" % [
         GameState.camp_renown(),
-        "" if GameState.camp_level() >= 5 else "/%d" % GameState.camp_next_renown(),
-        relic_count
+        "" if GameState.camp_level() >= 5 else "/%d" % GameState.camp_next_renown()
     ]
+    progress.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
     progress.add_theme_font_size_override("font_size", 8)
-    progress.add_theme_color_override("font_color", Color(0.63, 0.69, 0.70))
+    progress.add_theme_color_override("font_color", VisualSystem.GOLD)
+
+    var contract_row := HBoxContainer.new()
+    departure_box.add_child(contract_row)
+    contract_row.add_theme_constant_override("separation", 6)
+
+    var contract_icon := UiIcon.new()
+    contract_row.add_child(contract_icon)
+    contract_icon.configure("contract", VisualSystem.GOLD, 0.64)
 
     var active_contract: Dictionary = GameState.selected_contract()
     var contract_line := Label.new()
-    departure_box.add_child(contract_line)
+    contract_row.add_child(contract_line)
+    contract_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     if active_contract.is_empty():
-        contract_line.text = "КОНТРАКТ НЕ ВЫБРАН · случайное полевое поручение не приносит славу лагерю"
-        contract_line.add_theme_color_override("font_color", Color("8b9495"))
+        contract_line.text = "Контракт не выбран"
+        contract_line.add_theme_color_override("font_color", VisualSystem.TEXT_MUTED)
     else:
-        contract_line.text = "КОНТРАКТ · %s · %s · +%d славы" % [
+        contract_line.text = "%s · %s · +%d славы" % [
             str(active_contract.get("name", "")),
             str(active_contract.get("risk", "СРЕДНИЙ")),
             int(active_contract.get("renown", 1))
         ]
-        contract_line.add_theme_color_override("font_color", Color("d7ba7b"))
+        contract_line.add_theme_color_override("font_color", Color("d6bd83"))
     contract_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     contract_line.add_theme_font_size_override("font_size", 8)
 
-    var contract_button := _button(departure_box, "ВЫБРАТЬ КОНТРАКТ", false)
-    contract_button.custom_minimum_size = Vector2(0, 38)
+    var contract_button := Button.new()
+    contract_row.add_child(contract_button)
+    contract_button.text = "ВЫБРАТЬ"
+    contract_button.custom_minimum_size = Vector2(66, 32)
+    contract_button.focus_mode = Control.FOCUS_NONE
+    contract_button.add_theme_font_size_override("font_size", 7)
+    contract_button.add_theme_stylebox_override("normal", VisualSystem.panel(VisualSystem.SURFACE_2, VisualSystem.BORDER_SOFT, 5, 5, 1))
+    contract_button.add_theme_stylebox_override("pressed", VisualSystem.panel(VisualSystem.SURFACE_3, VisualSystem.GOLD, 5, 5, 1))
+    contract_button.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
     contract_button.pressed.connect(_show_contracts)
 
     var play := _button(departure_box, "В ЭКСПЕДИЦИЮ", true)
@@ -104,85 +141,87 @@ func _show_home() -> void:
     if not notices.is_empty():
         var notice := Label.new()
         body.add_child(notice)
-        notice.text = "НОВОЕ В ЛАГЕРЕ: " + str(notices[0])
+        notice.text = str(notices[0])
         notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
         notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         notice.add_theme_font_size_override("font_size", 8)
-        notice.add_theme_color_override("font_color", Color("e1bf76"))
+        notice.add_theme_color_override("font_color", Color("cdb475"))
 
 func _show_arsenal() -> void:
     _clear_body()
-    _section("Арсенал лагеря", "Оружие меняет не только цифры, но дистанцию, ритм и способ держать пространство.")
+    _section("Арсенал", "Выбирай стиль боя, а не просто большее число.")
 
     var owned: Array = GameState.data.get("weapons_owned", ["axes"])
     var selected_id: String = str(GameState.data.get("selected_weapon", "axes"))
     var selected_profile: Dictionary = WeaponRules.profile(selected_id)
+    var mastery_level: int = GameState.weapon_mastery_level(selected_id)
 
     var hero_panel := _panel(body)
     var hero_box := VBoxContainer.new()
     hero_panel.add_child(hero_box)
-    hero_box.add_theme_constant_override("separation", 6)
+    hero_box.add_theme_constant_override("separation", 4)
 
     var preview := WeaponPreview.new()
     hero_box.add_child(preview)
+    preview.custom_minimum_size = Vector2(0, 138)
     preview.configure(selected_id)
 
+    var title_row := HBoxContainer.new()
+    hero_box.add_child(title_row)
+    title_row.add_theme_constant_override("separation", 6)
+
     var selected_title := Label.new()
-    hero_box.add_child(selected_title)
+    title_row.add_child(selected_title)
+    selected_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     selected_title.text = str(selected_profile.get("name", "Оружие")).to_upper()
-    selected_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    selected_title.add_theme_font_size_override("font_size", 18)
-    selected_title.add_theme_color_override("font_color", Color("f0dfbd"))
+    selected_title.add_theme_font_size_override("font_size", 15)
+    selected_title.add_theme_color_override("font_color", VisualSystem.TEXT)
+
+    var mastery := Label.new()
+    title_row.add_child(mastery)
+    mastery.text = GameState.weapon_mastery_stars(selected_id)
+    mastery.add_theme_font_size_override("font_size", 9)
+    mastery.add_theme_color_override("font_color", VisualSystem.GOLD_BRIGHT)
+
+    var identity := Label.new()
+    hero_box.add_child(identity)
+    identity.text = "%s · %s" % [
+        str(selected_profile.get("identity", "")),
+        str(selected_profile.get("signature", ""))
+    ]
+    identity.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    identity.add_theme_font_size_override("font_size", 9)
+    identity.add_theme_color_override("font_color", Color("d5bc83"))
 
     var selected_desc := Label.new()
     hero_box.add_child(selected_desc)
     selected_desc.text = str(selected_profile.get("desc", ""))
-    selected_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     selected_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    selected_desc.add_theme_font_size_override("font_size", 10)
-    selected_desc.add_theme_color_override("font_color", Color("aeb8b9"))
+    selected_desc.add_theme_font_size_override("font_size", 8)
+    selected_desc.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
 
-    var identity := Label.new()
-    hero_box.add_child(identity)
-    identity.text = str(selected_profile.get("identity", "")).to_upper()
-    identity.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    identity.add_theme_font_size_override("font_size", 9)
-    identity.add_theme_color_override("font_color", Color("d2af6c"))
-
-    var signature := Label.new()
-    hero_box.add_child(signature)
-    signature.text = str(selected_profile.get("signature", ""))
-    signature.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    signature.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    signature.add_theme_font_size_override("font_size", 9)
-    signature.add_theme_color_override("font_color", Color("c7d0cc"))
-
-    var selected_mastery_level: int = GameState.weapon_mastery_level(selected_id)
-    var selected_mastery := Label.new()
-    hero_box.add_child(selected_mastery)
-    selected_mastery.text = "МАСТЕРСТВО %s" % GameState.weapon_mastery_stars(selected_id)
-    selected_mastery.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    selected_mastery.add_theme_font_size_override("font_size", 10)
-    selected_mastery.add_theme_color_override("font_color", Color("d8bd7b"))
+    var stat_line := Label.new()
+    hero_box.add_child(stat_line)
+    stat_line.text = _weapon_stats_text(selected_profile)
+    stat_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    stat_line.add_theme_font_size_override("font_size", 8)
+    stat_line.add_theme_color_override("font_color", VisualSystem.TEXT_MUTED)
 
     var mastery_effect := Label.new()
     hero_box.add_child(mastery_effect)
-    mastery_effect.text = "%s\nСледующее: %s" % [
-        WeaponRules.weapon_mastery_bonus_text(selected_id, selected_mastery_level),
-        WeaponRules.mastery_next_text(selected_id, selected_mastery_level)
+    mastery_effect.text = "%s · Далее: %s" % [
+        WeaponRules.weapon_mastery_bonus_text(selected_id, mastery_level),
+        WeaponRules.mastery_next_text(selected_id, mastery_level)
     ]
-    mastery_effect.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     mastery_effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    mastery_effect.add_theme_font_size_override("font_size", 8)
-    mastery_effect.add_theme_color_override("font_color", Color("98a6a5"))
-
-    _add_weapon_meters(hero_box, selected_profile)
+    mastery_effect.add_theme_font_size_override("font_size", 7)
+    mastery_effect.add_theme_color_override("font_color", Color("8f9b99"))
 
     var unlock_hints: Dictionary = {
-        "axes": "Доступно с начала",
-        "spear": "Победи Лесного Хранителя",
-        "hammer": "Победи Ледяного Стража",
-        "twin_blades": "Победи Пепельного Тирана"
+        "axes":"Доступно с начала",
+        "spear":"Победи Лесного Хранителя",
+        "hammer":"Победи Ледяного Стража",
+        "twin_blades":"Победи Пепельного Тирана"
     }
 
     for weapon_id: String in WeaponRules.ordered_ids():
@@ -191,71 +230,80 @@ func _show_arsenal() -> void:
         var selected: bool = weapon_id == selected_id
 
         var panel := _panel(body)
-        var box := VBoxContainer.new()
-        panel.add_child(box)
-        box.add_theme_constant_override("separation", 4)
-
-        var top := HBoxContainer.new()
-        box.add_child(top)
-
-        var title := Label.new()
-        top.add_child(title)
-        title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        title.text = str(profile.get("name", weapon_id))
-        title.add_theme_font_size_override("font_size", 14)
-        title.add_theme_color_override("font_color", Color("f0e8d8"))
-
-        var state := Label.new()
-        top.add_child(state)
-        state.add_theme_font_size_override("font_size", 8)
         if selected:
-            state.text = "ВЫБРАНО"
-            state.add_theme_color_override("font_color", Color("8fd5b0"))
-        elif is_owned:
-            state.text = "ОТКРЫТО"
-            state.add_theme_color_override("font_color", Color("d7c28e"))
-        else:
-            state.text = "ЗАКРЫТО"
-            state.add_theme_color_override("font_color", Color("747d80"))
+            panel.add_theme_stylebox_override("panel", VisualSystem.panel(Color("18231f"), Color(VisualSystem.GOLD,0.48), 5, 9, 1))
+        var row := HBoxContainer.new()
+        panel.add_child(row)
+        row.add_theme_constant_override("separation", 8)
+
+        var mini := WeaponPreview.new()
+        row.add_child(mini)
+        mini.custom_minimum_size = Vector2(74, 66)
+        mini.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+        mini.configure(weapon_id)
+
+        var copy := VBoxContainer.new()
+        row.add_child(copy)
+        copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        copy.add_theme_constant_override("separation", 1)
+
+        var name := Label.new()
+        copy.add_child(name)
+        name.text = str(profile.get("name", weapon_id)).to_upper()
+        name.add_theme_font_size_override("font_size", 10)
+        name.add_theme_color_override("font_color", VisualSystem.TEXT if is_owned else VisualSystem.TEXT_MUTED)
 
         var role := Label.new()
-        box.add_child(role)
-        role.text = "%s · %s" % [
-            str(profile.get("identity", "")),
-            str(profile.get("signature", ""))
-        ]
-        role.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        role.add_theme_font_size_override("font_size", 9)
-        role.add_theme_color_override("font_color", Color("aeb7b9"))
+        copy.add_child(role)
+        role.text = str(profile.get("identity", ""))
+        role.add_theme_font_size_override("font_size", 8)
+        role.add_theme_color_override("font_color", Color("c8ae77") if is_owned else Color("6f787a"))
 
-        var stats_text := Label.new()
-        box.add_child(stats_text)
-        stats_text.text = _weapon_stats_text(profile)
-        stats_text.add_theme_font_size_override("font_size", 8)
-        stats_text.add_theme_color_override("font_color", Color("c6ae7c"))
+        var stats := Label.new()
+        copy.add_child(stats)
+        stats.text = _weapon_stats_text(profile)
+        stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        stats.add_theme_font_size_override("font_size", 7)
+        stats.add_theme_color_override("font_color", Color("899597"))
 
-        if is_owned:
-            var mastery_level: int = GameState.weapon_mastery_level(weapon_id)
-            var mastery_line := Label.new()
-            box.add_child(mastery_line)
-            mastery_line.text = "МАСТЕРСТВО %s · %s" % [
-                GameState.weapon_mastery_stars(weapon_id),
-                WeaponRules.mastery_next_text(weapon_id, mastery_level)
-            ]
-            mastery_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-            mastery_line.add_theme_font_size_override("font_size", 8)
-            mastery_line.add_theme_color_override("font_color", Color("9b9480"))
+        var action_box := VBoxContainer.new()
+        row.add_child(action_box)
+        action_box.custom_minimum_size = Vector2(72, 0)
+        action_box.alignment = BoxContainer.ALIGNMENT_CENTER
 
-        if is_owned:
-            var select := _button(box, "ВЫБРАНО" if selected else "ВЫБРАТЬ ДЛЯ ЭКСПЕДИЦИИ", selected)
-            select.disabled = selected
-            select.pressed.connect(_select_weapon_from_camp.bind(weapon_id))
+        var state := Label.new()
+        action_box.add_child(state)
+        state.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        state.add_theme_font_size_override("font_size", 7)
+        if selected:
+            state.text = "ВЫБРАНО"
+            state.add_theme_color_override("font_color", VisualSystem.GREEN)
+        elif is_owned:
+            state.text = GameState.weapon_mastery_stars(weapon_id)
+            state.add_theme_color_override("font_color", VisualSystem.GOLD)
         else:
+            state.text = "ЗАКРЫТО"
+            state.add_theme_color_override("font_color", VisualSystem.TEXT_MUTED)
+
+        if is_owned and not selected:
+            var select := Button.new()
+            action_box.add_child(select)
+            select.text = "ВЫБРАТЬ"
+            select.custom_minimum_size = Vector2(70, 34)
+            select.focus_mode = Control.FOCUS_NONE
+            select.add_theme_font_size_override("font_size", 7)
+            select.add_theme_stylebox_override("normal", VisualSystem.panel(VisualSystem.SURFACE_2, VisualSystem.BORDER, 5, 5, 1))
+            select.add_theme_stylebox_override("pressed", VisualSystem.panel(VisualSystem.SURFACE_3, VisualSystem.GOLD, 5, 5, 1))
+            select.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
+            select.pressed.connect(_select_weapon_from_camp.bind(weapon_id))
+        elif not is_owned:
             var locked := Label.new()
-            box.add_child(locked)
+            action_box.add_child(locked)
             locked.text = str(unlock_hints.get(weapon_id, "Победи Хранителя"))
-            locked.add_theme_font_size_override("font_size", 9)
-            locked.add_theme_color_override("font_color", Color("777f81"))
+            locked.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+            locked.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+            locked.add_theme_font_size_override("font_size", 6)
+            locked.add_theme_color_override("font_color", Color("687274"))
 
 func _show_map() -> void:
     _clear_body()
@@ -679,117 +727,161 @@ func _show_quests() -> void:
     trophies.pressed.connect(_show_goals)
 
 func _resident_quest_card(resident_id: String, resident: Dictionary) -> void:
-    var resident_panel := _panel(body)
-    var resident_box := VBoxContainer.new()
-    resident_panel.add_child(resident_box)
-    resident_box.add_theme_constant_override("separation", 5)
+    var panel := _panel(body)
+    var box := VBoxContainer.new()
+    panel.add_child(box)
+    box.add_theme_constant_override("separation", 4)
+
+    var top := HBoxContainer.new()
+    box.add_child(top)
+    top.add_theme_constant_override("separation", 6)
+
+    var resident_icon := UiIcon.new()
+    top.add_child(resident_icon)
+    resident_icon.configure("camp", VisualSystem.GREEN if resident_id == "mira" else VisualSystem.GOLD, 0.66)
 
     var resident_title := Label.new()
-    resident_box.add_child(resident_title)
-    resident_title.text = "%s %s · ДОВЕРИЕ %d/%d" % [
-        ResidentRules.role_for(resident_id),
-        ResidentRules.name_for(resident_id).to_upper(),
-        int(resident.get("trust", 0)),
-        ResidentRules.max_trust(resident_id)
-    ]
-    resident_title.add_theme_font_size_override("font_size", 11)
-    resident_title.add_theme_color_override("font_color", Color("e6c98c"))
+    top.add_child(resident_title)
+    resident_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    resident_title.text = "%s · %s" % [ResidentRules.name_for(resident_id).to_upper(), ResidentRules.role_for(resident_id)]
+    resident_title.add_theme_font_size_override("font_size", 10)
+    resident_title.add_theme_color_override("font_color", VisualSystem.TEXT)
 
-    var role_desc := Label.new()
-    resident_box.add_child(role_desc)
-    role_desc.text = ResidentRules.description_for(resident_id)
-    role_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    role_desc.add_theme_font_size_override("font_size", 8)
-    role_desc.add_theme_color_override("font_color", Color("889597"))
+    var trust := Label.new()
+    top.add_child(trust)
+    trust.text = "%d/%d" % [int(resident.get("trust",0)), ResidentRules.max_trust(resident_id)]
+    trust.add_theme_font_size_override("font_size", 8)
+    trust.add_theme_color_override("font_color", VisualSystem.GOLD_BRIGHT)
 
     var resident_quest: Dictionary = QuestDirector.resident_quest_state(resident_id)
     if resident_quest.is_empty():
         return
 
-    var resident_desc := Label.new()
-    resident_box.add_child(resident_desc)
-    resident_desc.text = str(resident_quest.get("desc", ""))
-    resident_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    resident_desc.add_theme_font_size_override("font_size", 9)
-    resident_desc.add_theme_color_override("font_color", Color("aeb8b9"))
-
-    if not bool(resident_quest.get("complete", false)):
-        var rq_goal: int = maxi(1, int(resident_quest.get("goal", 1)))
-        var rq_progress: int = mini(rq_goal, int(resident_quest.get("progress", 0)))
-
-        var row := HBoxContainer.new()
-        resident_box.add_child(row)
-        row.add_theme_constant_override("separation", 6)
-
-        var resident_progress := Label.new()
-        row.add_child(resident_progress)
-        resident_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        resident_progress.text = "%s · %d/%d" % [str(resident_quest.get("title", "ПОРУЧЕНИЕ")), rq_progress, rq_goal]
-        resident_progress.add_theme_font_size_override("font_size", 9)
-        resident_progress.add_theme_color_override("font_color", Color("c9d2cf"))
-
-        var reward_type: String = str(resident_quest.get("reward_type", "coins"))
-        var reward_text: String = "%d ОСК." % int(resident_quest.get("reward", 0)) if reward_type == "shards" else "%d МОН." % int(resident_quest.get("reward", 0))
-        var claim := _button(row, "ЗАБРАТЬ · " + reward_text if bool(resident_quest.get("ready", false)) else reward_text, false)
-        claim.custom_minimum_size = Vector2(124, 40)
-        claim.disabled = not bool(resident_quest.get("ready", false))
-        claim.pressed.connect(_claim_resident_quest.bind(resident_id))
-    else:
+    if bool(resident_quest.get("complete", false)):
         var completed := Label.new()
-        resident_box.add_child(completed)
-        completed.text = "Цепочка завершена. %s остаётся постоянным жителем лагеря." % ResidentRules.name_for(resident_id)
+        box.add_child(completed)
+        completed.text = "Цепочка завершена · постоянный житель Последнего Очага"
         completed.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        completed.add_theme_font_size_override("font_size", 9)
-        completed.add_theme_color_override("font_color", Color("8fd5b0"))
+        completed.add_theme_font_size_override("font_size", 8)
+        completed.add_theme_color_override("font_color", VisualSystem.GREEN)
+        return
+
+    var title := Label.new()
+    box.add_child(title)
+    title.text = str(resident_quest.get("title","ПОРУЧЕНИЕ"))
+    title.add_theme_font_size_override("font_size", 9)
+    title.add_theme_color_override("font_color", Color("d4bc86"))
+
+    var desc := Label.new()
+    box.add_child(desc)
+    desc.text = str(resident_quest.get("desc",""))
+    desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    desc.add_theme_font_size_override("font_size", 8)
+    desc.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
+
+    var goal: int = maxi(1,int(resident_quest.get("goal",1)))
+    var progress: int = mini(goal,int(resident_quest.get("progress",0)))
+    var bar := ProgressBar.new()
+    box.add_child(bar)
+    bar.custom_minimum_size = Vector2(0,5)
+    bar.show_percentage = false
+    bar.max_value = goal
+    bar.value = progress
+    _style_compact_progress(bar, VisualSystem.GREEN if resident_id == "mira" else VisualSystem.GOLD)
+
+    var bottom := HBoxContainer.new()
+    box.add_child(bottom)
+    var progress_text := Label.new()
+    bottom.add_child(progress_text)
+    progress_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    progress_text.text = "%d / %d" % [progress,goal]
+    progress_text.add_theme_font_size_override("font_size", 8)
+    progress_text.add_theme_color_override("font_color", VisualSystem.TEXT_MUTED)
+
+    var reward_type: String = str(resident_quest.get("reward_type","coins"))
+    var reward_text: String = "%d ОСК." % int(resident_quest.get("reward",0)) if reward_type=="shards" else "%d МОН." % int(resident_quest.get("reward",0))
+    var claim := _button(bottom, "ЗАБРАТЬ · "+reward_text if bool(resident_quest.get("ready",false)) else reward_text, false)
+    claim.custom_minimum_size = Vector2(108,34)
+    claim.disabled = not bool(resident_quest.get("ready",false))
+    claim.pressed.connect(_claim_resident_quest.bind(resident_id))
 
 func _daily_quest_card(quest: Dictionary) -> void:
     var panel := _panel(body)
     var box := VBoxContainer.new()
     panel.add_child(box)
-    box.add_theme_constant_override("separation", 5)
+    box.add_theme_constant_override("separation", 4)
 
     var top := HBoxContainer.new()
     box.add_child(top)
+    top.add_theme_constant_override("separation", 6)
+
+    var icon := UiIcon.new()
+    top.add_child(icon)
+    icon.configure("quest", VisualSystem.GOLD, 0.66)
 
     var title := Label.new()
     top.add_child(title)
     title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    title.text = str(quest.get("title", "ЗАДАНИЕ"))
-    title.add_theme_font_size_override("font_size", 12)
-    title.add_theme_color_override("font_color", Color("efe5d0"))
+    title.text = str(quest.get("title","ЗАДАНИЕ"))
+    title.add_theme_font_size_override("font_size", 10)
+    title.add_theme_color_override("font_color", VisualSystem.TEXT)
 
     var category := Label.new()
     top.add_child(category)
-    category.text = str(quest.get("category", "")).to_upper()
+    category.text = str(quest.get("category","")).to_upper()
     category.add_theme_font_size_override("font_size", 7)
-    category.add_theme_color_override("font_color", Color("9a8761"))
+    category.add_theme_color_override("font_color", Color("9f8b63"))
 
     var desc := Label.new()
     box.add_child(desc)
-    desc.text = str(quest.get("desc", ""))
+    desc.text = str(quest.get("desc",""))
     desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    desc.add_theme_font_size_override("font_size", 9)
-    desc.add_theme_color_override("font_color", Color("aeb7b9"))
+    desc.add_theme_font_size_override("font_size", 8)
+    desc.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
 
-    var goal: int = maxi(1, int(quest.get("goal", 1)))
-    var progress: int = mini(goal, int(quest.get("progress", 0)))
+    var goal: int = maxi(1,int(quest.get("goal",1)))
+    var progress: int = mini(goal,int(quest.get("progress",0)))
 
-    var progress_row := HBoxContainer.new()
-    box.add_child(progress_row)
+    var bar := ProgressBar.new()
+    box.add_child(bar)
+    bar.custom_minimum_size = Vector2(0,5)
+    bar.show_percentage = false
+    bar.max_value = goal
+    bar.value = progress
+    _style_compact_progress(bar, VisualSystem.GOLD)
+
+    var bottom := HBoxContainer.new()
+    box.add_child(bottom)
 
     var progress_text := Label.new()
-    progress_row.add_child(progress_text)
+    bottom.add_child(progress_text)
     progress_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    progress_text.text = "%d / %d" % [progress, goal]
-    progress_text.add_theme_font_size_override("font_size", 10)
-    progress_text.add_theme_color_override("font_color", Color("c9d2cf"))
+    progress_text.text = "%d / %d" % [progress,goal]
+    progress_text.add_theme_font_size_override("font_size", 8)
+    progress_text.add_theme_color_override("font_color", VisualSystem.TEXT_MUTED)
 
-    var reward_type: String = str(quest.get("reward_type", "coins"))
-    var reward_text: String = "%d ОСК." % int(quest.get("reward", 0)) if reward_type == "shards" else "%d МОН." % int(quest.get("reward", 0))
-    var claim := _button(progress_row, "ЗАБРАТЬ · " + reward_text if bool(quest.get("ready", false)) else reward_text, false)
-    claim.custom_minimum_size = Vector2(126, 40)
-    claim.disabled = not bool(quest.get("ready", false))
-    claim.pressed.connect(_claim_daily_quest.bind(str(quest.get("id", ""))))
+    var reward_type: String = str(quest.get("reward_type","coins"))
+    var reward_text: String = "%d ОСК." % int(quest.get("reward",0)) if reward_type=="shards" else "%d МОН." % int(quest.get("reward",0))
+    var claim := _button(bottom, "ЗАБРАТЬ · "+reward_text if bool(quest.get("ready",false)) else reward_text, false)
+    claim.custom_minimum_size = Vector2(108,34)
+    claim.disabled = not bool(quest.get("ready",false))
+    claim.pressed.connect(_claim_daily_quest.bind(str(quest.get("id",""))))
+
+func _style_compact_progress(bar: ProgressBar, accent: Color) -> void:
+    var track := StyleBoxFlat.new()
+    track.bg_color = Color("20292c")
+    track.corner_radius_top_left = 2
+    track.corner_radius_top_right = 2
+    track.corner_radius_bottom_left = 2
+    track.corner_radius_bottom_right = 2
+    var fill := StyleBoxFlat.new()
+    fill.bg_color = accent
+    fill.corner_radius_top_left = 2
+    fill.corner_radius_top_right = 2
+    fill.corner_radius_bottom_left = 2
+    fill.corner_radius_bottom_right = 2
+    bar.add_theme_stylebox_override("background", track)
+    bar.add_theme_stylebox_override("fill", fill)
 
 func _claim_resident_quest(resident_id: String) -> void:
     var result: Dictionary = QuestDirector.claim_resident(resident_id)
