@@ -7,6 +7,7 @@ var base_position: Vector2 = Vector2.ZERO
 var biome: Dictionary = {}
 var biome_index: int = 0
 var night: bool = false
+var night_mix: float = 0.0
 
 func setup(rect: Rect2, size: Vector2, hearth: Vector2, biome_data: Dictionary, index: int, is_night: bool) -> void:
     chunk_rect = rect
@@ -15,15 +16,25 @@ func setup(rect: Rect2, size: Vector2, hearth: Vector2, biome_data: Dictionary, 
     biome = biome_data.duplicate(true)
     biome_index = index
     night = is_night
+    night_mix = 1.0 if is_night else 0.0
     position = rect.position
     z_index = -20
+    set_process(false)
     queue_redraw()
 
 func set_night(value: bool) -> void:
-    if night == value:
+    if night == value and absf(night_mix - (1.0 if value else 0.0)) < 0.001:
         return
     night = value
+    set_process(true)
+
+func _process(delta: float) -> void:
+    var target: float = 1.0 if night else 0.0
+    night_mix = move_toward(night_mix, target, delta * 0.82)
     queue_redraw()
+    if absf(night_mix - target) < 0.001:
+        night_mix = target
+        set_process(false)
 
 func _draw() -> void:
     if chunk_rect.size.x <= 0.0 or chunk_rect.size.y <= 0.0:
@@ -37,11 +48,13 @@ func _draw() -> void:
     _draw_world_edge_segment()
 
 func _draw_gradient() -> void:
-    var top: Color = Color(str(biome.get("sky", "80936c")))
-    var bottom: Color = Color(str(biome.get("ground", "5e795c")))
-    if night:
-        top = Color("20313a") if biome_index < 2 else Color("34242a")
-        bottom = Color("30483d") if biome_index < 2 else Color("57322f")
+    var day_top: Color = Color(str(biome.get("sky", "80936c")))
+    var day_bottom: Color = Color(str(biome.get("ground", "5e795c")))
+    var night_top: Color = Color("20313a") if biome_index < 2 else Color("34242a")
+    var night_bottom: Color = Color("30483d") if biome_index < 2 else Color("57322f")
+
+    var top: Color = day_top.lerp(night_top, night_mix)
+    var bottom: Color = day_bottom.lerp(night_bottom, night_mix)
 
     var bands: int = 7
     var band_h: float = chunk_rect.size.y / float(bands)
@@ -129,22 +142,26 @@ func _draw_path_segment() -> void:
         Vector2(center_x + half1, local_y1),
         Vector2(center_x - half1, local_y1)
     ])
-    var path_color: Color = Color(0.54, 0.48, 0.31, 0.21) if biome_index != 1 else Color(0.57, 0.69, 0.68, 0.16)
-    if night:
-        path_color.a *= 0.82
+    var day_path: Color = Color(0.54, 0.48, 0.31, 0.21) if biome_index != 1 else Color(0.57, 0.69, 0.68, 0.16)
+    var night_path: Color = Color(day_path.r * 0.62, day_path.g * 0.62, day_path.b * 0.70, day_path.a * 0.82)
+    var path_color: Color = day_path.lerp(night_path, night_mix)
     draw_colored_polygon(points, path_color)
 
 func _draw_clearing_segment() -> void:
     if not chunk_rect.grow(130.0).has_point(base_position):
         return
-    var clearing: Color
+    var day_clearing: Color
+    var night_clearing: Color
     if biome_index == 1:
-        clearing = Color(0.63, 0.76, 0.74, 0.14) if not night else Color(0.28, 0.39, 0.42, 0.18)
+        day_clearing = Color(0.63, 0.76, 0.74, 0.14)
+        night_clearing = Color(0.28, 0.39, 0.42, 0.18)
     elif biome_index == 2:
-        clearing = Color(0.55, 0.38, 0.28, 0.18) if not night else Color(0.30, 0.19, 0.18, 0.20)
+        day_clearing = Color(0.55, 0.38, 0.28, 0.18)
+        night_clearing = Color(0.30, 0.19, 0.18, 0.20)
     else:
-        clearing = Color(0.68, 0.77, 0.48, 0.27) if not night else Color(0.39, 0.46, 0.32, 0.22)
-    draw_circle(base_position - chunk_rect.position, 116.0, clearing)
+        day_clearing = Color(0.68, 0.77, 0.48, 0.27)
+        night_clearing = Color(0.39, 0.46, 0.32, 0.22)
+    draw_circle(base_position - chunk_rect.position, 116.0, day_clearing.lerp(night_clearing, night_mix))
 
 func _draw_landmarks() -> void:
     var sx: int = int(floor(chunk_rect.position.x))
