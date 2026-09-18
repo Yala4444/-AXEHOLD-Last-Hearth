@@ -53,6 +53,8 @@ var blades_combo_cap_bonus: int = 0
 var blades_combo_step_bonus: float = 0.0
 var blades_combo_timeout_bonus: float = 0.0
 var weapon_cooldown_mult: float = 1.0
+var environment_speed_mult: float = 1.0
+var environment_speed_time: float = 0.0
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -130,6 +132,9 @@ func _physics_process(delta: float) -> void:
     block_flash = maxf(0.0, block_flash - delta * 3.6)
     perk_flash = maxf(0.0, perk_flash - delta * 2.0)
     weapon_action_time = maxf(0.0, weapon_action_time - delta)
+    environment_speed_time = maxf(0.0, environment_speed_time - delta)
+    if environment_speed_time <= 0.0:
+        environment_speed_mult = move_toward(environment_speed_mult, 1.0, delta * 2.5)
 
     var movement: Vector2 = Vector2.ZERO
     var analog_strength: float = 1.0
@@ -146,7 +151,7 @@ func _physics_process(delta: float) -> void:
         var direction: Vector2 = movement.normalized()
         if absf(direction.x) > 0.08:
             facing_x = signf(direction.x)
-        velocity = direction * move_speed * analog_strength
+        velocity = direction * move_speed * environment_speed_mult * analog_strength
         move_and_slide()
         if has_movement_bounds:
             global_position = Vector2(
@@ -167,6 +172,14 @@ func _physics_process(delta: float) -> void:
         rotation_speed *= 0.88
     angle += delta * rotation_speed
     queue_redraw()
+
+func apply_environment_slow(multiplier: float, duration: float) -> void:
+    environment_speed_mult = minf(environment_speed_mult, clampf(multiplier, 0.45, 1.0))
+    environment_speed_time = maxf(environment_speed_time, maxf(0.1, duration))
+
+func clear_environment_slow() -> void:
+    environment_speed_mult = 1.0
+    environment_speed_time = 0.0
 
 func trigger_weapon_action(direction: Vector2, duration: float = 0.24) -> void:
     if direction.length_squared() > 0.001:
