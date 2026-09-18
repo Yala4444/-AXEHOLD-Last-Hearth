@@ -186,4 +186,4 @@ func night_extra_enemies() -> int:
     return active_nests * 2
 
 func unresolved_nests() -> int:
-    return night_extra_enemies() / 2
+    return int(night_extra_enemies() / 2)
