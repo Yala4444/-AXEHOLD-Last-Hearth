@@ -52,6 +52,24 @@ func _spawn_initial_activities() -> void:
     if not bonus.is_empty():
         _spawn(bonus, 520.0, 1340.0, occupied)
 
+    # A selected Frontier Assignment always creates the content required to
+    # complete it, so the mission tests routing/time rather than RNG.
+    var assignment: Dictionary = FrontierRules.assignment(GameState.frontier_assignment_id())
+    var guarantee: String = str(assignment.get("guarantee", ""))
+    if guarantee == "signal_fire":
+        _spawn("signal_fire", 520.0, 1120.0, occupied)
+        _spawn("signal_fire", 720.0, 1320.0, occupied)
+    elif guarantee == "rare_ore":
+        _spawn("rare_ore", 560.0, 1160.0, occupied)
+        _spawn("rare_ore", 760.0, 1340.0, occupied)
+
+    # Thorn appears only after Chapter I. He turns the finale into playable
+    # follow-up content instead of a dead-end story card.
+    var residents: Dictionary = GameState.data.get("residents", {})
+    var thorn: Dictionary = residents.get("thorn", {})
+    if GameState.chapter_one_complete() and not bool(thorn.get("unlocked", false)):
+        _spawn("stranded_engineer", 760.0, 1340.0, occupied)
+
 func _pick_unique(pool: Array[String], selected: Dictionary) -> String:
     var candidates: Array[String] = []
     for kind: String in pool:
@@ -205,6 +223,8 @@ func _hint_for(activity: WorldActivity) -> String:
             return "Разлом памяти. Задержись рядом, чтобы услышать прошлое."
         "wounded_scout":
             return "Раненая разведчица. Помоги ей подняться и вернуться к Очагу."
+        "stranded_engineer":
+            return "Механик окружён сломанными деталями. Помоги Торну вернуться к Последнему Очагу."
     return ""
 
 func _show_altar(activity: WorldActivity) -> void:
@@ -250,14 +270,14 @@ func _on_hud_action(action: String) -> void:
 
 func _on_activity_resolved(activity: WorldActivity) -> void:
     activities_resolved += 1
-    QuestDirector.record("activity_resolved", 1, {"type":activity.activity_type, "biome":world.biome_index})
+    QuestDirector.record("activity_resolved", 1, {"type":activity.activity_type, "biome":world.biome_index, "wave":world.wave})
     if activity.activity_type == "nest":
         nests_destroyed += 1
-        QuestDirector.record("nest_destroyed", 1, {"biome":world.biome_index})
+        QuestDirector.record("nest_destroyed", 1, {"biome":world.biome_index, "wave":world.wave})
         _grant_nest_reward(activity)
     elif activity.activity_type == "old_hearth":
         hearths_relit += 1
-        QuestDirector.record("hearth_relit", 1, {"biome":world.biome_index})
+        QuestDirector.record("hearth_relit", 1, {"biome":world.biome_index, "wave":world.wave})
     Analytics.event("world_activity_resolved", {
         "type": activity.activity_type,
         "wave": world.wave,
@@ -320,7 +340,7 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         world.run_coins += 7
         if world.run_variation != null:
             world.run_variation.reduce_threat(1.1, "signal_fire")
-        QuestDirector.record("signal_fire", 1, {"biome":world.biome_index})
+        QuestDirector.record("signal_fire", 1, {"biome":world.biome_index, "wave":world.wave})
         world.hud.show_banner("СИГНАЛЬНЫЙ ОГОНЬ ГОРИТ", Color("efbd78"))
         world.hud.set_status("Маршрут отмечен. Угроза Тьмы снизилась.")
     elif activity.activity_type == "infected_cache":
@@ -341,6 +361,26 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         GameState.save()
         world.hud.show_banner("ЭХО ПРОШЛОГО", Color("aebbe0"))
         world.hud.set_status("В памяти мелькнул другой Очаг. Фрагмент сохранён в лагере.")
+    elif activity.activity_type == "stranded_engineer":
+        var engineer_residents: Dictionary = GameState.data.get("residents", {})
+        var thorn: Dictionary = engineer_residents.get("thorn", {"unlocked":false,"trust":0,"quest_step":0,"quest_progress":0})
+        if not bool(thorn.get("unlocked", false)):
+            thorn["unlocked"] = true
+            thorn["quest_progress"] = 0
+            engineer_residents["thorn"] = thorn
+            GameState.data["residents"] = engineer_residents
+            var engineer_notices: Array = GameState.data.get("meta_notices", [])
+            engineer_notices.append("В лагерь вернулся механик Торн. Его поручения связаны с Деталями и постройками II.")
+            GameState.data["meta_notices"] = engineer_notices
+            GameState.save()
+            QuestDirector.record("resident_rescued", 1, {"resident":"thorn","biome":world.biome_index,"wave":world.wave})
+            world.hud.show_banner("МЕХАНИК СПАСЁН", Color("d3b07b"))
+            world.hud.set_status("Торн вернётся в лагерь и откроет новую цепочку поручений.")
+        else:
+            world.add_mechanism_parts(1, activity.global_position)
+            world.run_coins += 10
+            world.hud.show_banner("ТОРН ЗАБРАЛ ДЕТАЛИ", Color("d3b07b"))
+            world.hud.set_status("+1 Деталь · +10 мон.")
     elif activity.activity_type == "wounded_scout":
         var residents: Dictionary = GameState.data.get("residents", {})
         var mira: Dictionary = residents.get("mira", {"unlocked":false,"trust":0,"quest_step":0,"quest_progress":0})
