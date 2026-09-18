@@ -62,24 +62,28 @@ func _build() -> void:
 
     var phase_panel := _panel(root, Color(0.035, 0.055, 0.060, 0.90), Color("485c63"))
     phase_panel.name = "PhasePanel"
-    phase_label = _make_label(phase_panel, "ДО НОЧИ 45 С", 9, Color("f2ead8"), HORIZONTAL_ALIGNMENT_CENTER)
+    var phase_content := Control.new()
+    phase_panel.add_child(phase_content)
+    phase_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+    phase_label = _make_label(phase_content, "ДО НОЧИ 45 С", 9, Color("f2ead8"), HORIZONTAL_ALIGNMENT_CENTER)
     phase_bar = ProgressBar.new()
-    phase_panel.add_child(phase_bar)
+    phase_content.add_child(phase_bar)
     phase_bar.show_percentage = false
     _style_progress(phase_bar, Color("1b272b"), Color("d4aa55"), 1)
 
     xp_bar = ProgressBar.new()
-    phase_panel.add_child(xp_bar)
+    phase_content.add_child(xp_bar)
     xp_bar.show_percentage = false
     _style_progress(xp_bar, Color("182126"), Color("7189bd"), 1)
 
     level_label = Label.new()
-    phase_panel.add_child(level_label)
+    phase_content.add_child(level_label)
     level_label.add_theme_font_size_override("font_size", 6)
     level_label.add_theme_color_override("font_color", Color("aab6d3"))
 
     wave_label = Label.new()
-    phase_panel.add_child(wave_label)
+    phase_content.add_child(wave_label)
     wave_label.add_theme_font_size_override("font_size", 6)
     wave_label.add_theme_color_override("font_color", Color("d0c4df"))
     wave_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -136,19 +140,25 @@ func _build() -> void:
     status_label = _make_label(status_panel, "", 8, Color("e6ece7"), HORIZONTAL_ALIGNMENT_CENTER)
     status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
-    build_panel = _panel(root, Color(0.032, 0.050, 0.050, 0.96), Color("66766d"))
+    build_panel = _panel(root, Color(0.032, 0.050, 0.050, 0.94), Color("66766d"))
     build_panel.visible = false
     build_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    build_title = _make_label(build_panel, "", 10, Color("f1d287"), HORIZONTAL_ALIGNMENT_LEFT)
-    build_effect = _make_label(build_panel, "", 8, Color("d9e1dc"), HORIZONTAL_ALIGNMENT_LEFT)
+    var build_content := Control.new()
+    build_panel.add_child(build_content)
+    build_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    build_title = _make_label(build_content, "", 9, Color("f1d287"), HORIZONTAL_ALIGNMENT_LEFT)
+    build_effect = _make_label(build_content, "", 7, Color("d9e1dc"), HORIZONTAL_ALIGNMENT_LEFT)
     build_effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    build_cost = _make_label(build_panel, "", 8, Color("e5b08d"), HORIZONTAL_ALIGNMENT_LEFT)
+    build_cost = _make_label(build_content, "", 7, Color("e5b08d"), HORIZONTAL_ALIGNMENT_LEFT)
 
     boss_panel = _panel(root, Color(0.10, 0.035, 0.045, 0.94), Color("7f4247"))
     boss_panel.visible = false
-    boss_label = _make_label(boss_panel, "ХРАНИТЕЛЬ", 9, Color("ffd6b4"), HORIZONTAL_ALIGNMENT_CENTER)
+    var boss_content := Control.new()
+    boss_panel.add_child(boss_content)
+    boss_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    boss_label = _make_label(boss_content, "ХРАНИТЕЛЬ", 9, Color("ffd6b4"), HORIZONTAL_ALIGNMENT_CENTER)
     boss_bar = ProgressBar.new()
-    boss_panel.add_child(boss_bar)
+    boss_content.add_child(boss_bar)
     boss_bar.show_percentage = false
     _style_progress(boss_bar, Color("311519"), Color("cb5b5d"), 1)
 
@@ -196,9 +206,9 @@ func _layout() -> void:
     var width: float = size.x
     var margin: float = 7.0
     var gap: float = 4.0
-    var pause_w: float = 32.0
-    var hp_w: float = 67.0
-    var base_w: float = 76.0
+    var pause_w: float = 30.0
+    var hp_w: float = 62.0
+    var base_w: float = 70.0
     var phase_w: float = width - margin * 2.0 - gap * 3.0 - pause_w - hp_w - base_w
 
     var hp_panel := root.get_node("HeroPanel") as PanelContainer
@@ -207,52 +217,52 @@ func _layout() -> void:
     var pause := root.get_node("PauseButton") as Button
     var storage_panel := root.get_node("StoragePanel") as PanelContainer
 
-    hp_panel.position = Vector2(margin, 7)
-    hp_panel.size = Vector2(hp_w, 34)
-    phase_panel.position = Vector2(margin + hp_w + gap, 7)
-    phase_panel.size = Vector2(phase_w, 34)
-    base_panel.position = Vector2(margin + hp_w + gap + phase_w + gap, 7)
-    base_panel.size = Vector2(base_w, 34)
-    pause.position = Vector2(width - margin - pause_w, 7)
-    pause.size = Vector2(pause_w, 34)
+    hp_panel.position = Vector2(margin, 6)
+    hp_panel.size = Vector2(hp_w, 31)
+    phase_panel.position = Vector2(margin + hp_w + gap, 6)
+    phase_panel.size = Vector2(phase_w, 31)
+    base_panel.position = Vector2(margin + hp_w + gap + phase_w + gap, 6)
+    base_panel.size = Vector2(base_w, 31)
+    pause.position = Vector2(width - margin - pause_w, 6)
+    pause.size = Vector2(pause_w, 31)
 
     phase_label.position = Vector2(4, 1)
-    phase_label.size = Vector2(phase_w - 8, 14)
-    phase_bar.position = Vector2(6, 18)
-    phase_bar.size = Vector2(phase_w - 12, 5)
-    xp_bar.position = Vector2(28, 27)
-    xp_bar.size = Vector2(maxf(28.0, phase_w - 36), 3)
-    level_label.position = Vector2(6, 24)
+    phase_label.size = Vector2(phase_w - 8, 13)
+    phase_bar.position = Vector2(6, 16)
+    phase_bar.size = Vector2(phase_w - 12, 4)
+    xp_bar.position = Vector2(28, 24)
+    xp_bar.size = Vector2(maxf(28.0, phase_w - 36), 2)
+    level_label.position = Vector2(6, 21)
     level_label.size = Vector2(23, 8)
-    wave_label.position = Vector2(phase_w - 36, 24)
+    wave_label.position = Vector2(phase_w - 36, 21)
     wave_label.size = Vector2(30, 8)
 
-    storage_panel.position = Vector2(margin, 45)
-    storage_panel.size = Vector2(width - margin * 2.0, 27)
+    storage_panel.position = Vector2(margin, 41)
+    storage_panel.size = Vector2(width - margin * 2.0, 24)
 
-    build_panel.position = Vector2((width - 206.0) * 0.5, 80)
-    build_panel.size = Vector2(206, 70)
-    build_title.position = Vector2(9, 5)
-    build_title.size = Vector2(188, 15)
-    build_effect.position = Vector2(9, 23)
-    build_effect.size = Vector2(188, 28)
-    build_cost.position = Vector2(9, 54)
-    build_cost.size = Vector2(188, 13)
+    build_panel.position = Vector2((width - 206.0) * 0.5, 74)
+    build_panel.size = Vector2(206, 58)
+    build_title.position = Vector2(9, 4)
+    build_title.size = Vector2(188, 13)
+    build_effect.position = Vector2(9, 19)
+    build_effect.size = Vector2(188, 24)
+    build_cost.position = Vector2(9, 43)
+    build_cost.size = Vector2(188, 11)
 
-    status_panel.position = Vector2((width - 246.0) * 0.5, 80)
-    status_panel.size = Vector2(246, 29)
-    status_label.position = Vector2(8, 3)
-    status_label.size = Vector2(230, 23)
+    status_panel.position = Vector2((width - 232.0) * 0.5, 74)
+    status_panel.size = Vector2(232, 25)
+    status_label.position = Vector2(7, 2)
+    status_label.size = Vector2(218, 21)
 
-    boss_panel.position = Vector2(42, 156)
-    boss_panel.size = Vector2(width - 84, 38)
+    boss_panel.position = Vector2(46, 142)
+    boss_panel.size = Vector2(width - 92, 34)
     boss_label.position = Vector2(8, 2)
-    boss_label.size = Vector2(width - 100, 14)
-    boss_bar.position = Vector2(9, 23)
-    boss_bar.size = Vector2(width - 102, 6)
+    boss_label.size = Vector2(width - 108, 13)
+    boss_bar.position = Vector2(9, 21)
+    boss_bar.size = Vector2(width - 110, 5)
 
-    banner.position = Vector2(18, 202)
-    banner.size = Vector2(width - 36, 38)
+    banner.position = Vector2(18, 184)
+    banner.size = Vector2(width - 36, 34)
 
 func update_stats(hero_hp: float, base_hp: float, bag: int, capacity: int, wave: int, phase: String, phase_value: float, xp: int, next_xp: int, level: int, storage: Dictionary, enemies_left: int, inventory: Dictionary = {}) -> void:
     hp_label.text = "HP %d" % int(ceil(hero_hp))

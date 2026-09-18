@@ -166,9 +166,9 @@ func _show_pending_dawn_choice() -> void:
         "Рассвет после ночи %d" % completed_wave,
         "Выбери курс лагеря. Усиление действует до конца этой экспедиции и может складываться.",
         [
-            {"text":"⚔️ Охота — +16% урона и +4% крита", "action":"doctrine:hunt"},
-            {"text":"🏰 Укрепление — +70 прочности и ремонт", "action":"doctrine:fortify"},
-            {"text":"🎒 Снабжение — +6 рюкзак и ресурсы", "action":"doctrine:supply"}
+            {"text":"ОХОТА — +16% урона и +4% крита", "action":"doctrine:hunt"},
+            {"text":"УКРЕПЛЕНИЕ — +70 прочности и ремонт", "action":"doctrine:fortify"},
+            {"text":"СНАБЖЕНИЕ — +6 к рюкзаку и ресурсы", "action":"doctrine:supply"}
         ]
     )
 

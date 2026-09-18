@@ -93,9 +93,6 @@ func _draw_biome_atmosphere(view_rect: Rect2) -> void:
 
 func _draw_forest_atmosphere(view_rect: Rect2) -> void:
     var night: bool = world.phase == "night"
-    var wash_alpha: float = 0.045 if night else 0.020
-    draw_rect(view_rect, Color(0.20, 0.38, 0.18, wash_alpha))
-
     for i: int in range(14):
         var drift: float = ambience_time * (5.0 + float(i % 3))
         var x: float = view_rect.position.x + fmod(float(i * 83) + drift, view_rect.size.x + 30.0) - 15.0
@@ -106,7 +103,6 @@ func _draw_forest_atmosphere(view_rect: Rect2) -> void:
 
 func _draw_frost_atmosphere(view_rect: Rect2) -> void:
     var night: bool = world.phase == "night"
-    draw_rect(view_rect, Color(0.30, 0.54, 0.66, 0.055 if night else 0.018))
 
     for i: int in range(26 if night else 18):
         var speed: float = 18.0 + float(i % 5) * 5.5
@@ -115,13 +111,13 @@ func _draw_frost_atmosphere(view_rect: Rect2) -> void:
         var length: float = 4.0 + float(i % 3) * 2.2
         draw_line(Vector2(x, y), Vector2(x - length * 0.7, y + length), Color(0.86, 0.96, 1.0, 0.16 if night else 0.085), 1.2)
 
-    for i: int in range(4):
-        var fog_y: float = view_rect.position.y + 110.0 + float(i) * 145.0 + sin(ambience_time * 0.35 + float(i)) * 12.0
-        draw_rect(Rect2(Vector2(view_rect.position.x, fog_y), Vector2(view_rect.size.x, 24.0)), Color(0.82, 0.93, 0.97, 0.014 + float(i % 2) * 0.008))
+    for i: int in range(8):
+        var fog_x: float = view_rect.position.x + fmod(float(i * 97) + ambience_time * 7.0, view_rect.size.x + 90.0) - 45.0
+        var fog_y: float = view_rect.position.y + 96.0 + fmod(float(i * 71), maxf(1.0, view_rect.size.y - 150.0))
+        draw_line(Vector2(fog_x, fog_y), Vector2(fog_x + 42.0, fog_y), Color(0.82, 0.93, 0.97, 0.055 if night else 0.032), 3.0)
 
 func _draw_ash_atmosphere(view_rect: Rect2) -> void:
     var night: bool = world.phase == "night"
-    draw_rect(view_rect, Color(0.42, 0.12, 0.09, 0.055 if night else 0.030))
 
     for i: int in range(23 if night else 16):
         var x: float = view_rect.position.x + fmod(float(i * 79) + sin(ambience_time * 0.5 + float(i)) * 22.0, view_rect.size.x)
@@ -131,36 +127,19 @@ func _draw_ash_atmosphere(view_rect: Rect2) -> void:
         var particle_color: Color = Color(1.0, 0.45, 0.20, 0.24 if night else 0.14) if ember else Color(0.20, 0.16, 0.14, 0.18)
         draw_circle(Vector2(x, y), 1.7 if ember else 1.2, particle_color)
 
-func _draw_phase_wash(view_rect: Rect2) -> void:
-    if night_mix <= 0.001:
-        return
-    var color: Color
-    match biome_index:
-        1:
-            color = Color(0.05, 0.10, 0.18, 0.10 * night_mix)
-        2:
-            color = Color(0.14, 0.025, 0.025, 0.11 * night_mix)
-        _:
-            color = Color(0.025, 0.07, 0.075, 0.12 * night_mix)
-    draw_rect(view_rect, color)
+func _draw_phase_wash(_view_rect: Rect2) -> void:
+    # Full-viewport world-space rectangles are intentionally avoided here.
+    # Safari/WebGL can tile those draw calls into visible quadrants while the
+    # Camera2D is moving. The WorldBackdrop already owns the day/night palette.
+    pass
 
 func night_visual_strength() -> float:
     return night_mix
 
-func _draw_edge_vignette(view_rect: Rect2) -> void:
-    var edge_color: Color
-    match biome_index:
-        1:
-            edge_color = Color(0.08, 0.16, 0.22, 0.050)
-        2:
-            edge_color = Color(0.20, 0.05, 0.03, 0.060)
-        _:
-            edge_color = Color(0.05, 0.12, 0.05, 0.045)
-
-    draw_rect(Rect2(view_rect.position, Vector2(view_rect.size.x, 18.0)), edge_color)
-    draw_rect(Rect2(Vector2(view_rect.position.x, view_rect.end.y - 22.0), Vector2(view_rect.size.x, 22.0)), edge_color)
-    draw_rect(Rect2(view_rect.position, Vector2(12.0, view_rect.size.y)), edge_color)
-    draw_rect(Rect2(Vector2(view_rect.end.x - 12.0, view_rect.position.y), Vector2(12.0, view_rect.size.y)), edge_color)
+func _draw_edge_vignette(_view_rect: Rect2) -> void:
+    # HUD feedback owns screen-space edge treatment. Keeping BiomeFX strictly
+    # world-local prevents camera-relative seams on mobile WebGL.
+    pass
 
 func _draw_hazard(hazard: Dictionary) -> void:
     var kind: String = str(hazard.get("kind", "ember"))

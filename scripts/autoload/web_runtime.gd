@@ -38,7 +38,7 @@ func _process(delta: float) -> void:
 
 
     if version_label != null:
-        version_label.visible = OS.has_feature("web")
+        version_label.visible = false
 
 func _find_world(node: Node) -> GameWorld:
     if node == null:

@@ -82,17 +82,10 @@ func _draw_enemy_hit_sparks() -> void:
 func _draw_player_feedback() -> void:
     if world == null or not is_instance_valid(world) or world.player == null:
         return
-    var viewport_size: Vector2 = world.get_viewport_rect().size
-    var damage_flash: float = clampf(world.player.damage_flash, 0.0, 1.0)
+    # Screen-edge damage feedback lives in GameHud (CanvasLayer). Drawing
+    # viewport-sized rectangles from this world-space Node2D produces camera
+    # quadrant artifacts on iOS/WebGL.
     var block_flash: float = clampf(world.player.block_flash, 0.0, 1.0)
-
-    if damage_flash > 0.02:
-        var red := Color(0.72, 0.08, 0.08, damage_flash * 0.11)
-        draw_rect(Rect2(Vector2.ZERO, Vector2(viewport_size.x, 26.0)), red)
-        draw_rect(Rect2(Vector2(0.0, viewport_size.y - 30.0), Vector2(viewport_size.x, 30.0)), red)
-        draw_rect(Rect2(Vector2.ZERO, Vector2(20.0, viewport_size.y)), red)
-        draw_rect(Rect2(Vector2(viewport_size.x - 20.0, 0.0), Vector2(20.0, viewport_size.y)), red)
-
     if block_flash > 0.02:
         var shield_radius: float = 28.0 + (1.0 - block_flash) * 20.0
         draw_arc(world.player.global_position, shield_radius, 0.0, TAU, 44, Color(0.58, 0.88, 1.0, block_flash * 0.58), 2.5)
