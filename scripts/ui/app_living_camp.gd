@@ -73,7 +73,7 @@ func _show_home() -> void:
     if not notices.is_empty():
         var notice := Label.new()
         body.add_child(notice)
-        notice.text = "НОВОЕ В ЛАГЕРЕ: " + _clean(str(notices[0]))
+        notice.text = "НОВОЕ В ЛАГЕРЕ: " + str(notices[0])
         notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
         notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         notice.add_theme_font_size_override("font_size", 8)
