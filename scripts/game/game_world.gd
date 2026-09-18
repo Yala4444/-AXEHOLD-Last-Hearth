@@ -66,6 +66,12 @@ var shrine_regen_multiplier: float = 1.0
 var shrine_ward_active: bool = false
 var pending_upgrade_pad: BuildPad = null
 
+# Weapon Identity runtime state.
+var weapon_attack_timer: float = 0.0
+var weapon_combo: int = 0
+var weapon_combo_timeout: float = 0.0
+var weapon_last_hit_count: int = 0
+
 func configure(index: int) -> void:
     biome_index = index
 
@@ -129,7 +135,7 @@ func _start_run() -> void:
     for _i in range(initial_ore):
         _spawn_resource("ore")
 
-    Analytics.event("run_start", {"biome": biome_index})
+    Analytics.event("run_start", {"biome": biome_index, "weapon": player.weapon_id})
     hud.show_banner(str(biome["name"]).to_upper())
     hud.set_status("Собирай добычу и возвращайся к Очагу.")
 
@@ -277,13 +283,32 @@ func _harvest(delta: float) -> void:
 
     bag_full_announced = false
     var reach: float = player.orbit_radius + player.axes * 4.0
-    var removed: Array[ResourceSpot] = []
+    var candidates: Array[Dictionary] = []
+
     for spot: ResourceSpot in resources:
         if not is_instance_valid(spot):
             continue
-        if player.global_position.distance_to(spot.global_position) > reach + spot.radius:
+        var distance: float = player.global_position.distance_to(spot.global_position)
+        if distance <= reach + spot.radius:
+            candidates.append({"spot":spot, "distance":distance})
+
+    candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+        return float(a.get("distance", 0.0)) < float(b.get("distance", 0.0))
+    )
+
+    var target_limit: int = candidates.size()
+    if player.weapon_style == "spear":
+        target_limit = mini(1, candidates.size())
+    elif player.weapon_style == "twin_blades":
+        target_limit = mini(2, candidates.size())
+
+    var removed: Array[ResourceSpot] = []
+    for i: int in range(target_limit):
+        var spot: ResourceSpot = candidates[i].get("spot") as ResourceSpot
+        if spot == null or not is_instance_valid(spot):
             continue
-        var harvest_damage: float = player.damage * delta * GameRules.harvest_multiplier(spot.resource_type)
+
+        var harvest_damage: float = player.damage * delta * GameRules.harvest_multiplier(spot.resource_type) * WeaponRules.mechanic_value(player.weapon_id, "harvest_mult", 1.0)
         if spot.damage(harvest_damage):
             var kind: String = "wood" if spot.resource_type == "tree" else ("stone" if spot.resource_type == "rock" else "ore")
             var amount: int = maxi(1, int(round(
@@ -602,10 +627,11 @@ func _update_night(delta: float) -> void:
         boss_spawned = true
         _spawn_enemy(true)
 
-    var reach: float = player.orbit_radius + player.axes * 4.0
     var enemy_snapshot: Array[AxEnemy] = enemies.duplicate()
+    _resolve_player_weapon(enemy_snapshot, delta)
+
     for enemy: AxEnemy in enemy_snapshot:
-        if not is_instance_valid(enemy):
+        if not is_instance_valid(enemy) or enemy.dying:
             continue
 
         _update_boss_special(enemy, delta)
@@ -634,16 +660,6 @@ func _update_night(delta: float) -> void:
                 hud.show_banner("БАШНЯ ОГЛУШЕНА", Color("d7a1bd"))
                 hud.set_status("Сталкер добрался до Башни. Она не стреляет несколько секунд.")
                 Feedback.play("danger", 10)
-
-        var enemy_radius: float = 24.0 if enemy.boss else 12.0
-        if player.global_position.distance_to(enemy.global_position) <= reach + enemy_radius:
-            var hit: float = player.damage * delta * 1.34
-            var critical: bool = randf() < player.crit_chance
-            if critical:
-                hit *= 2.0
-            enemy.take_damage(hit)
-            if core_fx != null and randf() < delta * 5.5:
-                core_fx.enemy_hit(enemy.global_position, critical)
 
         enemy.hit_cooldown = maxf(0.0, enemy.hit_cooldown - delta)
         if enemy.hit_cooldown <= 0.0:
@@ -674,6 +690,211 @@ func _update_night(delta: float) -> void:
             _finish_run(true)
         else:
             _start_day()
+
+func _resolve_player_weapon(enemy_snapshot: Array[AxEnemy], delta: float) -> void:
+    weapon_last_hit_count = 0
+    weapon_attack_timer = maxf(0.0, weapon_attack_timer - delta)
+
+    if player.weapon_style == "twin_blades":
+        weapon_combo_timeout = maxf(0.0, weapon_combo_timeout - delta)
+        if weapon_combo_timeout <= 0.0 and weapon_combo > 0:
+            weapon_combo = 0
+            player.set_weapon_combo_visual(0)
+    elif weapon_combo > 0:
+        weapon_combo = 0
+        weapon_combo_timeout = 0.0
+        player.set_weapon_combo_visual(0)
+
+    match player.weapon_style:
+        "spear":
+            _weapon_spear(enemy_snapshot)
+        "hammer":
+            _weapon_hammer(enemy_snapshot)
+        "twin_blades":
+            _weapon_twin_blades(enemy_snapshot)
+        _:
+            _weapon_axes(enemy_snapshot, delta)
+
+func _weapon_axes(enemy_snapshot: Array[AxEnemy], delta: float) -> void:
+    var reach: float = player.orbit_radius + player.axes * 4.0
+    var damage_factor: float = WeaponRules.mechanic_value(player.weapon_id, "damage_factor", 1.30) * player.axes_dps_bonus
+
+    for enemy: AxEnemy in enemy_snapshot:
+        if not is_instance_valid(enemy) or enemy.dying:
+            continue
+        var enemy_radius: float = 24.0 if enemy.boss else 12.0
+        if player.global_position.distance_to(enemy.global_position) > reach + enemy_radius:
+            continue
+        var critical: bool = _deal_weapon_damage(enemy, player.damage * delta * damage_factor)
+        weapon_last_hit_count += 1
+        if core_fx != null and randf() < delta * 5.5:
+            core_fx.enemy_hit(enemy.global_position, critical)
+
+func _weapon_spear(enemy_snapshot: Array[AxEnemy]) -> void:
+    if weapon_attack_timer > 0.0:
+        return
+
+    var attack_range: float = WeaponRules.mechanic_value(player.weapon_id, "attack_range", 116.0)
+    var primary: AxEnemy = null
+    var nearest_distance: float = INF
+    for enemy: AxEnemy in enemy_snapshot:
+        if not is_instance_valid(enemy) or enemy.dying:
+            continue
+        var distance: float = player.global_position.distance_to(enemy.global_position)
+        if distance <= attack_range + (24.0 if enemy.boss else 12.0) and distance < nearest_distance:
+            nearest_distance = distance
+            primary = enemy
+    if primary == null:
+        return
+
+    var direction: Vector2 = player.global_position.direction_to(primary.global_position)
+    if direction.length_squared() < 0.01:
+        direction = Vector2(player.facing_x, 0.0)
+    direction = direction.normalized()
+
+    weapon_attack_timer = WeaponRules.mechanic_value(player.weapon_id, "attack_cooldown", 0.66) * player.weapon_cooldown_mult
+    player.trigger_weapon_action(direction, 0.22)
+
+    var width: float = WeaponRules.mechanic_value(player.weapon_id, "attack_width", 16.0)
+    var max_targets: int = WeaponRules.mechanic_int(player.weapon_id, "pierce", 3) + player.spear_pierce_bonus
+    var candidates: Array[Dictionary] = []
+
+    for enemy: AxEnemy in enemy_snapshot:
+        if not is_instance_valid(enemy) or enemy.dying:
+            continue
+        var offset: Vector2 = enemy.global_position - player.global_position
+        var along: float = offset.dot(direction)
+        if along < -6.0 or along > attack_range + (24.0 if enemy.boss else 12.0):
+            continue
+        var perpendicular: float = absf(offset.cross(direction))
+        var enemy_radius: float = 24.0 if enemy.boss else 12.0
+        if perpendicular <= width + enemy_radius:
+            candidates.append({"enemy":enemy, "along":along})
+
+    candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+        return float(a.get("along", 0.0)) < float(b.get("along", 0.0))
+    )
+
+    var damage_factor: float = WeaponRules.mechanic_value(player.weapon_id, "damage_factor", 1.08) * player.spear_damage_bonus
+    for i: int in range(mini(max_targets, candidates.size())):
+        var enemy: AxEnemy = candidates[i].get("enemy") as AxEnemy
+        if enemy == null or enemy.dying:
+            continue
+        var critical: bool = _deal_weapon_damage(enemy, player.damage * damage_factor)
+        weapon_last_hit_count += 1
+        if core_fx != null:
+            core_fx.enemy_hit(enemy.global_position, critical)
+
+    if core_fx != null:
+        core_fx.spear_thrust(player.global_position + direction * 10.0, player.global_position + direction * attack_range)
+    Feedback.play("spear", 5)
+
+func _weapon_hammer(enemy_snapshot: Array[AxEnemy]) -> void:
+    if weapon_attack_timer > 0.0:
+        return
+
+    var radius: float = WeaponRules.mechanic_value(player.weapon_id, "attack_range", 62.0) + player.hammer_radius_bonus
+    var nearest: AxEnemy = null
+    var nearest_distance: float = INF
+    for enemy: AxEnemy in enemy_snapshot:
+        if not is_instance_valid(enemy) or enemy.dying:
+            continue
+        var distance: float = player.global_position.distance_to(enemy.global_position)
+        if distance <= radius + (24.0 if enemy.boss else 12.0) and distance < nearest_distance:
+            nearest = enemy
+            nearest_distance = distance
+    if nearest == null:
+        return
+
+    weapon_attack_timer = WeaponRules.mechanic_value(player.weapon_id, "attack_cooldown", 0.98) * player.weapon_cooldown_mult
+    var slam_direction: Vector2 = player.global_position.direction_to(nearest.global_position)
+    player.trigger_weapon_action(slam_direction, 0.34)
+
+    var damage_factor: float = WeaponRules.mechanic_value(player.weapon_id, "damage_factor", 0.92) * player.hammer_damage_bonus
+    var knockback: float = WeaponRules.mechanic_value(player.weapon_id, "knockback", 18.0)
+
+    for enemy: AxEnemy in enemy_snapshot:
+        if not is_instance_valid(enemy) or enemy.dying:
+            continue
+        var enemy_radius: float = 24.0 if enemy.boss else 12.0
+        if player.global_position.distance_to(enemy.global_position) > radius + enemy_radius:
+            continue
+        var critical: bool = _deal_weapon_damage(enemy, player.damage * damage_factor)
+        weapon_last_hit_count += 1
+
+        if not enemy.dying:
+            var push_direction: Vector2 = player.global_position.direction_to(enemy.global_position)
+            var push_amount: float = knockback * (0.45 if enemy.boss else 1.0)
+            enemy.global_position += push_direction * push_amount
+            enemy.global_position.x = clampf(enemy.global_position.x, world_rect.position.x + 24.0, world_rect.end.x - 24.0)
+            enemy.global_position.y = clampf(enemy.global_position.y, world_rect.position.y + 24.0, world_rect.end.y - 24.0)
+        if core_fx != null:
+            core_fx.enemy_hit(enemy.global_position, critical)
+
+    if core_fx != null:
+        core_fx.hammer_slam(player.global_position, radius)
+    Feedback.play("hammer", 11)
+
+func _weapon_twin_blades(enemy_snapshot: Array[AxEnemy]) -> void:
+    if weapon_attack_timer > 0.0:
+        return
+
+    var attack_range: float = WeaponRules.mechanic_value(player.weapon_id, "attack_range", 50.0)
+    var max_targets: int = WeaponRules.mechanic_int(player.weapon_id, "targets", 2)
+    var chosen: Array[AxEnemy] = []
+
+    for _slot: int in range(max_targets):
+        var nearest: AxEnemy = null
+        var nearest_distance: float = INF
+        for enemy: AxEnemy in enemy_snapshot:
+            if not is_instance_valid(enemy) or enemy.dying or chosen.has(enemy):
+                continue
+            var enemy_radius: float = 24.0 if enemy.boss else 12.0
+            var distance: float = player.global_position.distance_to(enemy.global_position)
+            if distance <= attack_range + enemy_radius and distance < nearest_distance:
+                nearest = enemy
+                nearest_distance = distance
+        if nearest != null:
+            chosen.append(nearest)
+
+    if chosen.is_empty():
+        return
+
+    weapon_attack_timer = WeaponRules.mechanic_value(player.weapon_id, "attack_cooldown", 0.20) * player.weapon_cooldown_mult
+    var combo_cap: int = WeaponRules.mechanic_int(player.weapon_id, "combo_cap", 6) + player.blades_combo_cap_bonus
+    var combo_step: float = WeaponRules.mechanic_value(player.weapon_id, "combo_step", 0.06) + player.blades_combo_step_bonus
+    var combo_multiplier: float = 1.0 + float(weapon_combo) * combo_step
+    var damage_factor: float = WeaponRules.mechanic_value(player.weapon_id, "damage_factor", 0.30) * combo_multiplier
+
+    var primary_direction: Vector2 = player.global_position.direction_to(chosen[0].global_position)
+    player.trigger_weapon_action(primary_direction, 0.12)
+
+    for enemy: AxEnemy in chosen:
+        var critical: bool = _deal_weapon_damage(enemy, player.damage * damage_factor)
+        weapon_last_hit_count += 1
+        if core_fx != null:
+            core_fx.enemy_hit(enemy.global_position, critical)
+
+    weapon_combo = mini(combo_cap, weapon_combo + 1)
+    weapon_combo_timeout = 0.86 + player.blades_combo_timeout_bonus
+    player.set_weapon_combo_visual(weapon_combo)
+    if core_fx != null:
+        core_fx.blade_flurry(player.global_position, primary_direction, weapon_combo)
+    Feedback.play("blades", 3)
+
+func _deal_weapon_damage(enemy: AxEnemy, raw_damage: float) -> bool:
+    var critical: bool = randf() < player.crit_chance
+    var amount: float = raw_damage * (2.0 if critical else 1.0)
+    enemy.take_damage(amount)
+    return critical
+
+func weapon_identity_snapshot() -> Dictionary:
+    return {
+        "style": player.weapon_style if player != null else "",
+        "timer": weapon_attack_timer,
+        "combo": weapon_combo,
+        "last_hits": weapon_last_hit_count
+    }
 
 func _update_turret(delta: float) -> void:
     if not bool(built["turret"]) or enemies.is_empty() or turret_disabled_time > 0.0:
@@ -760,7 +981,7 @@ func _on_enemy_killed(enemy: AxEnemy) -> void:
 
 func _show_perks(level: int) -> void:
     var buttons: Array = []
-    var choices: Array = GameRules.random_perks(3)
+    var choices: Array = GameRules.random_perks(3, player.weapon_id)
     for perk_variant: Variant in choices:
         var perk: Dictionary = perk_variant
         buttons.append({"text": "%s  %s — %s" % [perk["icon"], perk["name"], perk["desc"]], "action": "perk:" + str(perk["id"])})
@@ -792,7 +1013,7 @@ func _finish_run(won: bool) -> void:
     GameState.register_run(wave, won, biome_index, kills, builds, trees_cut)
     if won:
         QuestDirector.record("run_win", 1, {"biome":biome_index, "wave":wave})
-    Analytics.event("run_end", {"won": won, "wave": wave, "biome": biome_index, "kills": kills, "parts_unused":unused_parts})
+    Analytics.event("run_end", {"won": won, "wave": wave, "biome": biome_index, "kills": kills, "parts_unused":unused_parts, "weapon":player.weapon_id})
     var earned_shards: int = run_shards if won else 0
     run_finished.emit({
         "won": won,

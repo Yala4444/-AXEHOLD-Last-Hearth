@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.8.0-alpha.1 — Weapon Identity
+- Replaced the shared radial combat model with four independent weapon resolvers.
+- Wanderer Axes retain continuous circular zone control.
+- Root Spear now performs discrete directional thrusts that pierce aligned enemies.
+- Frost Hammer now attacks through periodic AoE slams with knockback.
+- Ash Twin Blades now use rapid short-range strikes and an aggression combo that increases damage then decays when disengaged.
+- Added eight weapon-exclusive run perks, two per weapon.
+- Added separate harvesting multipliers and target patterns per weapon.
+- Added signature combat FX for Spear, Hammer and Twin Blades.
+- Updated player visuals and Arsenal preview to communicate real weapon behavior.
+- Arsenal now shows identity, signature and attack rhythm instead of only stat bars.
+- Run analytics now include selected weapon.
+- Added dedicated v1.8 regression coverage for range, pierce, radial burst, knockback, combo and weapon perks.
+- Bumped Android/iOS metadata to 1.8.0-alpha.1 / build 22.
+
 ## 1.7.0-alpha.1 — Buildings & Economy
 - Added a permanent Camp Forge blueprint economy that spends both coins and Guardian shards.
 - Added Level-II projects for Palisade, Forge, Tower and Shrine.

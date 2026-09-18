@@ -1,7 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://axehold_save.json"
-const SAVE_VERSION := 6
+const SAVE_VERSION := 7
 
 var data: Dictionary = {}
 
@@ -26,6 +26,12 @@ func defaults() -> Dictionary:
         "boss_relics": [false, false, false],
         "weapons_owned": ["axes"],
         "selected_weapon": "axes",
+        "weapon_mastery": {
+            "axes":{"runs":0,"wins":0,"kills":0},
+            "spear":{"runs":0,"wins":0,"kills":0},
+            "hammer":{"runs":0,"wins":0,"kills":0},
+            "twin_blades":{"runs":0,"wins":0,"kills":0}
+        },
         "meta_notices": [],
         "lore_fragments": 0,
         "skins_owned": [true, false, false, false],
@@ -79,6 +85,13 @@ func _migrate_save() -> void:
             }
     if version < 6:
         data["building_projects"] = {"wall": false, "forge": false, "turret": false, "shrine": false}
+    if version < 7:
+        data["weapon_mastery"] = {
+            "axes":{"runs":0,"wins":0,"kills":0},
+            "spear":{"runs":0,"wins":0,"kills":0},
+            "hammer":{"runs":0,"wins":0,"kills":0},
+            "twin_blades":{"runs":0,"wins":0,"kills":0}
+        }
     data["save_version"] = SAVE_VERSION
     save()
 
@@ -226,6 +239,57 @@ func select_weapon(id: String) -> bool:
     save()
     return true
 
+func weapon_mastery_data(weapon_id: String) -> Dictionary:
+    var all_mastery: Dictionary = data.get("weapon_mastery", {})
+    var entry: Dictionary = all_mastery.get(weapon_id, {"runs":0,"wins":0,"kills":0})
+    return entry.duplicate(true)
+
+func weapon_mastery_level(weapon_id: String) -> int:
+    var entry: Dictionary = weapon_mastery_data(weapon_id)
+    var runs_count: int = int(entry.get("runs", 0))
+    var wins_count: int = int(entry.get("wins", 0))
+    var kills_count: int = int(entry.get("kills", 0))
+    var level: int = 0
+    if runs_count >= 1:
+        level = 1
+    if wins_count >= 1 or runs_count >= 3:
+        level = 2
+    if wins_count >= 2 or kills_count >= 120:
+        level = 3
+    if wins_count >= 4 or kills_count >= 240:
+        level = 4
+    if wins_count >= 6 or kills_count >= 420:
+        level = 5
+    return level
+
+func weapon_mastery_stars(weapon_id: String) -> String:
+    var level: int = weapon_mastery_level(weapon_id)
+    var out: String = ""
+    for i: int in range(5):
+        out += "★" if i < level else "☆"
+    return out
+
+func _register_weapon_run(won: bool, kills: int) -> void:
+    var weapon_id: String = str(data.get("selected_weapon", "axes"))
+    if not WeaponRules.WEAPONS.has(weapon_id):
+        weapon_id = "axes"
+    var all_mastery: Dictionary = data.get("weapon_mastery", {})
+    var entry: Dictionary = all_mastery.get(weapon_id, {"runs":0,"wins":0,"kills":0})
+    var old_level: int = weapon_mastery_level(weapon_id)
+    entry["runs"] = int(entry.get("runs", 0)) + 1
+    entry["kills"] = int(entry.get("kills", 0)) + maxi(0, kills)
+    if won:
+        entry["wins"] = int(entry.get("wins", 0)) + 1
+    all_mastery[weapon_id] = entry
+    data["weapon_mastery"] = all_mastery
+    var new_level: int = weapon_mastery_level(weapon_id)
+    if new_level > old_level:
+        _push_meta_notice("Мастерство оружия: %s → %s" % [
+            str(WeaponRules.profile(weapon_id).get("name", weapon_id)),
+            weapon_mastery_stars(weapon_id)
+        ])
+        Analytics.event("weapon_mastery_up", {"weapon":weapon_id,"level":new_level})
+
 func total_mastery() -> int:
     var total: int = 0
     var mastery: Array = data.get("biome_mastery", [0, 0, 0])
@@ -282,6 +346,7 @@ func _award_biome_progress(biome: int) -> void:
 
 func register_run(wave: int, won: bool, biome: int, kills: int, builds: int, trees: int) -> void:
     data["runs"] = int(data["runs"]) + 1
+    _register_weapon_run(won, kills)
     data["best_wave"] = max(int(data["best_wave"]), wave)
     data["stats"]["kills"] = int(data["stats"]["kills"]) + kills
     data["stats"]["builds"] = int(data["stats"]["builds"]) + builds
