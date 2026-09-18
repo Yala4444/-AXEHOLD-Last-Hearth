@@ -67,10 +67,10 @@ func _show_home() -> void:
 
     var progress := Label.new()
     departure_box.add_child(progress)
-    progress.text = "%s · Слава %d/%d   •   Реликвии %d/3" % [
+    progress.text = "%s · Слава %d%s   •   Реликвии %d/3" % [
         GameState.camp_level_name(),
         GameState.camp_renown(),
-        GameState.camp_next_renown(),
+        "" if GameState.camp_level() >= 5 else "/%d" % GameState.camp_next_renown(),
         relic_count
     ]
     progress.add_theme_font_size_override("font_size", 8)
