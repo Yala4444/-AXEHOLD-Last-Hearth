@@ -84,6 +84,17 @@ const PERKS := [
     {"id":"bag","icon":"BAG","name":"Сборщик","desc":"+8 вместимости","category":"utility"}
 ]
 
+const WEAPON_PERKS := [
+    {"id":"axes_whirl","icon":"AXE","name":"Плотный вихрь","desc":"+18% урона Вихря","category":"weapon","weapon":"axes"},
+    {"id":"axes_edge","icon":"AXE","name":"Широкий обод","desc":"+8 радиуса и +5% крита","category":"weapon","weapon":"axes"},
+    {"id":"spear_pierce","icon":"SPR","name":"Разветвлённый корень","desc":"Корневой выпад пробивает ещё 1 цель","category":"weapon","weapon":"spear"},
+    {"id":"spear_impale","icon":"SPR","name":"Глубокий прокол","desc":"+22% урона Корневого выпада","category":"weapon","weapon":"spear"},
+    {"id":"hammer_crater","icon":"HAM","name":"Широкий кратер","desc":"+14 радиуса Ледяного раскола","category":"weapon","weapon":"hammer"},
+    {"id":"hammer_force","icon":"HAM","name":"Ледяное ядро","desc":"+22% урона ударной волны","category":"weapon","weapon":"hammer"},
+    {"id":"blades_chain","icon":"TWN","name":"Длинная серия","desc":"+2 к максимуму комбо","category":"weapon","weapon":"twin_blades"},
+    {"id":"blades_fury","icon":"TWN","name":"Жар серии","desc":"+3% урона за каждый уровень комбо","category":"weapon","weapon":"twin_blades"}
+]
+
 const NIGHT_MODIFIERS := [
     {
         "id":"swarm","name":"ГОЛОДНАЯ НОЧЬ",
@@ -273,7 +284,7 @@ static func enemy_type_for_biome(index: int) -> String:
             return kind
     return "normal"
 
-static func random_perks(count: int = 3) -> Array:
+static func random_perks(count: int = 3, weapon_id: String = "") -> Array:
     var offense: Array[Dictionary] = []
     var survival: Array[Dictionary] = []
     var utility: Array[Dictionary] = []
@@ -292,7 +303,16 @@ static func random_perks(count: int = 3) -> Array:
                 utility.append(perk_copy)
 
     var result: Array = []
-    _append_random_unique(result, offense)
+    if not weapon_id.is_empty():
+        var weapon_pool: Array[Dictionary] = []
+        for perk_variant: Variant in WEAPON_PERKS:
+            var perk: Dictionary = perk_variant
+            if str(perk.get("weapon", "")) == weapon_id:
+                weapon_pool.append(perk.duplicate(true))
+        _append_random_unique(result, weapon_pool)
+
+    if result.size() < count:
+        _append_random_unique(result, offense)
     if result.size() < count:
         _append_random_unique(result, survival)
     if result.size() < count:
