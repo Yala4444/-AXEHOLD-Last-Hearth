@@ -725,9 +725,11 @@ func _draw_clearing(night: bool) -> void:
         draw_rect(Rect2(base_position.x - 11 + float((i % 2) * 4), y, 20, 3), Color(0.36, 0.31, 0.21, 0.12))
 
 func _draw_hearth(night: bool) -> void:
-    var glow_strength: float = 0.13 if not night else 0.22
-    draw_circle(base_position, 56.0, Color(1.0, 0.55, 0.18, glow_strength))
-    draw_circle(base_position, 35.0, Color(1.0, 0.45, 0.12, glow_strength * 0.75))
+    var glow_strength: float = 0.11 if not night else 0.24
+    draw_circle(base_position, 148.0, Color(1.0, 0.55, 0.18, glow_strength * 0.16))
+    draw_circle(base_position, 104.0, Color(1.0, 0.52, 0.16, glow_strength * 0.22))
+    draw_circle(base_position, 64.0, Color(1.0, 0.55, 0.18, glow_strength))
+    draw_circle(base_position, 38.0, Color(1.0, 0.45, 0.12, glow_strength * 0.78))
 
     # Stone fire ring.
     for i: int in range(10):
