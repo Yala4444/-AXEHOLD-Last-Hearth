@@ -124,8 +124,8 @@ func _start_event(event_type: String) -> void:
             world.hud.set_status("Выживший окружён. Сначала очисти место, затем подойди к нему.")
         "elite_hunt":
             var kind: String = "guardian" if world.biome_index != 2 else "brute"
-            var trait: String = ["warlord", "volatile", "armored"][world.biome_index]
-            _spawn_elite(point, event_id, kind, trait, "hunt")
+            var elite_trait_id: String = ["warlord", "volatile", "armored"][world.biome_index]
+            _spawn_elite(point, event_id, kind, elite_trait_id, "hunt")
             world.hud.show_banner("МИРА ОТМЕТИЛА РЕДКУЮ ЦЕЛЬ", Color("dd8068"))
             world.hud.set_status("Элита находится рядом. Убей её до наступления ночи.")
         "ambush":
@@ -148,8 +148,8 @@ func _spawn_pack(point: Vector2, event_id: String, kinds: Array[String], behavio
         var enemy: AxEnemy = world.spawn_event_enemy(kinds[i], pos, "", event_id, point, behavior)
         _track_enemy(enemy)
 
-func _spawn_elite(point: Vector2, event_id: String, kind: String, trait: String, behavior: String) -> void:
-    var enemy: AxEnemy = world.spawn_event_enemy(kind, point, trait, event_id, point, behavior)
+func _spawn_elite(point: Vector2, event_id: String, kind: String, trait_id: String, behavior: String) -> void:
+    var enemy: AxEnemy = world.spawn_event_enemy(kind, point, trait_id, event_id, point, behavior)
     _track_enemy(enemy)
 
 func _spawn_ambush(point: Vector2, event_id: String) -> void:
