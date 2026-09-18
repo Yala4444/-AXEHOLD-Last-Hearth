@@ -250,7 +250,10 @@ func set_build_context(title: String, effect: String, cost: Dictionary, storage:
     var stone_need: int = maxi(0, int(cost.get("stone", 0)) - int(storage.get("stone", 0)))
     var ore_need: int = maxi(0, int(cost.get("ore", 0)) - int(storage.get("ore", 0)))
     if ready:
-        build_cost.text = "СТРОИТСЯ... %d%%" % int(clampf(progress, 0.0, 1.0) * 100.0)
+        if progress <= 0.01:
+            build_cost.text = "РЕСУРСОВ ХВАТАЕТ • ПОДОЙДИ БЛИЖЕ"
+        else:
+            build_cost.text = "СТРОИТСЯ... %d%%" % int(clampf(progress, 0.0, 1.0) * 100.0)
         build_cost.add_theme_color_override("font_color", Color("8ed3a8"))
     else:
         build_cost.text = "НЕ ХВАТАЕТ:  Д %d  К %d  Р %d" % [wood_need, stone_need, ore_need]
