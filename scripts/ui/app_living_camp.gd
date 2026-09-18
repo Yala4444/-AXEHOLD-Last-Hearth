@@ -238,7 +238,7 @@ func _show_arsenal() -> void:
 
 func _show_map() -> void:
     _clear_body()
-    _section("Карта Тьмы", "Чем дальше от Последнего Очагa, тем меньше мир похож на то, что было раньше.")
+    _section("Карта Тьмы", "Чем дальше от Последнего Очага, тем меньше мир похож на то, что было раньше.")
 
     var map_view := WorldMapView.new()
     body.add_child(map_view)
@@ -280,7 +280,7 @@ func _show_chronicle() -> void:
 
     var chapter_complete: bool = GameState.chapter_one_complete()
     _section(
-        "Хроника Последнего Очагa",
+        "Хроника Последнего Очага",
         "История открывается не диалоговыми окнами, а тем, что Странник действительно принёс домой."
     )
 
@@ -640,7 +640,7 @@ func _show_forge() -> void:
     var intro := _panel(body)
     var intro_label := Label.new()
     intro.add_child(intro_label)
-    intro_label.text = "Огонь кузницы питается от Последнего Очагa. Чем сильнее лагерь, тем дальше Странник может уйти во Тьму."
+    intro_label.text = "Огонь кузницы питается от Последнего Очага. Чем сильнее лагерь, тем дальше Странник может уйти во Тьму."
     intro_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     intro_label.add_theme_font_size_override("font_size", 9)
     intro_label.add_theme_color_override("font_color", Color("bbb8aa"))
