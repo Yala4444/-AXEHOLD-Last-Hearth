@@ -67,7 +67,7 @@ func _show_result() -> void:
         contract_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         contract_note.add_theme_font_size_override("font_size", 9)
 
-    var dynamic_result: Dictionary = result_data.get("dynamic_world", {}) as Dictionary
+    var dynamic_result: Dictionary = result_data.get("dynamic_world", {})
     if not dynamic_result.is_empty():
         var dynamic_note := Label.new()
         box.add_child(dynamic_note)
