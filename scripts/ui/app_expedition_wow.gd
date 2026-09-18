@@ -49,6 +49,24 @@ func _show_result() -> void:
     stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     stats.add_theme_color_override("font_color", Color(0.78, 0.81, 0.83))
 
+    var contract_result: Dictionary = result_data.get("contract", {}) as Dictionary
+    if not contract_result.is_empty():
+        var contract_note := Label.new()
+        box.add_child(contract_note)
+        if bool(contract_result.get("completed", false)):
+            var renown_gain: int = int(contract_result.get("renown", 0))
+            contract_note.text = "КОНТРАКТ ВЫПОЛНЕН · %s%s" % [
+                str(contract_result.get("name", "")),
+                " · +%d славы" % renown_gain if renown_gain > 0 else ""
+            ]
+            contract_note.add_theme_color_override("font_color", Color("d9bd79"))
+        else:
+            contract_note.text = "Контракт не выполнен · " + str(contract_result.get("name", ""))
+            contract_note.add_theme_color_override("font_color", Color("8f999a"))
+        contract_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        contract_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        contract_note.add_theme_font_size_override("font_size", 9)
+
     var parts_unused: int = int(result_data.get("parts_unused", 0))
     if parts_unused > 0:
         var parts_note := Label.new()
