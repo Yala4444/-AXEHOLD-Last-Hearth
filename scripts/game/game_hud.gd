@@ -133,6 +133,10 @@ func _build() -> void:
     objective_label = Label.new()
     root.add_child(objective_label)
     objective_label.visible = false
+    objective_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    objective_label.add_theme_font_size_override("font_size", 7)
+    objective_label.add_theme_color_override("font_color", Color("c5b888"))
+    objective_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
     status_panel = _panel(root, Color(0.03, 0.05, 0.05, 0.90), Color(0.44, 0.54, 0.50, 0.55))
     status_panel.visible = false
@@ -240,7 +244,10 @@ func _layout() -> void:
     storage_panel.position = Vector2(margin, 41)
     storage_panel.size = Vector2(width - margin * 2.0, 24)
 
-    build_panel.position = Vector2((width - 206.0) * 0.5, 74)
+    objective_label.position = Vector2(margin, 67)
+    objective_label.size = Vector2(width - margin * 2.0, 12)
+
+    build_panel.position = Vector2((width - 206.0) * 0.5, 82)
     build_panel.size = Vector2(206, 58)
     build_title.position = Vector2(9, 4)
     build_title.size = Vector2(188, 13)
@@ -249,7 +256,7 @@ func _layout() -> void:
     build_cost.position = Vector2(9, 43)
     build_cost.size = Vector2(188, 11)
 
-    status_panel.position = Vector2((width - 232.0) * 0.5, 74)
+    status_panel.position = Vector2((width - 232.0) * 0.5, 82)
     status_panel.size = Vector2(232, 25)
     status_label.position = Vector2(7, 2)
     status_label.size = Vector2(218, 21)
@@ -291,6 +298,12 @@ func update_stats(hero_hp: float, base_hp: float, bag: int, capacity: int, wave:
     storage_wood_label.text = str(wood_count)
     storage_stone_label.text = str(stone_count)
     storage_ore_label.text = str(ore_count)
+
+func set_run_objective(text: String) -> void:
+    if objective_label == null:
+        return
+    objective_label.text = _safe(text)
+    objective_label.visible = not objective_label.text.strip_edges().is_empty()
 
 func set_build_context(title: String, effect: String, cost: Dictionary, storage: Dictionary, ready: bool, progress: float = 0.0) -> void:
     build_panel.visible = true
