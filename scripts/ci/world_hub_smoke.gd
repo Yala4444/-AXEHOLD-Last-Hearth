@@ -85,14 +85,14 @@ func _run() -> void:
     var camp: CampView = CampScene.instantiate() as CampView
     add_child(camp)
     await _wait_frames(2)
-    if camp.custom_minimum_size.y > 310.0:
-        _fail("Camp home view no longer fits the compact hub target")
+    if camp.custom_minimum_size.y < 430.0 or camp.custom_minimum_size.y > 520.0:
+        _fail("Camp home view is outside the v1.4 immersive hub target")
     for key: String in ["forge", "arsenal", "goals", "map"]:
         if not camp.action_buttons.has(key):
             _fail("Camp hotspot missing: " + key)
 
     if failures.is_empty():
-        print("[V1.3] world expansion, activities, night reset and compact hub passed")
+        print("[V1.4] world expansion, activities, night reset and immersive hub passed")
 
     camp.queue_free()
     if get_tree().current_scene == game:
@@ -122,12 +122,12 @@ func _wait_frames(count: int) -> void:
 
 func _fail(message: String) -> void:
     failures.append(message)
-    print("[V1.3] FAIL: ", message)
+    print("[V1.4] FAIL: ", message)
 
 func _finish() -> void:
     if failures.is_empty():
         get_tree().quit(0)
         return
     for failure: String in failures:
-        push_error("[V1.3] %s" % failure)
+        push_error("[V1.4] %s" % failure)
     get_tree().quit(1)
