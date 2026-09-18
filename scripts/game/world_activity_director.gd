@@ -170,11 +170,14 @@ func _on_hud_action(action: String) -> void:
 
 func _on_activity_resolved(activity: WorldActivity) -> void:
     activities_resolved += 1
+    QuestDirector.record("activity_resolved", 1, {"type":activity.activity_type, "biome":world.biome_index})
     if activity.activity_type == "nest":
         nests_destroyed += 1
+        QuestDirector.record("nest_destroyed", 1, {"biome":world.biome_index})
         _grant_nest_reward(activity)
     elif activity.activity_type == "old_hearth":
         hearths_relit += 1
+        QuestDirector.record("hearth_relit", 1, {"biome":world.biome_index})
     Analytics.event("world_activity_resolved", {
         "type": activity.activity_type,
         "wave": world.wave,
@@ -199,6 +202,7 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         world.hud.set_status("Тьма отступила. +7 мон. · герой исцелён.")
     elif activity.activity_type == "chest":
         if activity.cursed:
+            QuestDirector.record("cursed_cache", 1, {"biome":world.biome_index})
             _give_resource("stone", 2, activity.global_position)
             _give_resource("ore", 4, activity.global_position)
             world.run_coins += 16
