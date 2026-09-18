@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.0-alpha.1 — Production Core
+- Replaced the fixed bottom-left joystick with a floating dynamic one-thumb stick that appears under the touch point, drifts with the thumb under large deflection and fades on release.
+- Expanded each expedition into a multi-screen world and added a smooth player-follow camera with subtle movement look-ahead.
+- Moved backpack readability onto the hero with an in-world fill gauge, near-full count, full warning and directional return cue toward the Last Hearth.
+- Reduced the permanent HUD to hero HP, phase, Hearth HP, pause and compact Hearth storage; backpack values remain local to the hero.
+- Added distance-based gathering risk: wood is concentrated nearer the Hearth, stone farther out, and ore in the outer exploration zones.
+- Increased early-day duration and hero movement speed to support meaningful exploration without turning travel into downtime.
+- Made night explicitly call the player home when they are far from the Hearth.
+- Added camera-aware biome ambience so forest/frost/ash effects remain correct across the larger world.
+- Added physically travelling resource pickups from harvest nodes to the hero and from the hero into Hearth storage.
+- Added native pixel resource icons and preserved SVG source references for the future texture/sprite art pipeline.
+- Split the large static world backdrop from dynamic gameplay rendering to keep the larger map performant on mobile/Web.
+- Rebalanced building costs so players must make real preparation choices instead of trivially constructing everything.
+- Added a dedicated production-core regression covering world scale, camera, resource distance, floating-stick behaviour and hero-local return UX.
+
+
 ## 1.1.0-alpha.1 — Visual Reboot
 - Rebuilt the in-run HUD around five permanent signals only: hero HP, Hearth HP, phase, backpack and Hearth storage.
 - Removed the permanent exit button and replaced persistent debug-like status copy with temporary toasts.
