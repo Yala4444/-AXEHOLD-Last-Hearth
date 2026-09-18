@@ -51,30 +51,39 @@ func damage(amount: float) -> bool:
 func _draw() -> void:
     var flash: float = hit_pulse * 0.28
     if resource_type == "tree":
-        _draw_shadow_ellipse(Vector2(5, 12), Vector2(14, 6), Color(0.08, 0.12, 0.06, 0.15))
-        draw_rect(Rect2(-4, 5, 8, 16), Color("735037").lightened(flash * 0.5))
+        draw_rect(Rect2(-13, 14, 28, 5), Color(0.06, 0.08, 0.05, 0.16))
+        draw_rect(Rect2(-4, 3, 8, 18), Color("704d35").lightened(flash * 0.4))
         var greens: Array[Color] = [Color("4d8950"), Color("5d9757"), Color("407b47")]
         var crown: Color = greens[variant % greens.size()].lightened(flash)
-        draw_circle(Vector2(0, -4), 15, crown)
-        draw_circle(Vector2(-10, 1), 10, crown.darkened(0.03))
-        draw_circle(Vector2(10, 1), 10, crown.lightened(0.025))
-        draw_line(Vector2(-5, -12), Vector2(-2, -5), Color(1, 1, 1, flash * 0.7), 1.5)
+        draw_rect(Rect2(-12, -12, 24, 17), crown.darkened(0.08))
+        draw_rect(Rect2(-17, -6, 34, 13), crown)
+        draw_rect(Rect2(-10, -17, 20, 7), crown.lightened(0.08))
+        draw_rect(Rect2(-7, -14, 5, 5), Color(0.75, 0.90, 0.70, 0.18 + flash * 0.5))
     elif resource_type == "rock":
-        var rock_color: Color = Color("8a9093").lightened(flash)
-        draw_colored_polygon(PackedVector2Array([Vector2(-13, 8), Vector2(-8, -11), Vector2(4, -14), Vector2(14, 3), Vector2(6, 12)]), rock_color)
-        draw_line(Vector2(-3, -10), Vector2(4, 1), Color(0.72, 0.76, 0.78, 0.7), 1.4)
-        draw_line(Vector2(4, 1), Vector2(10, 5), Color(0.55, 0.59, 0.61, 0.7), 1.2)
+        var rock_color: Color = Color("858c91").lightened(flash)
+        draw_rect(Rect2(-13, 8, 27, 6), Color(0.06, 0.07, 0.07, 0.14))
+        draw_colored_polygon(PackedVector2Array([
+            Vector2(-13, 8), Vector2(-10, -7), Vector2(-3, -13),
+            Vector2(8, -10), Vector2(14, 1), Vector2(8, 11), Vector2(-7, 12)
+        ]), rock_color)
+        draw_rect(Rect2(-5, -9, 5, 11), rock_color.lightened(0.16))
+        draw_rect(Rect2(4, 0, 6, 4), rock_color.darkened(0.15))
     else:
-        var ore_color: Color = Color("8669a0").lightened(flash)
-        draw_colored_polygon(PackedVector2Array([Vector2(-13, 8), Vector2(-8, -11), Vector2(4, -14), Vector2(14, 3), Vector2(6, 12)]), ore_color)
-        draw_circle(Vector2(3, -3), 4, Color("caa9e2").lightened(flash))
-        draw_circle(Vector2(-5, 3), 2.5, Color("b48ed0"))
+        var ore_color: Color = Color("79578f").lightened(flash)
+        draw_rect(Rect2(-13, 8, 27, 6), Color(0.06, 0.05, 0.08, 0.14))
+        draw_colored_polygon(PackedVector2Array([
+            Vector2(-13, 8), Vector2(-10, -8), Vector2(-2, -14),
+            Vector2(10, -9), Vector2(14, 2), Vector2(7, 12), Vector2(-7, 11)
+        ]), ore_color)
+        draw_rect(Rect2(-4, -8, 6, 7), Color("c4a1df").lightened(flash))
+        draw_rect(Rect2(5, 0, 5, 5), Color("b187cb"))
+        draw_rect(Rect2(-8, 3, 4, 4), Color("9f78bd"))
         if hit_pulse > 0.1:
-            draw_circle(Vector2(8, -8), 2.0 + hit_pulse * 2.0, Color(0.86, 0.72, 1.0, hit_pulse * 0.7))
+            draw_rect(Rect2(9, -10, 4, 4), Color(0.86, 0.72, 1.0, hit_pulse * 0.75))
 
     if hp < max_hp:
         var ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0)
-        draw_rect(Rect2(-14, -24, 28, 4), Color(0.1, 0.1, 0.1, 0.22))
+        draw_rect(Rect2(-14, -24, 28, 4), Color(0.08, 0.08, 0.08, 0.32))
         draw_rect(Rect2(-14, -24, 28 * ratio, 4), Color("72a66d"))
 
 func _draw_shadow_ellipse(center: Vector2, radii: Vector2, color: Color) -> void:
