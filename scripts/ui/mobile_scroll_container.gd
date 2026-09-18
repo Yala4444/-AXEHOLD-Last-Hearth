@@ -10,16 +10,20 @@ const DRAG_THRESHOLD := 6.0
 var touch_index: int = -1
 var touch_drag_distance: float = 0.0
 var touch_scrolling: bool = false
+var touch_last_position: Vector2 = Vector2.ZERO
 
 var mouse_down: bool = false
 var mouse_drag_distance: float = 0.0
 var mouse_scrolling: bool = false
+var mouse_last_position: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
     horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-    scroll_deadzone = 3
+    scroll_deadzone = 2
     follow_focus = true
+    clip_contents = true
+    mouse_filter = Control.MOUSE_FILTER_PASS
     set_process_input(true)
 
 func _input(event: InputEvent) -> void:
@@ -47,6 +51,7 @@ func _handle_touch(event: InputEventScreenTouch) -> void:
             touch_index = event.index
             touch_drag_distance = 0.0
             touch_scrolling = false
+            touch_last_position = event.position
             mouse_down = false
             mouse_scrolling = false
     elif event.index == touch_index:
@@ -59,12 +64,16 @@ func _handle_touch(event: InputEventScreenTouch) -> void:
 func _handle_touch_drag(event: InputEventScreenDrag) -> void:
     if event.index != touch_index:
         return
-    touch_drag_distance += absf(event.relative.y)
+    var delta_y: float = event.position.y - touch_last_position.y
+    touch_last_position = event.position
+    if absf(delta_y) < 0.01:
+        delta_y = event.relative.y
+    touch_drag_distance += absf(delta_y)
     if touch_drag_distance >= DRAG_THRESHOLD:
         touch_scrolling = true
     if not touch_scrolling:
         return
-    _scroll_by(event.relative.y)
+    _scroll_by(delta_y)
     get_viewport().set_input_as_handled()
 
 func _handle_mouse_button(event: InputEventMouseButton) -> void:
@@ -77,6 +86,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
             mouse_down = true
             mouse_drag_distance = 0.0
             mouse_scrolling = false
+            mouse_last_position = event.position
     elif mouse_down:
         if mouse_scrolling:
             get_viewport().set_input_as_handled()
@@ -92,12 +102,16 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
         mouse_drag_distance = 0.0
         mouse_scrolling = false
         return
-    mouse_drag_distance += absf(event.relative.y)
+    var delta_y: float = event.position.y - mouse_last_position.y
+    mouse_last_position = event.position
+    if absf(delta_y) < 0.01:
+        delta_y = event.relative.y
+    mouse_drag_distance += absf(delta_y)
     if mouse_drag_distance >= DRAG_THRESHOLD:
         mouse_scrolling = true
     if not mouse_scrolling:
         return
-    _scroll_by(event.relative.y)
+    _scroll_by(delta_y)
     get_viewport().set_input_as_handled()
 
 func _scroll_by(pointer_delta_y: float) -> void:
@@ -109,3 +123,13 @@ func _scroll_by(pointer_delta_y: float) -> void:
 
 func simulate_drag_for_test(pointer_delta_y: float) -> void:
     _scroll_by(pointer_delta_y)
+
+func can_scroll() -> bool:
+    var bar: VScrollBar = get_v_scroll_bar()
+    return bar != null and (bar.max_value - bar.page) > 1.0
+
+func jump_to_bottom_for_test() -> void:
+    var bar: VScrollBar = get_v_scroll_bar()
+    if bar == null:
+        return
+    scroll_vertical = maxi(0, int(ceil(bar.max_value - bar.page)))

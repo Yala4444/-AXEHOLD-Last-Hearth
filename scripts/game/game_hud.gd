@@ -30,6 +30,7 @@ var boss_bar: ProgressBar
 var banner: Label
 var flash: ColorRect
 var modal: ColorRect
+var modal_panel: PanelContainer
 var modal_box: VBoxContainer
 var status_time: float = 0.0
 
@@ -194,7 +195,7 @@ func _build() -> void:
     modal.add_child(center)
     center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-    var modal_panel := PanelContainer.new()
+    modal_panel = PanelContainer.new()
     center.add_child(modal_panel)
     modal_panel.custom_minimum_size = Vector2(330, 0)
     modal_panel.add_theme_stylebox_override("panel", _box_style(Color("10191d"), 4, Color("536269"), 1, 16))
@@ -214,6 +215,8 @@ func _layout() -> void:
     var hp_w: float = 62.0
     var base_w: float = 70.0
     var phase_w: float = width - margin * 2.0 - gap * 3.0 - pause_w - hp_w - base_w
+    if modal_panel != null:
+        modal_panel.custom_minimum_size = Vector2(clampf(width - 30.0, 250.0, 330.0), 0.0)
 
     var hp_panel := root.get_node("HeroPanel") as PanelContainer
     var phase_panel := root.get_node("PhasePanel") as PanelContainer
@@ -402,8 +405,11 @@ func show_modal(icon: String, title: String, body_text: String, buttons: Array) 
         var spec: Dictionary = spec_variant as Dictionary
         var button := Button.new()
         button.text = _safe(str(spec.get("text", "OK")))
-        button.custom_minimum_size = Vector2(0, 44)
+        button.custom_minimum_size = Vector2(0, 58)
         button.focus_mode = Control.FOCUS_NONE
+        button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+        button.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
         _style_button(button, modal_box.get_child_count() <= 2)
         var action: String = str(spec.get("action", "close"))
         button.pressed.connect(func() -> void: action_requested.emit(action))

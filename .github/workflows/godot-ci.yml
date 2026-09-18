@@ -170,6 +170,16 @@ jobs:
             exit 1
           fi
 
+      - name: V1.5.1 stability gate regression
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_v151_stability_gate_smoke.tscn 2>&1 | tee /tmp/godot-v151-stability.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v151-stability.log; then
+            echo "GDScript parse errors detected during v1.5.1 stability gate"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |
