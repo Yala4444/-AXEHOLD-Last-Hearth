@@ -34,6 +34,7 @@ func _announce_contract() -> void:
         return
     world.hud.show_banner("КОНТРАКТ: " + str(contract.get("name", "")), Color("d8bd7b"))
     world.hud.set_status(str(contract.get("desc", "")))
+    world.hud.set_run_objective("КОНТРАКТ · " + str(contract.get("name", "")))
     Analytics.event("run_contract_started", {
         "id": str(contract.get("id", "")),
         "biome": world.biome_index
@@ -41,6 +42,8 @@ func _announce_contract() -> void:
 
 func add_threat(amount: float, reason: String = "") -> void:
     threat = clampf(threat + amount, 0.0, 12.0)
+    if world != null and world.hud != null and world.phase == "day" and not contract_completed:
+        world.hud.set_run_objective("КОНТРАКТ · %s · УГРОЗА %s" % [str(contract.get("name", "")), threat_name()])
     Analytics.event("run_threat_changed", {
         "value": threat,
         "delta": amount,
@@ -59,6 +62,7 @@ func prepare_night(wave: int) -> Dictionary:
     var modifier_name: String = str(current_modifier.get("name", "НОЧЬ"))
     var modifier_desc: String = str(current_modifier.get("desc", ""))
     world.hud.set_status("%s: %s" % [modifier_name, modifier_desc])
+    world.hud.set_run_objective("УГРОЗА %s · %s" % [threat_name(), modifier_name])
     Analytics.event("night_modifier_selected", {
         "id": str(current_modifier.get("id", "")),
         "wave": wave,
@@ -83,6 +87,11 @@ func on_night_completed(wave: int) -> void:
     if night_rift != null and is_instance_valid(night_rift):
         night_rift.queue_free()
     night_rift = null
+    if world != null and world.hud != null:
+        if contract_completed:
+            world.hud.set_run_objective("КОНТРАКТ ВЫПОЛНЕН")
+        else:
+            world.hud.set_run_objective("КОНТРАКТ · " + str(contract.get("name", "")))
 
 func on_run_finished(won: bool) -> void:
     if won and str(contract.get("id", "")) == "hearthkeeper":
@@ -178,6 +187,7 @@ func _complete_contract() -> void:
     world.run_coins += reward
     world.hud.show_banner("КОНТРАКТ ВЫПОЛНЕН", Color("efcf83"))
     world.hud.set_status("+%d мон. · %s" % [reward, str(contract.get("name", ""))])
+    world.hud.set_run_objective("КОНТРАКТ ВЫПОЛНЕН · +%d МОН." % reward)
     Feedback.play("level", 12)
     Analytics.event("run_contract_completed", {
         "id": str(contract.get("id", "")),
