@@ -9,6 +9,7 @@ var hp: float = 40.0
 var max_hp: float = 40.0
 var move_speed: float = 30.0
 var movement_multiplier: float = 1.0
+var behavior_speed_multiplier: float = 1.0
 var contact_damage: float = 8.0
 var armor: float = 0.0
 var boss: bool = false
@@ -48,6 +49,7 @@ func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss
     tint = color
     armor = 0.0
     movement_multiplier = 1.0
+    behavior_speed_multiplier = 1.0
     base_scale = 1.0
     surge_cooldown = randf_range(2.5, 3.3)
     surge_windup = 0.0
@@ -134,6 +136,33 @@ func configure_elite(trait_id: String) -> void:
             armor = minf(0.55, armor + 0.12)
             base_scale *= 1.22
             charge_cooldown = randf_range(3.8, 4.8)
+        "root_alpha":
+            elite_title = "ВОЖАК КОРНЕЙ"
+            elite_glow = Color("93bd67")
+            max_hp *= 1.78
+            hp = max_hp
+            move_speed *= 1.10
+            contact_damage *= 1.30
+            armor = minf(0.50, armor + 0.08)
+            base_scale *= 1.16
+        "frost_reaver":
+            elite_title = "БЕЛЫЙ ОХОТНИК"
+            elite_glow = Color("9fdbea")
+            max_hp *= 1.58
+            hp = max_hp
+            move_speed *= 1.28
+            contact_damage *= 1.24
+            base_scale *= 1.12
+            surge_cooldown = 1.65
+        "ash_seeder":
+            elite_title = "ПЕПЕЛЬНЫЙ СЕЯТЕЛЬ"
+            elite_glow = Color("ed774c")
+            max_hp *= 1.88
+            hp = max_hp
+            move_speed *= 0.96
+            contact_damage *= 1.52
+            armor = minf(0.52, armor + 0.14)
+            base_scale *= 1.20
         _:
             elite_title = "ЭЛИТА"
             max_hp *= 1.55
@@ -156,13 +185,13 @@ func _physics_process(delta: float) -> void:
         queue_redraw()
         return
 
-    if enemy_type == "stalker" and _update_stalker_surge(delta):
+    if (enemy_type == "stalker" or (elite and elite_trait == "frost_reaver")) and _update_stalker_surge(delta):
         queue_redraw()
         return
 
     var moving: bool = has_target and windup <= 0.0
     if moving:
-        velocity = global_position.direction_to(target_position) * move_speed * movement_multiplier
+        velocity = global_position.direction_to(target_position) * move_speed * movement_multiplier * behavior_speed_multiplier
         move_and_slide()
     else:
         velocity = Vector2.ZERO
