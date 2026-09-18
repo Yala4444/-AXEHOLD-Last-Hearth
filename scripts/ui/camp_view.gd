@@ -443,7 +443,8 @@ func _draw_residents(width: float) -> void:
         if not bool(resident.get("unlocked", false)):
             continue
         named_count += 1
-        _draw_named_resident(named_positions.get(resident_id, Vector2(width * 0.5, height - 100.0)) as Vector2, resident_id)
+        var named_pos: Vector2 = named_positions.get(resident_id, Vector2(width * 0.5, height - 100.0))
+        _draw_named_resident(named_pos, resident_id)
 
     var ambient_positions: Array[Vector2] = [
         Vector2(width * 0.12, height - 84.0), Vector2(width * 0.84, height - 82.0),
