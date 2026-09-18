@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.5.0-alpha.1 — Expedition & Run Diversity 2.0
+- Added per-run optional contracts that reward alternate routes, exploration and non-standard defensive builds.
+- Added Threat of Darkness: cursed caches and altar bargains raise future pressure, while destroyed nests and relit Hearths reduce it.
+- Added announced night modifiers with distinct enemy composition, pacing, Tower pressure and reward profiles.
+- Added a pre-night foretelling window so players can prepare for the upcoming threat instead of discovering it only after the wave starts.
+- Added Dark Rift night objectives that call reinforcements until the Wanderer leaves passive defense and destroys the objective.
+- Rebalanced the Tower into support rather than an auto-win: higher cost, lower base throughput, modifier interactions and temporary Stalker sabotage.
+- Added cursed cache variants with materially better loot in exchange for higher Threat.
+- Added extinguished ancient Hearth activities after Night 1; relighting them costs carried wood, heals the hero, reduces Threat and supports exploration contracts.
+- Expanded dawn progression from a fixed three choices to a rotating three-of-seven doctrine pool.
+- Added a compact contract/threat line to the gameplay HUD.
+- Added v1.5 regression coverage for contract selection, night previews, Tower tradeoffs, doctrine variety and ancient Hearth spawning.
+- Bumped Android/iOS metadata to 1.5.0-alpha.1 / build 18.
+
 ## 1.4.0-alpha.1 — Identity & Game Feel
 - Established Chapter I around The Extinguishing: the Last Hearth is the final known flame and Guardian relics now reveal that the Guardians once protected the old Hearth network.
 - Added LoreRules with biome taglines, environmental lore, relic clues and camp progression whispers.

@@ -5,8 +5,10 @@ var world: GameWorld
 var generator: WorldGenerator
 var activities: Array[WorldActivity] = []
 var altar_spawned: bool = false
+var old_hearth_spawned: bool = false
 var altar_pending: WorldActivity = null
 var nests_destroyed: int = 0
+var hearths_relit: int = 0
 var activities_resolved: int = 0
 var last_focus: WorldActivity = null
 
@@ -48,6 +50,14 @@ func _process(delta: float) -> void:
                 occupied.append(item.global_position)
         _spawn("altar", 620.0, 1250.0, occupied)
 
+    if world.wave >= 1 and world.phase == "day" and not old_hearth_spawned:
+        old_hearth_spawned = true
+        var occupied_hearth: Array = []
+        for item: WorldActivity in activities:
+            if is_instance_valid(item):
+                occupied_hearth.append(item.global_position)
+        _spawn("old_hearth", 720.0, 1320.0, occupied_hearth)
+
     var nearest: WorldActivity = null
     var nearest_distance: float = INF
     for activity: WorldActivity in activities:
@@ -76,6 +86,20 @@ func _process(delta: float) -> void:
                 _show_altar(activity)
             continue
 
+        if activity.activity_type == "old_hearth":
+            activity.set_focus(distance <= 58.0)
+            if distance <= 45.0 and world.phase == "day":
+                var carried_wood: int = int(world.player.inventory.get("wood", 0))
+                if carried_wood >= 4:
+                    if activity.interact(delta):
+                        _grant_activity_reward(activity)
+                else:
+                    activity.decay_progress(delta)
+                    world.hud.set_status("Погасшему Очагу нужно 4 дерева в рюкзаке.")
+            else:
+                activity.decay_progress(delta)
+            continue
+
         if distance <= 45.0 and world.phase == "day":
             activity.set_focus(true)
             if activity.interact(delta):
@@ -94,11 +118,13 @@ func _hint_for(activity: WorldActivity) -> String:
         "caravan":
             return "Обыщи разбитый караван — здесь могли остаться припасы."
         "chest":
-            return "Тайник. Задержись рядом, чтобы открыть."
+            return "Проклятый тайник: награда выше, но Тьма ответит." if activity.cursed else "Тайник. Задержись рядом, чтобы открыть."
         "nest":
             return "Гнездо усилит ночь, если оставить его в живых."
         "altar":
             return "Древний алтарь предлагает силу за цену."
+        "old_hearth":
+            return "Погасший Очаг. Принеси 4 дерева и верни ему огонь."
     return ""
 
 func _show_altar(activity: WorldActivity) -> void:
@@ -124,12 +150,16 @@ func _on_hud_action(action: String) -> void:
     if action == "activity:altar_power":
         world.player.hp = maxf(1.0, world.player.hp - world.player.max_hp * 0.20)
         world.player.damage *= 1.25
+        if world.run_variation != null:
+            world.run_variation.add_threat(1.0, "altar_power")
         world.hud.show_banner("ОГОНЬ ПРИНЯЛ КЛЯТВУ", Color("f1b36d"))
         altar_pending.finish()
     elif action == "activity:altar_speed":
         world.player.max_hp = maxf(50.0, world.player.max_hp * 0.90)
         world.player.hp = minf(world.player.hp, world.player.max_hp)
         world.player.move_speed *= 1.15
+        if world.run_variation != null:
+            world.run_variation.add_threat(0.6, "altar_speed")
         world.hud.show_banner("ПУТЬ ОТКРЫТ", Color("c8dfb6"))
         altar_pending.finish()
     else:
@@ -143,6 +173,8 @@ func _on_activity_resolved(activity: WorldActivity) -> void:
     if activity.activity_type == "nest":
         nests_destroyed += 1
         _grant_nest_reward(activity)
+    elif activity.activity_type == "old_hearth":
+        hearths_relit += 1
     Analytics.event("world_activity_resolved", {
         "type": activity.activity_type,
         "wave": world.wave,
@@ -156,17 +188,39 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         _give_resource("ore", 1, activity.global_position)
         world.run_coins += 5
         world.hud.show_banner("КАРАВАН ОБЫСКАН", Color("e4c078"))
+    elif activity.activity_type == "old_hearth":
+        world.player.inventory["wood"] = maxi(0, int(world.player.inventory.get("wood", 0)) - 4)
+        world.player.queue_redraw()
+        world.player.heal(28.0)
+        world.run_coins += 7
+        if world.run_variation != null:
+            world.run_variation.reduce_threat(2.2, "old_hearth_relit")
+        world.hud.show_banner("СТАРЫЙ ОЧАГ ЗАЖЖЁН", Color("f0bd71"))
+        world.hud.set_status("Тьма отступила. +7 мон. · герой исцелён.")
     elif activity.activity_type == "chest":
-        _give_resource("stone", 3, activity.global_position)
-        _give_resource("ore", 2, activity.global_position)
-        world.run_coins += 9
-        world.player.gain_xp(6)
-        world.player.shield_hits = mini(5, world.player.shield_hits + 1)
-        world.hud.show_banner("ТАЙНИК ОТКРЫТ", Color("d6bb78"))
+        if activity.cursed:
+            _give_resource("stone", 2, activity.global_position)
+            _give_resource("ore", 4, activity.global_position)
+            world.run_coins += 16
+            world.player.gain_xp(9)
+            world.player.shield_hits = mini(5, world.player.shield_hits + 1)
+            if world.run_variation != null:
+                world.run_variation.add_threat(2.2, "cursed_cache")
+            world.hud.show_banner("ТЬМА ОТВЕТИЛА", Color("d99abb"))
+            world.hud.set_status("Ценная добыча получена, но следующая ночь станет опаснее.")
+        else:
+            _give_resource("stone", 3, activity.global_position)
+            _give_resource("ore", 2, activity.global_position)
+            world.run_coins += 9
+            world.player.gain_xp(6)
+            world.player.shield_hits = mini(5, world.player.shield_hits + 1)
+            world.hud.show_banner("ТАЙНИК ОТКРЫТ", Color("d6bb78"))
     Feedback.play("level", 6)
 
 func _grant_nest_reward(activity: WorldActivity) -> void:
     world.run_coins += 8
+    if world.run_variation != null:
+        world.run_variation.reduce_threat(1.25, "nest_destroyed")
     world.player.gain_xp(8)
     _give_resource("ore", 2, activity.global_position)
     world.hud.show_banner("ГНЕЗДО УНИЧТОЖЕНО", Color("d7d094"))

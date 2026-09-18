@@ -161,15 +161,18 @@ func _show_pending_dawn_choice() -> void:
 
     var completed_wave: int = pending_dawn_choice
     pending_dawn_choice = 0
+    var buttons: Array = []
+    for spec_variant: Variant in GameRules.random_doctrines(3):
+        var spec: Dictionary = spec_variant
+        buttons.append({
+            "text":"%s — %s" % [str(spec.get("name", "КУРС")), str(spec.get("desc", ""))],
+            "action":"doctrine:" + str(spec.get("id", "hunt"))
+        })
     world.hud.show_modal(
-        "🔥",
+        "",
         "Рассвет после ночи %d" % completed_wave,
-        "Выбери курс лагеря. Усиление действует до конца этой экспедиции и может складываться.",
-        [
-            {"text":"ОХОТА — +16% урона и +4% крита", "action":"doctrine:hunt"},
-            {"text":"УКРЕПЛЕНИЕ — +70 прочности и ремонт", "action":"doctrine:fortify"},
-            {"text":"СНАБЖЕНИЕ — +6 к рюкзаку и ресурсы", "action":"doctrine:supply"}
-        ]
+        "Выбери один из трёх курсов. В следующем забеге набор будет другим.",
+        buttons
     )
 
 func _on_hud_action(action: String) -> void:
@@ -183,19 +186,40 @@ func _on_hud_action(action: String) -> void:
         world.player.damage *= 1.16
         world.player.crit_chance = minf(0.55, world.player.crit_chance + 0.04)
         world.hud.show_banner("КУРС: ОХОТА", Color("ffd28c"))
-        world.hud.set_status("⚔️ Герой наносит больше урона и чаще критует.")
+        world.hud.set_status("Герой наносит больше урона и чаще критует.")
     elif doctrine == "fortify":
         world.base_max_hp += 70.0
         world.base_hp = minf(world.base_max_hp, world.base_hp + 110.0)
         world.hud.show_banner("КУРС: УКРЕПЛЕНИЕ", Color("c9e6b5"))
-        world.hud.set_status("🏰 Очаг укреплён и частично восстановлен.")
+        world.hud.set_status("Очаг укреплён и частично восстановлен.")
     elif doctrine == "supply":
         world.player.capacity += 6
         world.storage["wood"] = int(world.storage.get("wood", 0)) + 8
         world.storage["stone"] = int(world.storage.get("stone", 0)) + 5
         world.storage["ore"] = int(world.storage.get("ore", 0)) + 2
         world.hud.show_banner("КУРС: СНАБЖЕНИЕ", Color("d7d4ff"))
-        world.hud.set_status("🎒 Рюкзак расширен, на склад доставлены ресурсы.")
+        world.hud.set_status("Рюкзак расширен, на склад доставлены ресурсы.")
+    elif doctrine == "scout":
+        world.player.move_speed *= 1.10
+        if world.run_variation != null:
+            world.run_variation.reduce_threat(1.8, "dawn_scout")
+        world.hud.show_banner("КУРС: РАЗВЕДКА", Color("b9d9cb"))
+        world.hud.set_status("Странник быстрее, а давление Тьмы снижено.")
+    elif doctrine == "gather":
+        world.resource_yield_multiplier *= 1.18
+        world.player.capacity += 2
+        world.hud.show_banner("КУРС: СБОР", Color("d8c48a"))
+        world.hud.set_status("Каждый разрушенный ресурс даёт больше добычи.")
+    elif doctrine == "embers":
+        world.player.heal(42.0)
+        world.base_hp = minf(world.base_max_hp, world.base_hp + 95.0)
+        world.hud.show_banner("КУРС: ХРАНИТЕЛЬ ОГНЯ", Color("efbd78"))
+        world.hud.set_status("Герой исцелён, Очаг серьёзно отремонтирован.")
+    elif doctrine == "overwatch":
+        world.turret_global_damage_mult *= 1.22
+        world.turret_global_fire_mult *= 0.84
+        world.hud.show_banner("КУРС: ДОЗОР", Color("c4d0d7"))
+        world.hud.set_status("Башня стреляет быстрее и сильнее, если построена.")
     else:
         return
 
@@ -214,7 +238,7 @@ func _retune_new_enemies() -> void:
         if seen_enemies.has(enemy_id):
             continue
         seen_enemies[enemy_id] = true
-        if enemy.boss:
+        if enemy.boss or bool(enemy.get_meta("variation_tuned", false)):
             continue
 
         var desired_type: String = GameRules.enemy_type_for_biome(world.biome_index)

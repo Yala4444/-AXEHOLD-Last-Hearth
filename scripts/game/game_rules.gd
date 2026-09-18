@@ -63,8 +63,8 @@ const BUILD_SPECS := [
     },
     {
         "id":"turret","name":"БАШНЯ","offset":Vector2(0,-136),
-        "cost":{"wood":18,"stone":10,"ore":3},
-        "effect":"Автоматически стреляет ночью"
+        "cost":{"wood":22,"stone":13,"ore":5},
+        "effect":"Снимает часть давления ночью · уязвима к Сталкерам"
     },
     {
         "id":"shrine","name":"СВЯТИЛИЩЕ","offset":Vector2(118,-88),
@@ -83,6 +83,128 @@ const PERKS := [
     {"id":"speed","icon":"SPD","name":"Лёгкие сапоги","desc":"+14% скорости","category":"utility"},
     {"id":"bag","icon":"BAG","name":"Сборщик","desc":"+8 вместимости","category":"utility"}
 ]
+
+const NIGHT_MODIFIERS := [
+    {
+        "id":"swarm","name":"ГОЛОДНАЯ НОЧЬ",
+        "desc":"Из тьмы идёт больше быстрых существ.",
+        "min_wave":1,"enemy_mult":1.28,"spawn_interval_mult":0.86,
+        "enemy_hp_mult":0.88,"enemy_damage_mult":0.92,"enemy_speed_mult":1.05,
+        "tower_damage_mult":1.0,"tower_fire_mult":1.0,"reward_mult":1.05,
+        "bias":"runner"
+    },
+    {
+        "id":"siege","name":"ОСАДА",
+        "desc":"Тяжёлые твари давят на Очаг. Башня одна их не остановит.",
+        "min_wave":1,"enemy_mult":0.96,"spawn_interval_mult":1.05,
+        "enemy_hp_mult":1.12,"enemy_damage_mult":1.10,"enemy_speed_mult":0.96,
+        "tower_damage_mult":0.92,"tower_fire_mult":1.0,"reward_mult":1.12,
+        "bias":"brute"
+    },
+    {
+        "id":"black_wind","name":"ЧЁРНЫЙ ВЕТЕР",
+        "desc":"Башня стреляет реже, а враги быстрее пересекают темноту.",
+        "min_wave":2,"enemy_mult":1.0,"spawn_interval_mult":0.95,
+        "enemy_hp_mult":1.0,"enemy_damage_mult":1.0,"enemy_speed_mult":1.12,
+        "tower_damage_mult":0.88,"tower_fire_mult":1.35,"reward_mult":1.12,
+        "bias":"stalker"
+    },
+    {
+        "id":"blood_tide","name":"КРОВАВЫЙ ПРИЛИВ",
+        "desc":"Враги крепче и опаснее, но ночь приносит больше монет.",
+        "min_wave":2,"enemy_mult":1.08,"spawn_interval_mult":0.94,
+        "enemy_hp_mult":1.18,"enemy_damage_mult":1.14,"enemy_speed_mult":1.02,
+        "tower_damage_mult":1.0,"tower_fire_mult":1.0,"reward_mult":1.34,
+        "bias":"guardian"
+    },
+    {
+        "id":"quiet_dark","name":"ТИХАЯ ТЬМА",
+        "desc":"Врагов меньше, но каждый из них заметно крепче.",
+        "min_wave":1,"enemy_mult":0.76,"spawn_interval_mult":1.18,
+        "enemy_hp_mult":1.38,"enemy_damage_mult":1.08,"enemy_speed_mult":0.98,
+        "tower_damage_mult":1.0,"tower_fire_mult":1.0,"reward_mult":1.10,
+        "bias":"normal"
+    }
+]
+
+const RUN_CONTRACTS := [
+    {
+        "id":"nest_hunter","name":"ОХОТНИК НА ГНЁЗДА",
+        "desc":"Уничтожь 2 гнезда до второй ночи.",
+        "reward":24
+    },
+    {
+        "id":"outer_reach","name":"ДАЛЬНИЙ ВЫХОД",
+        "desc":"Доберись до внешнего кольца мира до второй ночи.",
+        "reward":20
+    },
+    {
+        "id":"lean_defense","name":"СКУПАЯ ОБОРОНА",
+        "desc":"Переживи первую ночь, построив не больше одного сооружения.",
+        "reward":26
+    },
+    {
+        "id":"scavenger","name":"ИСКАТЕЛЬ",
+        "desc":"Разбери 3 события мира до второй ночи.",
+        "reward":22
+    },
+    {
+        "id":"no_tower","name":"СВОИМИ СИЛАМИ",
+        "desc":"Переживи первую ночь без Башни.",
+        "reward":28
+    },
+    {
+        "id":"hearthkeeper","name":"ХРАНИТЕЛЬ ОЧАГА",
+        "desc":"Заверши экспедицию, сохранив не меньше 75% прочности Очагa.",
+        "reward":34
+    },
+    {
+        "id":"rekindle","name":"ИСКРА СТАРОГО МИРА",
+        "desc":"Найди и зажги погасший Очаг до третьей ночи.",
+        "reward":30
+    }
+]
+
+const DAWN_DOCTRINES := [
+    {"id":"hunt","name":"ОХОТА","desc":"+16% урона и +4% крита"},
+    {"id":"fortify","name":"УКРЕПЛЕНИЕ","desc":"+70 прочности и ремонт Очагa"},
+    {"id":"supply","name":"СНАБЖЕНИЕ","desc":"+6 к рюкзаку и припасы"},
+    {"id":"scout","name":"РАЗВЕДКА","desc":"+10% скорость и меньше Угроза Тьмы"},
+    {"id":"gather","name":"СБОР","desc":"+18% добычи и +2 к рюкзаку"},
+    {"id":"embers","name":"ХРАНИТЕЛЬ ОГНЯ","desc":"Лечение героя и сильный ремонт Очагa"},
+    {"id":"overwatch","name":"ДОЗОР","desc":"Башня стреляет быстрее и сильнее"}
+]
+
+static func random_night_modifier(wave: int, threat: float = 0.0) -> Dictionary:
+    var pool: Array[Dictionary] = []
+    for spec_variant: Variant in NIGHT_MODIFIERS:
+        var spec: Dictionary = spec_variant
+        if wave >= int(spec.get("min_wave", 1)):
+            pool.append(spec.duplicate(true))
+    if pool.is_empty():
+        return NIGHT_MODIFIERS[0].duplicate(true)
+
+    # High threat makes the harsher modifiers more likely without secretly
+    # scaling enemy HP behind the player's back.
+    if threat >= 6.0 and wave >= 2:
+        for spec_variant: Variant in NIGHT_MODIFIERS:
+            var spec: Dictionary = spec_variant
+            if str(spec.get("id", "")) in ["siege", "black_wind", "blood_tide"]:
+                pool.append(spec.duplicate(true))
+    return pool[randi() % pool.size()].duplicate(true)
+
+static func random_contract() -> Dictionary:
+    return RUN_CONTRACTS[randi() % RUN_CONTRACTS.size()].duplicate(true)
+
+static func random_doctrines(count: int = 3) -> Array[Dictionary]:
+    var pool: Array[Dictionary] = []
+    for spec_variant: Variant in DAWN_DOCTRINES:
+        pool.append((spec_variant as Dictionary).duplicate(true))
+    pool.shuffle()
+    var result: Array[Dictionary] = []
+    for i: int in range(mini(count, pool.size())):
+        result.append(pool[i])
+    return result
 
 static func biome(index: int) -> Dictionary:
     return BIOMES[clampi(index, 0, BIOMES.size() - 1)].duplicate(true)

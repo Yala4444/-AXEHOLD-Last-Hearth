@@ -53,6 +53,12 @@ var camera: Camera2D
 var backdrop: WorldBackdrop
 var world_generator: WorldGenerator
 var activity_director: WorldActivityDirector
+var run_variation: RunVariationDirector
+
+var resource_yield_multiplier: float = 1.0
+var turret_global_damage_mult: float = 1.0
+var turret_global_fire_mult: float = 1.0
+var turret_disabled_time: float = 0.0
 
 func configure(index: int) -> void:
     biome_index = index
@@ -87,6 +93,10 @@ func _start_run() -> void:
     activity_director = WorldActivityDirector.new()
     add_child(activity_director)
     activity_director.setup(self, world_generator)
+
+    run_variation = RunVariationDirector.new()
+    add_child(run_variation)
+    run_variation.setup(self)
 
     phase_max = GameRules.day_duration(0)
     phase_time = phase_max
@@ -152,6 +162,7 @@ func _update_camera_lookahead(delta: float) -> void:
 func _process(delta: float) -> void:
     deposit_pulse = maxf(0.0, deposit_pulse - delta * 2.8)
     turret_shot_time = maxf(0.0, turret_shot_time - delta * 8.0)
+    turret_disabled_time = maxf(0.0, turret_disabled_time - delta)
 
     if paused_local or finishing or hud.modal_open():
         queue_redraw()
@@ -269,7 +280,9 @@ func _harvest(delta: float) -> void:
         var harvest_damage: float = player.damage * delta * GameRules.harvest_multiplier(spot.resource_type)
         if spot.damage(harvest_damage):
             var kind: String = "wood" if spot.resource_type == "tree" else ("stone" if spot.resource_type == "rock" else "ore")
-            var amount: int = GameRules.resource_yield(spot.resource_type, biome_index)
+            var amount: int = maxi(1, int(round(
+                float(GameRules.resource_yield(spot.resource_type, biome_index)) * resource_yield_multiplier
+            )))
             var actual: int = player.add_resource(kind, amount)
             if spot.resource_type == "tree":
                 trees_cut += 1
@@ -376,7 +389,13 @@ func _start_night() -> void:
     if backdrop != null:
         backdrop.set_night(true)
     wave += 1
-    spawn_left = GameRules.wave_count(wave, float(biome["difficulty"]))
+
+    var base_spawn_count: int = GameRules.wave_count(wave, float(biome["difficulty"]))
+    if run_variation != null:
+        run_variation.prepare_night(wave)
+        base_spawn_count = run_variation.modify_spawn_count(base_spawn_count)
+    spawn_left = base_spawn_count
+
     if activity_director != null:
         var nest_extra: int = activity_director.night_extra_enemies()
         spawn_left += nest_extra
@@ -407,12 +426,16 @@ func _start_day() -> void:
     hud.show_banner("РАССВЕТ • СНОВА ЗА РЕСУРСАМИ", Color("fff0b4"))
     hud.set_status("Укрепи слабое место лагеря до следующей ночи.")
 
-func _spawn_enemy(is_boss: bool = false) -> void:
+func _spawn_enemy(is_boss: bool = false, forced_kind: String = "") -> void:
     var enemy: AxEnemy = EnemyScene.instantiate() as AxEnemy
     add_child(enemy)
     enemy.global_position = _edge_position()
-    var kind: String = "boss" if is_boss else GameRules.enemy_type_for_biome(biome_index)
+    var kind: String = "boss" if is_boss else (forced_kind if not forced_kind.is_empty() else GameRules.enemy_type_for_biome(biome_index))
+    if run_variation != null:
+        kind = run_variation.pick_enemy_kind(kind, is_boss)
     enemy.configure(kind, float(biome["difficulty"]), wave, Color(str(biome["enemy"])), is_boss)
+    if run_variation != null:
+        run_variation.tune_enemy(enemy)
     if is_boss:
         enemy.max_hp *= 1.0 + biome_index * 0.28
         enemy.hp = enemy.max_hp
@@ -433,7 +456,8 @@ func _edge_position() -> Vector2:
 func _update_night(delta: float) -> void:
     spawn_timer -= delta
     if spawn_left > 0 and spawn_timer <= 0.0:
-        spawn_timer = maxf(0.52, 1.55 - wave * 0.12)
+        var interval_mult: float = run_variation.spawn_interval_multiplier() if run_variation != null else 1.0
+        spawn_timer = maxf(0.42, (1.55 - wave * 0.12) * interval_mult)
         _spawn_enemy()
         spawn_left -= 1
     if wave == 3 and not boss_spawned and spawn_left <= 3:
@@ -456,7 +480,20 @@ func _update_night(delta: float) -> void:
         else:
             var player_distance: float = enemy.global_position.distance_to(player.global_position)
             var target: Vector2 = player.global_position if player_distance < 125.0 else base_position
+
+            # Stalkers are the natural answer to passive tower play: if the hero
+            # ignores them, they dive the tower and disable it temporarily.
+            if enemy.enemy_type == "stalker" and bool(built["turret"]) and turret_disabled_time <= 0.0 and player_distance >= 82.0:
+                target = _pad_position("turret")
             enemy.set_target_position(target)
+
+        if enemy.enemy_type == "stalker" and bool(built["turret"]) and turret_disabled_time <= 0.0:
+            if enemy.global_position.distance_to(_pad_position("turret")) < 30.0:
+                turret_disabled_time = 4.5
+                enemy.surge_cooldown = 1.6
+                hud.show_banner("БАШНЯ ОГЛУШЕНА", Color("d7a1bd"))
+                hud.set_status("Сталкер добрался до Башни. Она не стреляет несколько секунд.")
+                Feedback.play("danger", 10)
 
         var enemy_radius: float = 24.0 if enemy.boss else 12.0
         if player.global_position.distance_to(enemy.global_position) <= reach + enemy_radius:
@@ -476,7 +513,8 @@ func _update_night(delta: float) -> void:
                 enemy.hit_cooldown = 0.78
             elif dist_to_base < 53.0:
                 var wall_multiplier: float = 0.35 if bool(built["wall"]) else 1.0
-                var amount: float = enemy.contact_damage * wall_multiplier
+                var night_damage_mult: float = run_variation.base_damage_multiplier() if run_variation != null else 1.0
+                var amount: float = enemy.contact_damage * wall_multiplier * night_damage_mult
                 base_hp -= amount
                 if core_fx != null:
                     core_fx.hearth_hit(base_position)
@@ -488,20 +526,24 @@ func _update_night(delta: float) -> void:
         _finish_run(false)
         return
 
-    if spawn_left == 0 and enemies.is_empty():
+    var objective_blocks_end: bool = run_variation != null and run_variation.blocks_night_end()
+    if spawn_left == 0 and enemies.is_empty() and not objective_blocks_end:
+        if run_variation != null:
+            run_variation.on_night_completed(wave)
         if wave >= 3:
             _finish_run(true)
         else:
             _start_day()
 
 func _update_turret(delta: float) -> void:
-    if not bool(built["turret"]) or enemies.is_empty():
+    if not bool(built["turret"]) or enemies.is_empty() or turret_disabled_time > 0.0:
         return
     turret_timer -= delta
     if turret_timer > 0.0:
         return
 
-    turret_timer = maxf(0.42, 0.64 - wave * 0.035)
+    var variation_fire_mult: float = run_variation.turret_fire_multiplier() if run_variation != null else 1.0
+    turret_timer = maxf(0.48, (0.78 - wave * 0.03) * turret_global_fire_mult * variation_fire_mult)
     var nearest: AxEnemy = null
     var best: float = INF
     for enemy: AxEnemy in enemies:
@@ -516,7 +558,8 @@ func _update_turret(delta: float) -> void:
         turret_shot_from = _pad_position("turret")
         turret_shot_to = nearest.global_position
         turret_shot_time = 1.0
-        nearest.take_damage(28.0 + wave * 4.0)
+        var variation_damage_mult: float = run_variation.turret_damage_multiplier() if run_variation != null else 1.0
+        nearest.take_damage((20.0 + wave * 3.0) * turret_global_damage_mult * variation_damage_mult)
         if core_fx != null:
             core_fx.turret_hit(nearest.global_position)
         Feedback.play("hit", 2)
@@ -548,6 +591,11 @@ func _update_boss_special(enemy: AxEnemy, delta: float) -> void:
         boss_warning_time = 0.85
         boss_warning_active = true
 
+func spawn_reinforcement(kind: String = "") -> void:
+    if phase != "night" or finishing:
+        return
+    _spawn_enemy(false, kind)
+
 func _on_enemy_killed(enemy: AxEnemy) -> void:
     if not enemies.has(enemy):
         return
@@ -555,6 +603,8 @@ func _on_enemy_killed(enemy: AxEnemy) -> void:
     kills += 1
     GameState.mission_add("kills")
     var reward: int = 25 if enemy.boss else (3 if enemy.enemy_type == "brute" or enemy.enemy_type == "guardian" else 1)
+    if not enemy.boss and run_variation != null:
+        reward = maxi(1, int(round(float(reward) * run_variation.reward_multiplier())))
     run_coins += reward
     var xp_reward: int = 20 if enemy.boss else (6 if enemy.enemy_type == "brute" or enemy.enemy_type == "guardian" else 4)
     player.gain_xp(xp_reward)
@@ -591,6 +641,8 @@ func _finish_run(won: bool) -> void:
     if finishing and player.hp > 0.0:
         return
     finishing = true
+    if run_variation != null:
+        run_variation.on_run_finished(won)
     var reward: int = 22 + wave * 15 + run_coins + builds * 4
     GameState.register_run(wave, won, biome_index, kills, builds, trees_cut)
     Analytics.event("run_end", {"won": won, "wave": wave, "biome": biome_index, "kills": kills})
