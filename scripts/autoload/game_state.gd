@@ -41,8 +41,8 @@ func defaults() -> Dictionary:
         "trophies_claimed": [],
         "quest_state": {"date":"", "active":[], "used_ids":[], "claimed_today":0, "archive":0},
         "residents": {
-            "mira": {"unlocked": false, "trust": 0, "quest_step": 0},
-            "thorn": {"unlocked": false, "trust": 0, "quest_step": 0}
+            "mira": {"unlocked": false, "trust": 0, "quest_step": 0, "quest_progress": 0},
+            "thorn": {"unlocked": false, "trust": 0, "quest_step": 0, "quest_progress": 0}
         }
     }
 
