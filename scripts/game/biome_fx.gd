@@ -92,40 +92,68 @@ func _draw_biome_atmosphere(view_rect: Rect2) -> void:
             _draw_forest_atmosphere(view_rect)
 
 func _draw_forest_atmosphere(view_rect: Rect2) -> void:
-    var night: bool = world.phase == "night"
-    for i: int in range(14):
-        var drift: float = ambience_time * (5.0 + float(i % 3))
+    var night_strength: float = night_mix
+    var mote_count: int = 10 + int(round(night_strength * 10.0))
+    for i: int in range(mote_count):
+        var drift: float = ambience_time * (4.0 + float(i % 4))
         var x: float = view_rect.position.x + fmod(float(i * 83) + drift, view_rect.size.x + 30.0) - 15.0
         var y: float = view_rect.position.y + 72.0 + fmod(float(i * 47) + sin(ambience_time * 0.7 + float(i)) * 18.0, maxf(1.0, view_rect.size.y - 115.0))
         var pulse: float = 0.5 + sin(ambience_time * 2.8 + float(i) * 0.8) * 0.5
-        var color: Color = Color(0.76, 0.95, 0.48, (0.08 + pulse * 0.13) if night else (0.025 + pulse * 0.035))
-        draw_circle(Vector2(x, y), 1.2 + pulse * 0.9, color)
+        var alpha: float = lerpf(0.026 + pulse * 0.032, 0.08 + pulse * 0.15, night_strength)
+        var color: Color = Color(0.76, 0.95, 0.48, alpha)
+        draw_circle(Vector2(x, y), 1.1 + pulse * 0.9, color)
+
+    # Daylight leaves give the forest movement without covering gameplay.
+    var leaf_alpha: float = (1.0 - night_strength) * 0.11
+    if leaf_alpha > 0.01:
+        for i: int in range(7):
+            var lx: float = view_rect.position.x + fmod(float(i * 109) + ambience_time * (7.0 + float(i % 3)), view_rect.size.x + 40.0) - 20.0
+            var ly: float = view_rect.position.y + 55.0 + fmod(float(i * 63) + ambience_time * 4.0, maxf(1.0, view_rect.size.y - 95.0))
+            var sway: float = sin(ambience_time * 2.0 + float(i)) * 5.0
+            draw_line(Vector2(lx, ly), Vector2(lx + 4.0 + sway * 0.15, ly + 3.0), Color(0.44, 0.63, 0.33, leaf_alpha), 2.0)
 
 func _draw_frost_atmosphere(view_rect: Rect2) -> void:
-    var night: bool = world.phase == "night"
+    var night_strength: float = night_mix
+    var snow_count: int = 17 + int(round(night_strength * 13.0))
 
-    for i: int in range(26 if night else 18):
-        var speed: float = 18.0 + float(i % 5) * 5.5
+    for i: int in range(snow_count):
+        var speed: float = 18.0 + float(i % 5) * 5.5 + night_strength * 8.0
         var x: float = view_rect.position.x + fmod(float(i * 61) + ambience_time * speed, view_rect.size.x + 40.0) - 20.0
         var y: float = view_rect.position.y + fmod(float(i * 43) + ambience_time * (13.0 + float(i % 4) * 3.0), view_rect.size.y + 20.0)
-        var length: float = 4.0 + float(i % 3) * 2.2
-        draw_line(Vector2(x, y), Vector2(x - length * 0.7, y + length), Color(0.86, 0.96, 1.0, 0.16 if night else 0.085), 1.2)
+        var length: float = 4.0 + float(i % 3) * 2.2 + night_strength * 1.8
+        var alpha: float = lerpf(0.085, 0.18, night_strength)
+        draw_line(Vector2(x, y), Vector2(x - length * (0.7 + night_strength * 0.25), y + length), Color(0.86, 0.96, 1.0, alpha), 1.2)
 
     for i: int in range(8):
-        var fog_x: float = view_rect.position.x + fmod(float(i * 97) + ambience_time * 7.0, view_rect.size.x + 90.0) - 45.0
+        var fog_x: float = view_rect.position.x + fmod(float(i * 97) + ambience_time * (7.0 + night_strength * 3.0), view_rect.size.x + 90.0) - 45.0
         var fog_y: float = view_rect.position.y + 96.0 + fmod(float(i * 71), maxf(1.0, view_rect.size.y - 150.0))
-        draw_line(Vector2(fog_x, fog_y), Vector2(fog_x + 42.0, fog_y), Color(0.82, 0.93, 0.97, 0.055 if night else 0.032), 3.0)
+        draw_line(Vector2(fog_x, fog_y), Vector2(fog_x + 42.0 + night_strength * 16.0, fog_y), Color(0.82, 0.93, 0.97, lerpf(0.032, 0.07, night_strength)), 3.0)
+
+    if night_strength > 0.35:
+        for i: int in range(4):
+            var gy: float = view_rect.position.y + 110.0 + float(i) * maxf(60.0, (view_rect.size.y - 180.0) / 4.0)
+            var gx: float = view_rect.position.x + fmod(ambience_time * (36.0 + float(i) * 7.0) + float(i * 83), view_rect.size.x + 100.0) - 50.0
+            draw_line(Vector2(gx, gy), Vector2(gx + 54.0, gy + 7.0), Color(0.77, 0.90, 0.95, 0.035 * night_strength), 2.0)
 
 func _draw_ash_atmosphere(view_rect: Rect2) -> void:
-    var night: bool = world.phase == "night"
+    var night_strength: float = night_mix
+    var ash_count: int = 16 + int(round(night_strength * 10.0))
 
-    for i: int in range(23 if night else 16):
+    for i: int in range(ash_count):
         var x: float = view_rect.position.x + fmod(float(i * 79) + sin(ambience_time * 0.5 + float(i)) * 22.0, view_rect.size.x)
-        var rise_speed: float = 15.0 + float(i % 5) * 4.0
+        var rise_speed: float = 15.0 + float(i % 5) * 4.0 + night_strength * 4.0
         var y: float = view_rect.position.y + view_rect.size.y - fmod(float(i * 57) + ambience_time * rise_speed, view_rect.size.y + 30.0)
         var ember: bool = i % 4 == 0
-        var particle_color: Color = Color(1.0, 0.45, 0.20, 0.24 if night else 0.14) if ember else Color(0.20, 0.16, 0.14, 0.18)
-        draw_circle(Vector2(x, y), 1.7 if ember else 1.2, particle_color)
+        var ember_alpha: float = lerpf(0.14, 0.29, night_strength)
+        var particle_color: Color = Color(1.0, 0.45, 0.20, ember_alpha) if ember else Color(0.20, 0.16, 0.14, lerpf(0.16, 0.22, night_strength))
+        draw_circle(Vector2(x, y), 1.8 if ember else 1.2, particle_color)
+
+    # Slow smoke ribbons sell heat without masking interactables.
+    for i: int in range(6):
+        var smoke_x: float = view_rect.position.x + fmod(float(i * 113) + ambience_time * (3.0 + float(i % 2)), view_rect.size.x + 70.0) - 35.0
+        var smoke_y: float = view_rect.position.y + 100.0 + fmod(float(i * 79) - ambience_time * 5.0, maxf(1.0, view_rect.size.y - 150.0))
+        var smoke_alpha: float = lerpf(0.025, 0.055, night_strength)
+        draw_line(Vector2(smoke_x, smoke_y), Vector2(smoke_x + 24.0, smoke_y - 10.0), Color(0.16, 0.12, 0.11, smoke_alpha), 4.0)
 
 func _draw_phase_wash(_view_rect: Rect2) -> void:
     # Full-viewport world-space rectangles are intentionally avoided here.

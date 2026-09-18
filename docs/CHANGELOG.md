@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.10.0-alpha.1 — Production Feel
+- Expanded biome landmark language with abandoned roads, ruins, shrines, carts, fissures, industrial wreckage and other larger environmental set pieces.
+- Added gradual backdrop day/night interpolation instead of an immediate palette snap.
+- Increased biome atmosphere over the night transition: forest motes, frost wind/snow and ash/ember smoke.
+- Gave all three Guardians distinct biome-specific silhouettes, cores and aura language.
+- Added Guardian arrival and defeat FX.
+- Added camera shake for damage, Frost Hammer impacts and Guardian moments.
+- Added player-hit and Hearth dusk/dawn feedback.
+- Made wood, stone and ore destruction feedback materially different.
+- Improved hero attack poses and signature weapon glows.
+- Rebuilt Soundscape state changes around crossfaded dual audio players.
+- Added a distinct Guardian music state for every biome.
+- Added dedicated v1.10 regression coverage for backdrop transition, Guardian identity, production FX, camera impact and music layers.
+- Bumped Android/iOS metadata to 1.10.0-alpha.1 / build 24.
+
 ## 1.9.0-alpha.1 — Story & Residents
 - Added a dedicated Chronicle screen to the Last Hearth.
 - Added a real Chapter I finale that unlocks after all three Guardian relics are collected.
