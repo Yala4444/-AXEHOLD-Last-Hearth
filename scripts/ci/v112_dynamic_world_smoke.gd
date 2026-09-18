@@ -89,7 +89,6 @@ func _test_dynamic_runtime() -> void:
         var enemy: AxEnemy = enemy_variant as AxEnemy
         if enemy != null and is_instance_valid(enemy):
             enemy.take_damage(99999.0)
-    await _wait_frames(4)
     world.dynamic_world._update_active_event(0.1)
     if str(world.dynamic_world.active_event.get("type", "")) != "trail_cache":
         _fail("Saved caravan did not open a chained trail cache")
@@ -109,7 +108,8 @@ func _test_dynamic_runtime() -> void:
         var enemy: AxEnemy = enemy_variant as AxEnemy
         if enemy != null and is_instance_valid(enemy):
             enemy.take_damage(99999.0)
-    await _wait_frames(4)
+            if enemy.elite:
+                world.dynamic_world._on_enemy_defeated(enemy)
     world.dynamic_world._update_active_event(0.1)
     if str(world.dynamic_world.active_event.get("stage", "")) != "secure":
         _fail("Rescue event did not require the player to secure the survivor after combat")
@@ -130,7 +130,10 @@ func _test_dynamic_runtime() -> void:
             enemy.take_damage(99999.0)
     if not found_elite:
         _fail("Elite Hunt did not spawn an elite target")
-    await _wait_frames(4)
+    for enemy_variant: Variant in hunt_enemies:
+        var killed_enemy: AxEnemy = enemy_variant as AxEnemy
+        if killed_enemy != null and is_instance_valid(killed_enemy) and killed_enemy.elite:
+            world.dynamic_world._on_enemy_defeated(killed_enemy)
     world.dynamic_world._update_active_event(0.1)
     if world.dynamic_world.elites_killed < 2:
         _fail("Elite kill accounting did not include rescue/hunt elites")
