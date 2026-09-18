@@ -49,6 +49,16 @@ func _show_result() -> void:
     stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     stats.add_theme_color_override("font_color", Color(0.78, 0.81, 0.83))
 
+    var parts_unused: int = int(result_data.get("parts_unused", 0))
+    if parts_unused > 0:
+        var parts_note := Label.new()
+        box.add_child(parts_note)
+        parts_note.text = "Неиспользованные детали: %d → +%d мон." % [parts_unused, int(result_data.get("parts_bonus", 0))]
+        parts_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        parts_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        parts_note.add_theme_font_size_override("font_size", 9)
+        parts_note.add_theme_color_override("font_color", Color("b9c4c3"))
+
     var claim_text: String = "Забрать трофей и вернуться" if won else "Вернуться в лагерь"
     var claim := _button(box, claim_text, true)
     claim.pressed.connect(_grant_result.bind(1))

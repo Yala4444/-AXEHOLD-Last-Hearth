@@ -6,9 +6,12 @@ var label: String = "ПАЛИСАД"
 var effect: String = ""
 var cost: Dictionary = {"wood": 12, "stone": 0, "ore": 0}
 var built: bool = false
+var level: int = 0
+var upgrade_branch: String = ""
 var reveal: float = 1.0
 var pulse: float = 0.0
 var construction_progress: float = 0.0
+var upgrade_progress: float = 0.0
 var affordable: bool = false
 var focused: bool = false
 var idle_time: float = 0.0
@@ -19,8 +22,11 @@ func configure(kind: String, title: String, new_cost: Dictionary, is_built: bool
     effect = effect_text
     cost = new_cost.duplicate(true)
     built = is_built
+    level = 1 if built else 0
+    upgrade_branch = ""
     reveal = 1.0 if built else 0.0
     construction_progress = 1.0 if built else 0.0
+    upgrade_progress = 0.0
     queue_redraw()
 
 func set_context_state(can_afford: bool, is_focused: bool) -> void:
@@ -64,10 +70,45 @@ func reset_construction() -> void:
     if not is_equal_approx(before, construction_progress):
         queue_redraw()
 
+func can_upgrade(storage: Dictionary, parts: int) -> bool:
+    if not built or level != 1:
+        return false
+    var upgrade_cost: Dictionary = BuildingRules.upgrade_cost(build_type)
+    return int(storage.get("wood", 0)) >= int(upgrade_cost.get("wood", 0)) \
+        and int(storage.get("stone", 0)) >= int(upgrade_cost.get("stone", 0)) \
+        and int(storage.get("ore", 0)) >= int(upgrade_cost.get("ore", 0)) \
+        and parts >= int(upgrade_cost.get("parts", 0))
+
+func advance_upgrade(delta: float) -> bool:
+    if not built or level != 1:
+        return false
+    upgrade_progress = minf(1.0, upgrade_progress + delta / 0.78)
+    queue_redraw()
+    return upgrade_progress >= 1.0
+
+func reset_upgrade() -> void:
+    if level != 1:
+        return
+    var before: float = upgrade_progress
+    upgrade_progress = maxf(0.0, upgrade_progress - 0.10)
+    if not is_equal_approx(before, upgrade_progress):
+        queue_redraw()
+
+func apply_upgrade(branch_id: String) -> void:
+    if not built:
+        return
+    level = 2
+    upgrade_branch = branch_id
+    upgrade_progress = 0.0
+    reveal = 0.0
+    pulse = 1.0
+    queue_redraw()
+
 func consume(storage: Dictionary) -> void:
     for key: String in ["wood", "stone", "ore"]:
         storage[key] = int(storage.get(key, 0)) - int(cost.get(key, 0))
     built = true
+    level = 1
     construction_progress = 1.0
     reveal = 0.0
     pulse = 1.0
@@ -78,6 +119,11 @@ func consume(storage: Dictionary) -> void:
 func _draw() -> void:
     if built:
         _draw_built_structure()
+        if level == 1 and upgrade_progress > 0.0:
+            draw_rect(Rect2(-23, 48, 46, 4), Color(0.04, 0.06, 0.05, 0.34))
+            draw_rect(Rect2(-23, 48, 46 * upgrade_progress, 4), Color("d5a652"))
+        if level >= 2:
+            _draw_level_two_badge()
         if pulse > 0.0:
             var p: float = 1.0 - pulse
             var radius: float = 34.0 + p * 18.0
@@ -113,6 +159,46 @@ func _draw_world_blueprint() -> void:
     if construction_progress > 0.0:
         draw_rect(Rect2(-23, 49, 46, 4), Color(0.04, 0.06, 0.05, 0.30))
         draw_rect(Rect2(-23, 49, 46 * construction_progress, 4), Color("d8b35f"))
+
+func _draw_level_two_badge() -> void:
+    var accent: Color = Color("d5a652")
+    match upgrade_branch:
+        "spikes":
+            accent = Color("d07a5e")
+        "reach":
+            accent = Color("8fb8cf")
+        "repeater":
+            accent = Color("9cc7a4")
+        "ward":
+            accent = Color("86c9d0")
+
+    draw_circle(Vector2(0, -39), 8.0, Color(0.04, 0.06, 0.06, 0.86))
+    draw_arc(Vector2(0, -39), 8.0, 0.0, TAU, 16, Color(accent, 0.82), 1.2)
+    var font: Font = ThemeDB.fallback_font
+    draw_string(font, Vector2(-5, -36), "II", HORIZONTAL_ALIGNMENT_CENTER, 10, 7, accent)
+
+    match upgrade_branch:
+        "bastion":
+            draw_rect(Rect2(-34, -5, 5, 24), Color("9b7747"))
+            draw_rect(Rect2(29, -5, 5, 24), Color("9b7747"))
+        "spikes":
+            for x: int in [-31, -21, 21, 31]:
+                draw_colored_polygon(PackedVector2Array([
+                    Vector2(x - 3, 17), Vector2(x, 5), Vector2(x + 3, 17)
+                ]), Color("c18d55"))
+        "temper":
+            draw_circle(Vector2(0, 8), 9.0, Color(1.0, 0.38, 0.10, 0.12))
+        "reach":
+            draw_arc(Vector2.ZERO, 34.0, -2.4, -0.7, 18, Color("8fb8cf"), 2.0)
+        "ballista":
+            draw_rect(Rect2(-18, -19, 36, 4), Color("b28b4b"))
+        "repeater":
+            draw_rect(Rect2(-9, -31, 5, 17), Color("d0b56a"))
+            draw_rect(Rect2(4, -31, 5, 17), Color("d0b56a"))
+        "renewal":
+            draw_circle(Vector2(0, -4), 34.0, Color(0.40, 0.90, 0.78, 0.045))
+        "ward":
+            draw_arc(Vector2.ZERO, 33.0, -2.8, -0.35, 26, Color("86c9d0"), 2.0)
 
 func _draw_blueprint_preview(ink: Color) -> void:
     match build_type:

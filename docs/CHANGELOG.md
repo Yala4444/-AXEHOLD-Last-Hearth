@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.7.0-alpha.1 — Buildings & Economy
+- Added a permanent Camp Forge blueprint economy that spends both coins and Guardian shards.
+- Added Level-II projects for Palisade, Forge, Tower and Shrine.
+- Every expedition building now has two mutually exclusive Level-II specialization branches.
+- Added Mechanism Parts as a fourth expedition stockpile resource used for advanced construction.
+- Parts are earned from high-value exploration activities and Guardian-class enemies.
+- Unused Mechanism Parts convert into coins at expedition end instead of being wasted.
+- Palisade II can become Bastion or Spikes.
+- Forge II can become Tempering or Arc Workshop.
+- Tower II can become Ballista or Repeater.
+- Shrine II can become Renewal or Ward.
+- Level-II effects modify actual defense, hero power, tower cadence/damage, regeneration and shielding.
+- Added HUD support and pixel iconography for Mechanism Parts.
+- Added a rotating daily quest for upgrading a building to Level II.
+- Added save migration for permanent building projects.
+- Bumped Android/iOS metadata to 1.7.0-alpha.1 / build 21.
+
 ## 1.6.0-alpha.1 — Quest & Encounter Expansion
 - Replaced the static daily-task layer with a rotating three-slot Quest Board backed by QuestDirector.
 - Added an 18-task daily pool spanning resources, combat, exploration, risk, buildings, nights, contracts and biome clears.

@@ -17,6 +17,7 @@ var storage_label: Label
 var storage_wood_label: Label
 var storage_stone_label: Label
 var storage_ore_label: Label
+var storage_part_label: Label
 var objective_label: Label
 var status_label: Label
 var status_panel: PanelContainer
@@ -121,6 +122,7 @@ func _build() -> void:
     storage_wood_label = _resource_chip(storage_row, "wood", "0")
     storage_stone_label = _resource_chip(storage_row, "stone", "0")
     storage_ore_label = _resource_chip(storage_row, "ore", "0")
+    storage_part_label = _resource_chip(storage_row, "part", "0")
 
     storage_label = Label.new()
     root.add_child(storage_label)
@@ -301,6 +303,8 @@ func update_stats(hero_hp: float, base_hp: float, bag: int, capacity: int, wave:
     storage_wood_label.text = str(wood_count)
     storage_stone_label.text = str(stone_count)
     storage_ore_label.text = str(ore_count)
+    if storage_part_label != null:
+        storage_part_label.text = str(int(storage.get("parts", 0)))
 
 func set_run_objective(text: String) -> void:
     if objective_label == null:
@@ -308,7 +312,7 @@ func set_run_objective(text: String) -> void:
     objective_label.text = _safe(text)
     objective_label.visible = not objective_label.text.strip_edges().is_empty()
 
-func set_build_context(title: String, effect: String, cost: Dictionary, storage: Dictionary, ready: bool, progress: float = 0.0) -> void:
+func set_build_context(title: String, effect: String, cost: Dictionary, storage: Dictionary, ready: bool, progress: float = 0.0, parts_required: int = 0, parts_owned: int = 0) -> void:
     build_panel.visible = true
     status_panel.visible = false
     build_title.text = _safe(title)
@@ -317,10 +321,11 @@ func set_build_context(title: String, effect: String, cost: Dictionary, storage:
     var stone_need: int = maxi(0, int(cost.get("stone", 0)) - int(storage.get("stone", 0)))
     var ore_need: int = maxi(0, int(cost.get("ore", 0)) - int(storage.get("ore", 0)))
     if ready:
-        build_cost.text = "СТРОИТСЯ %d%%" % int(clampf(progress, 0.0, 1.0) * 100.0) if progress > 0.01 else "МОЖНО СТРОИТЬ"
+        build_cost.text = "СТРОИТСЯ %d%%" % int(clampf(progress, 0.0, 1.0) * 100.0) if progress > 0.01 else ("МОЖНО СТРОИТЬ  •  ДЕТ %d/%d" % [parts_owned, parts_required] if parts_required > 0 else "МОЖНО СТРОИТЬ")
         build_cost.add_theme_color_override("font_color", Color("9ad5a8"))
     else:
-        build_cost.text = "НЕ ХВАТАЕТ   Д%d  К%d  Р%d" % [wood_need, stone_need, ore_need]
+        var parts_need: int = maxi(0, parts_required - parts_owned)
+        build_cost.text = "НЕ ХВАТАЕТ   Д%d  К%d  Р%d  ДЕТ%d" % [wood_need, stone_need, ore_need, parts_need]
         build_cost.add_theme_color_override("font_color", Color("e6a08c"))
 
 func set_built_context(title: String, effect: String) -> void:

@@ -190,6 +190,16 @@ jobs:
             exit 1
           fi
 
+      - name: V1.7 buildings + economy regression
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_v17_buildings_economy_smoke.tscn 2>&1 | tee /tmp/godot-v17-buildings.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v17-buildings.log; then
+            echo "GDScript parse errors detected during v1.7 building/economy test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |

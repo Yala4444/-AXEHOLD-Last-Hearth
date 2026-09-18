@@ -9,6 +9,7 @@ const DAILY_POOL: Array[Dictionary] = [
     {"id":"ore_run","category":"resource","event":"harvest_ore","title":"РУДНЫЙ РЫВОК","desc":"Добудь 8 руды.","goal":8,"reward_type":"coins","reward":48},
     {"id":"defender","category":"combat","event":"kill_enemy","title":"ЗАЩИТНИК","desc":"Уничтожь 30 врагов.","goal":30,"reward_type":"coins","reward":44},
     {"id":"builder","category":"build","event":"build_structure","title":"СТРОИТЕЛЬ","desc":"Построй 3 сооружения.","goal":3,"reward_type":"coins","reward":42},
+    {"id":"architect_two","category":"build","event":"build_upgrade","title":"МАСТЕР УКРЕПЛЕНИЙ","desc":"Улучши постройку до уровня II.","goal":1,"reward_type":"coins","reward":64},
     {"id":"nestbreaker","category":"risk","event":"nest_destroyed","title":"ЛОМАТЕЛЬ ГНЁЗД","desc":"Уничтожь 2 гнезда Тьмы.","goal":2,"reward_type":"coins","reward":58},
     {"id":"explorer","category":"explore","event":"activity_resolved","title":"ИССЛЕДОВАТЕЛЬ","desc":"Заверши 4 события мира.","goal":4,"reward_type":"coins","reward":46},
     {"id":"old_fire","category":"explore","event":"hearth_relit","title":"СТАРЫЙ ОГОНЬ","desc":"Зажги погасший Очаг.","goal":1,"reward_type":"coins","reward":52},
