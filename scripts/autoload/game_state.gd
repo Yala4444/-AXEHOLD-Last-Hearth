@@ -380,7 +380,8 @@ func record_dynamic_world(delta_stats: Dictionary) -> void:
     save()
 
 func dynamic_world_stats() -> Dictionary:
-    return (data.get("dynamic_world_stats", {}) as Dictionary).duplicate(true)
+    var stats: Dictionary = data.get("dynamic_world_stats", {})
+    return stats.duplicate(true)
 
 func add_coins(amount: int) -> void:
     data["coins"] = int(data.get("coins", 0)) + amount
