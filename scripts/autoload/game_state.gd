@@ -1,7 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://axehold_save.json"
-const SAVE_VERSION := 8
+const SAVE_VERSION := 9
 
 var data: Dictionary = {}
 
@@ -39,6 +39,14 @@ func defaults() -> Dictionary:
             "chapter1_ready_notified": false,
             "chapter1_seen": false,
             "chapter1_claimed": false
+        },
+        "camp_renown": 0,
+        "contract_state": {
+            "date":"",
+            "offers":[],
+            "selected":"",
+            "completed_today":[],
+            "completed_total":0
         },
         "skins_owned": [true, false, false, false],
         "selected_skin": 0,
@@ -114,6 +122,25 @@ func _migrate_save() -> void:
             resident["quest_progress"] = int(resident.get("quest_progress", 0))
             residents[resident_id] = resident
         data["residents"] = residents
+    if version < 9:
+        var backfill_renown: int = total_mastery()
+        var backfill_residents: Dictionary = data.get("residents", {})
+        for resident_variant: Variant in backfill_residents.values():
+            var resident: Dictionary = resident_variant as Dictionary
+            if bool(resident.get("unlocked", false)):
+                backfill_renown += 2 + int(resident.get("trust", 0))
+        var projects: Dictionary = data.get("building_projects", {})
+        for project_value: Variant in projects.values():
+            if bool(project_value):
+                backfill_renown += 1
+        data["camp_renown"] = maxi(int(data.get("camp_renown", 0)), backfill_renown)
+        data["contract_state"] = {
+            "date":"",
+            "offers":[],
+            "selected":"",
+            "completed_today":[],
+            "completed_total":0
+        }
     data["save_version"] = SAVE_VERSION
     save()
 
@@ -161,18 +188,171 @@ func _today_key() -> String:
 
 func ensure_daily_state() -> void:
     var today: String = _today_key()
-    if str(data.get("daily_date", "")) == today:
-        return
-    data["daily_date"] = today
-    data["supply_claimed"] = false
-    var default_missions: Dictionary = defaults()["missions"]
-    data["missions"] = default_missions.duplicate(true)
+    if str(data.get("daily_date", "")) != today:
+        data["daily_date"] = today
+        data["supply_claimed"] = false
+        var default_missions: Dictionary = defaults()["missions"]
+        data["missions"] = default_missions.duplicate(true)
+    ensure_contract_board()
     save()
+
+func ensure_contract_board() -> void:
+    var today: String = _today_key()
+    var state: Dictionary = data.get("contract_state", {})
+    var offers: Array = state.get("offers", [])
+    if str(state.get("date", "")) == today and offers.size() == 3:
+        return
+
+    var pool: Array[String] = GameRules.contract_ids()
+    pool.shuffle()
+    var new_offers: Array[String] = []
+    for i: int in range(mini(3, pool.size())):
+        new_offers.append(pool[i])
+
+    state["date"] = today
+    state["offers"] = new_offers
+    state["selected"] = new_offers[0] if not new_offers.is_empty() else ""
+    state["completed_today"] = []
+    state["completed_total"] = int(state.get("completed_total", 0))
+    data["contract_state"] = state
 
 func save() -> void:
     var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
     if file != null:
         file.store_string(JSON.stringify(data))
+
+func contract_offers() -> Array[String]:
+    ensure_contract_board()
+    var result: Array[String] = []
+    var state: Dictionary = data.get("contract_state", {})
+    for id_variant: Variant in state.get("offers", []):
+        result.append(str(id_variant))
+    return result
+
+func selected_contract_id() -> String:
+    ensure_contract_board()
+    var state: Dictionary = data.get("contract_state", {})
+    return str(state.get("selected", ""))
+
+func selected_contract() -> Dictionary:
+    var contract_id: String = selected_contract_id()
+    return GameRules.contract_by_id(contract_id)
+
+func select_contract(contract_id: String) -> bool:
+    ensure_contract_board()
+    var offers: Array[String] = contract_offers()
+    if not offers.has(contract_id):
+        return false
+    var state: Dictionary = data.get("contract_state", {})
+    var completed: Array = state.get("completed_today", [])
+    if completed.has(contract_id):
+        return false
+    state["selected"] = contract_id
+    data["contract_state"] = state
+    save()
+    Analytics.event("contract_selected", {"id":contract_id})
+    return true
+
+func contract_completed_today(contract_id: String) -> bool:
+    ensure_contract_board()
+    var state: Dictionary = data.get("contract_state", {})
+    var completed: Array = state.get("completed_today", [])
+    return completed.has(contract_id)
+
+func complete_contract_meta(contract_id: String) -> Dictionary:
+    ensure_contract_board()
+    var spec: Dictionary = GameRules.contract_by_id(contract_id)
+    if spec.is_empty():
+        return {"ok":false,"renown":0,"level_up":false}
+
+    var state: Dictionary = data.get("contract_state", {})
+    var completed: Array = state.get("completed_today", [])
+    if completed.has(contract_id):
+        return {"ok":false,"renown":0,"level_up":false}
+
+    var old_level: int = camp_level()
+    completed.append(contract_id)
+    state["completed_today"] = completed
+    state["completed_total"] = int(state.get("completed_total", 0)) + 1
+    if str(state.get("selected", "")) == contract_id:
+        state["selected"] = ""
+    data["contract_state"] = state
+
+    var renown_gain: int = GameRules.contract_renown(contract_id)
+    data["camp_renown"] = int(data.get("camp_renown", 0)) + renown_gain
+    var new_level: int = camp_level()
+    if new_level > old_level:
+        _push_meta_notice("Последний Очаг вырос: %s." % camp_level_name())
+        Analytics.event("camp_level_up", {"level":new_level,"renown":int(data.get("camp_renown", 0))})
+    save()
+    return {"ok":true,"renown":renown_gain,"level_up":new_level > old_level}
+
+func camp_renown() -> int:
+    return int(data.get("camp_renown", 0))
+
+func camp_level() -> int:
+    var value: int = camp_renown()
+    var level: int = 1
+    if value >= 25:
+        level = 5
+    elif value >= 15:
+        level = 4
+    elif value >= 8:
+        level = 3
+    elif value >= 3:
+        level = 2
+
+    # Legacy mastery remains meaningful for long-time saves. Renown adds a
+    # second growth route instead of visually downgrading an established camp.
+    var mastery_value: int = total_mastery()
+    if mastery_value >= 9:
+        level = maxi(level, 5)
+    elif mastery_value >= 5:
+        level = maxi(level, 3)
+    elif mastery_value >= 2:
+        level = maxi(level, 2)
+    return level
+
+func camp_level_name() -> String:
+    match camp_level():
+        5:
+            return "КРЕПОСТЬ ОГНЯ"
+        4:
+            return "ЖИВОЕ ПОСЕЛЕНИЕ"
+        3:
+            return "ДОЗОРНЫЙ ЛАГЕРЬ"
+        2:
+            return "УБЕЖИЩЕ"
+        _:
+            return "ПОСЛЕДНИЙ ОЧАГ"
+
+func camp_next_renown() -> int:
+    match camp_level():
+        1:
+            return 3
+        2:
+            return 8
+        3:
+            return 15
+        4:
+            return 25
+        _:
+            return 25
+
+func resident_trust(resident_id: String) -> int:
+    var residents: Dictionary = data.get("residents", {})
+    var resident: Dictionary = residents.get(resident_id, {})
+    return int(resident.get("trust", 0)) if bool(resident.get("unlocked", false)) else 0
+
+func expedition_resident_bonuses() -> Dictionary:
+    var mira_trust: int = resident_trust("mira")
+    var thorn_trust: int = resident_trust("thorn")
+    return {
+        "move_mult": 1.0 + float(mira_trust) * 0.01,
+        "preview_bonus": float(mira_trust) * 1.2,
+        "starting_parts": 2 if thorn_trust >= 4 else (1 if thorn_trust >= 2 else 0),
+        "tower_damage_mult": 1.05 if thorn_trust >= 4 else 1.0
+    }
 
 func add_coins(amount: int) -> void:
     data["coins"] = int(data.get("coins", 0)) + amount

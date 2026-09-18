@@ -9,6 +9,8 @@ var relics: Array = [false, false, false]
 var weapons_owned: Array = ["axes"]
 var selected_weapon: String = "axes"
 var wins: int = 0
+var camp_level: int = 1
+var camp_renown: int = 0
 var title_label: Label
 var meta_label: Label
 var weapon_label: Label
@@ -30,11 +32,13 @@ func refresh() -> void:
     weapons_owned = GameState.data.get("weapons_owned", ["axes"])
     selected_weapon = str(GameState.data.get("selected_weapon", "axes"))
     wins = int(GameState.data.get("wins", 0))
+    camp_level = GameState.camp_level()
+    camp_renown = GameState.camp_renown()
 
-    title_label.text = GameState.camp_title().to_upper()
-    meta_label.text = "Глава %s · Мастерство %d · Реликвии %d/3" % [
+    title_label.text = GameState.camp_level_name()
+    meta_label.text = "Глава %s · Слава %d · Реликвии %d/3" % [
         "II" if GameState.chapter_one_complete() else "I",
-        mastery,
+        camp_renown,
         _relic_count()
     ]
     var profile: Dictionary = WeaponRules.profile(selected_weapon)
@@ -54,7 +58,9 @@ func progress_signature() -> Dictionary:
         "forge": mastery >= 1 or _has_relic(0),
         "arsenal": weapons_owned.size() > 1,
         "watchtower": mastery >= 5,
-        "stronghold": mastery >= 9,
+        "stronghold": camp_level >= 5,
+        "camp_level": camp_level,
+        "renown": camp_renown,
         "residents": _resident_count(),
         "chapter": GameState.current_chapter(),
         "weapon": selected_weapon
@@ -91,6 +97,7 @@ func _build_overlay() -> void:
     _make_action_button("arsenal", "АРСЕНАЛ")
     _make_action_button("goals", "ТРОФЕИ")
     _make_action_button("quests", "ЗАДАНИЯ")
+    _make_action_button("contracts", "КОНТРАКТЫ")
     _make_action_button("chronicle", "ХРОНИКА")
     _make_action_button("map", "КАРТА")
 
@@ -159,6 +166,11 @@ func _layout_overlay() -> void:
         quests.position = Vector2(width * 0.14 - 35.0, height - 187.0)
         quests.size = Vector2(70, 23)
 
+    var contracts: Button = action_buttons.get("contracts") as Button
+    if contracts != null:
+        contracts.position = Vector2(width * 0.86 - 39.0, height - 187.0)
+        contracts.size = Vector2(78, 23)
+
     var map: Button = action_buttons.get("map") as Button
     if map != null:
         map.position = Vector2(width * 0.88 - 31.0, height - 113.0)
@@ -171,19 +183,26 @@ func _draw() -> void:
     _draw_background(width, height)
     _draw_path(width)
 
-    if mastery >= 5:
+    if camp_level >= 3:
         _draw_palisade(width)
-    if mastery >= 9:
+    if camp_level >= 5:
         _draw_stronghold(width)
 
-    _draw_tent(Vector2(width * 0.15, hearth_y + 6.0), 1.0 + minf(0.20, float(mastery) * 0.02))
+    _draw_tent(Vector2(width * 0.15, hearth_y + 6.0), 1.0 + minf(0.18, float(camp_level) * 0.025))
+    if camp_level >= 2:
+        _draw_tent(Vector2(width * 0.82, hearth_y - 3.0), 0.72)
+    if camp_level >= 4:
+        _draw_tent(Vector2(width * 0.07, hearth_y + 52.0), 0.60)
+
     _draw_quest_board(Vector2(width * 0.14, hearth_y - 53.0))
-    if mastery >= 1 or _has_relic(0):
+    _draw_contract_board(Vector2(width * 0.86, hearth_y - 53.0))
+    if camp_level >= 2 or mastery >= 1 or _has_relic(0):
         _draw_forge(Vector2(width * 0.27, hearth_y + 12.0))
     if weapons_owned.size() > 1:
         _draw_weapon_rack(Vector2(width * 0.73, hearth_y + 12.0))
-    if mastery >= 5:
+    if camp_level >= 3:
         _draw_watchtower(Vector2(width * 0.88, hearth_y - 35.0))
+    _draw_growth_details(width, hearth_y)
 
     _draw_hearth(Vector2(width * 0.50, hearth_y + 5.0))
     _draw_trophies(width)
@@ -336,6 +355,33 @@ func _draw_quest_board(pos: Vector2) -> void:
     draw_line(pos + Vector2(-4, -5), pos + Vector2(5, -5), Color("62584a"), 1.0)
     draw_line(pos + Vector2(-4, -1), pos + Vector2(7, -1), Color("62584a"), 1.0)
     draw_rect(Rect2(pos + Vector2(-2, 10), Vector2(4, 15)), Color("5d412c"))
+
+func _draw_contract_board(pos: Vector2) -> void:
+    draw_rect(Rect2(pos + Vector2(-19, -16), Vector2(38, 27)), Color("4b3327"))
+    draw_rect(Rect2(pos + Vector2(-16, -13), Vector2(32, 21)), Color("78513a"))
+    draw_rect(Rect2(pos + Vector2(-10, -10), Vector2(20, 13)), Color("d3c19a"))
+    draw_line(pos + Vector2(-6, -6), pos + Vector2(7, -6), Color("745a48"), 1.0)
+    draw_line(pos + Vector2(-6, -2), pos + Vector2(4, -2), Color("745a48"), 1.0)
+    draw_circle(pos + Vector2(9, 4), 2.4, Color("b85e45"))
+    draw_rect(Rect2(pos + Vector2(-2, 11), Vector2(4, 14)), Color("4b3327"))
+
+func _draw_growth_details(width: float, hearth_y: float) -> void:
+    if camp_level >= 2:
+        for x_ratio: float in [0.24, 0.76]:
+            var lamp := Vector2(width * x_ratio, hearth_y + 45.0)
+            draw_line(lamp, lamp + Vector2(0, -24), Color("5e452f"), 3.0)
+            draw_circle(lamp + Vector2(0, -26), 5.0, Color(1.0, 0.64, 0.22, 0.18))
+            draw_circle(lamp + Vector2(0, -26), 2.2, Color("ffc968"))
+    if camp_level >= 4:
+        var banner_y: float = hearth_y - 92.0
+        draw_line(Vector2(width * 0.34, banner_y), Vector2(width * 0.66, banner_y), Color("65503b"), 2.0)
+        for x_ratio: float in [0.38, 0.50, 0.62]:
+            var p := Vector2(width * x_ratio, banner_y)
+            draw_colored_polygon(PackedVector2Array([
+                p, p + Vector2(10, 4), p + Vector2(3, 16)
+            ]), Color("8e6246"))
+    if camp_level >= 5:
+        draw_arc(Vector2(width * 0.5, hearth_y + 5.0), 96.0, 3.35, 6.08, 28, Color(0.84, 0.69, 0.38, 0.20), 2.0)
 
 func _draw_map_board(pos: Vector2) -> void:
     draw_rect(Rect2(pos + Vector2(-20, 12), Vector2(40, 5)), Color(0.03, 0.04, 0.03, 0.20))

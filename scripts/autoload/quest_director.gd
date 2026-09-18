@@ -160,13 +160,15 @@ func claim_resident(resident_id: String) -> Dictionary:
     resident["trust"] = mini(ResidentRules.max_trust(resident_id), int(resident.get("trust", 0)) + 1)
     resident["quest_step"] = int(resident.get("quest_step", 0)) + 1
     resident["quest_progress"] = 0
+    GameState.data["camp_renown"] = int(GameState.data.get("camp_renown", 0)) + 1
     residents[resident_id] = resident
     GameState.data["residents"] = residents
 
     var completed_now: bool = int(resident.get("quest_step", 0)) >= ResidentRules.chain_size(resident_id)
     if completed_now:
         var notices: Array = GameState.data.get("meta_notices", [])
-        notices.append("%s завершает текущую цепочку поручений и остаётся у Последнего Очагa." % ResidentRules.name_for(resident_id))
+        GameState.data["camp_renown"] = int(GameState.data.get("camp_renown", 0)) + 1
+        notices.append("%s завершает текущую цепочку поручений. Лагерь получает дополнительную Славу." % ResidentRules.name_for(resident_id))
         GameState.data["meta_notices"] = notices
 
     GameState.save()

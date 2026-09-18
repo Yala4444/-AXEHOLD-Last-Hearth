@@ -7,7 +7,9 @@ var current_modifier: Dictionary = {}
 var previewed_modifier: Dictionary = {}
 var preview_wave: int = 0
 var contract: Dictionary = {}
+var contract_from_board: bool = false
 var contract_completed: bool = false
+var contract_renown_awarded: int = 0
 var max_distance_from_hearth: float = 0.0
 var night_rift: NightRift = null
 var effective_threat: float = 0.0
@@ -16,7 +18,10 @@ var outer_reach_recorded: bool = false
 
 func setup(world_ref: GameWorld) -> void:
     world = world_ref
-    contract = GameRules.random_contract()
+    contract = GameState.selected_contract()
+    contract_from_board = not contract.is_empty()
+    if contract.is_empty():
+        contract = GameRules.random_contract()
     call_deferred("_announce_contract")
 
 func _process(_delta: float) -> void:
@@ -40,7 +45,8 @@ func _announce_contract() -> void:
     if world == null or world.hud == null or contract.is_empty():
         return
     world.hud.show_banner("КОНТРАКТ: " + str(contract.get("name", "")), Color("d8bd7b"))
-    world.hud.set_status(str(contract.get("desc", "")))
+    var board_suffix: String = " · +%d славы" % int(contract.get("renown", 1)) if contract_from_board else ""
+    world.hud.set_status("%s%s" % [str(contract.get("desc", "")), board_suffix])
     world.hud.set_run_objective("КОНТРАКТ · " + str(contract.get("name", "")))
     Analytics.event("run_contract_started", {
         "id": str(contract.get("id", "")),
@@ -48,7 +54,8 @@ func _announce_contract() -> void:
     })
 
 func _maybe_preview_night() -> void:
-    if world == null or world.phase != "day" or world.phase_time > 18.0:
+    var preview_bonus: float = float(GameState.expedition_resident_bonuses().get("preview_bonus", 0.0))
+    if world == null or world.phase != "day" or world.phase_time > 18.0 + preview_bonus:
         return
     var upcoming_wave: int = world.wave + 1
     if preview_wave == upcoming_wave:
@@ -190,6 +197,15 @@ func threat_name() -> String:
     var value: float = effective_threat if world != null and world.phase == "night" else threat
     return _threat_name_for(value)
 
+func contract_result() -> Dictionary:
+    return {
+        "id":str(contract.get("id", "")),
+        "name":str(contract.get("name", "")),
+        "completed":contract_completed,
+        "board":contract_from_board,
+        "renown":contract_renown_awarded
+    }
+
 func contract_summary() -> String:
     if contract.is_empty():
         return ""
@@ -229,9 +245,15 @@ func _complete_contract() -> void:
     contract_completed = true
     var reward: int = int(contract.get("reward", 20))
     world.run_coins += reward
+    var meta_result: Dictionary = {}
+    if contract_from_board:
+        meta_result = GameState.complete_contract_meta(str(contract.get("id", "")))
+    var renown_gain: int = int(meta_result.get("renown", 0))
+    contract_renown_awarded = renown_gain
     world.hud.show_banner("КОНТРАКТ ВЫПОЛНЕН", Color("efcf83"))
-    world.hud.set_status("+%d мон. · %s" % [reward, str(contract.get("name", ""))])
-    world.hud.set_run_objective("КОНТРАКТ ВЫПОЛНЕН · +%d МОН." % reward)
+    var renown_text: String = " · +%d славы" % renown_gain if renown_gain > 0 else ""
+    world.hud.set_status("+%d мон.%s · %s" % [reward, renown_text, str(contract.get("name", ""))])
+    world.hud.set_run_objective("КОНТРАКТ ВЫПОЛНЕН · +%d МОН.%s" % [reward, renown_text.to_upper()])
     Feedback.play("level", 12)
     QuestDirector.record("contract_complete", 1, {"id":str(contract.get("id", "")), "biome":world.biome_index})
     Analytics.event("run_contract_completed", {

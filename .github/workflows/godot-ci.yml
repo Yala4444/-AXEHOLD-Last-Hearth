@@ -230,6 +230,16 @@ jobs:
             exit 1
           fi
 
+      - name: V1.11 living camp + contracts regression
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_v111_living_camp_contracts_smoke.tscn 2>&1 | tee /tmp/godot-v111-camp.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v111-camp.log; then
+            echo "GDScript parse errors detected during v1.11 living camp/contracts test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |

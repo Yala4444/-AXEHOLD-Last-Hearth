@@ -142,37 +142,37 @@ const RUN_CONTRACTS := [
     {
         "id":"nest_hunter","name":"ОХОТНИК НА ГНЁЗДА",
         "desc":"Уничтожь 2 гнезда до второй ночи.",
-        "reward":24
+        "reward":24,"renown":2,"risk":"СРЕДНИЙ"
     },
     {
         "id":"outer_reach","name":"ДАЛЬНИЙ ВЫХОД",
         "desc":"Доберись до внешнего кольца мира до второй ночи.",
-        "reward":20
+        "reward":20,"renown":1,"risk":"НИЗКИЙ"
     },
     {
         "id":"lean_defense","name":"СКУПАЯ ОБОРОНА",
         "desc":"Переживи первую ночь, построив не больше одного сооружения.",
-        "reward":26
+        "reward":26,"renown":2,"risk":"СРЕДНИЙ"
     },
     {
         "id":"scavenger","name":"ИСКАТЕЛЬ",
         "desc":"Разбери 3 события мира до второй ночи.",
-        "reward":22
+        "reward":22,"renown":1,"risk":"НИЗКИЙ"
     },
     {
         "id":"no_tower","name":"СВОИМИ СИЛАМИ",
         "desc":"Переживи первую ночь без Башни.",
-        "reward":28
+        "reward":28,"renown":2,"risk":"ВЫСОКИЙ"
     },
     {
         "id":"hearthkeeper","name":"ХРАНИТЕЛЬ ОЧАГА",
         "desc":"Заверши экспедицию, сохранив не меньше 75% прочности Очагa.",
-        "reward":34
+        "reward":34,"renown":3,"risk":"ВЫСОКИЙ"
     },
     {
         "id":"rekindle","name":"ИСКРА СТАРОГО МИРА",
         "desc":"Найди и зажги погасший Очаг до третьей ночи.",
-        "reward":30
+        "reward":30,"renown":2,"risk":"СРЕДНИЙ"
     }
 ]
 
@@ -206,6 +206,26 @@ static func random_night_modifier(wave: int, threat: float = 0.0) -> Dictionary:
 
 static func random_contract() -> Dictionary:
     return RUN_CONTRACTS[randi() % RUN_CONTRACTS.size()].duplicate(true)
+
+static func contract_by_id(contract_id: String) -> Dictionary:
+    for spec_variant: Variant in RUN_CONTRACTS:
+        var spec: Dictionary = spec_variant
+        if str(spec.get("id", "")) == contract_id:
+            return spec.duplicate(true)
+    return {}
+
+static func contract_ids() -> Array[String]:
+    var ids: Array[String] = []
+    for spec_variant: Variant in RUN_CONTRACTS:
+        var spec: Dictionary = spec_variant
+        ids.append(str(spec.get("id", "")))
+    return ids
+
+static func contract_risk(contract_id: String) -> String:
+    return str(contract_by_id(contract_id).get("risk", "СРЕДНИЙ"))
+
+static func contract_renown(contract_id: String) -> int:
+    return int(contract_by_id(contract_id).get("renown", 1))
 
 static func random_doctrines(count: int = 3) -> Array[Dictionary]:
     var pool: Array[Dictionary] = []

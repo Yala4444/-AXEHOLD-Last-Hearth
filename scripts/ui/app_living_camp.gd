@@ -67,13 +67,34 @@ func _show_home() -> void:
 
     var progress := Label.new()
     departure_box.add_child(progress)
-    progress.text = "Мастерство %d   •   Реликвии %d/3   •   Победы %d" % [
-        GameState.total_mastery(),
-        relic_count,
-        int(GameState.data.get("wins", 0))
+    progress.text = "%s · Слава %d%s   •   Реликвии %d/3" % [
+        GameState.camp_level_name(),
+        GameState.camp_renown(),
+        "" if GameState.camp_level() >= 5 else "/%d" % GameState.camp_next_renown(),
+        relic_count
     ]
     progress.add_theme_font_size_override("font_size", 8)
     progress.add_theme_color_override("font_color", Color(0.63, 0.69, 0.70))
+
+    var active_contract: Dictionary = GameState.selected_contract()
+    var contract_line := Label.new()
+    departure_box.add_child(contract_line)
+    if active_contract.is_empty():
+        contract_line.text = "КОНТРАКТ НЕ ВЫБРАН · случайное полевое поручение не приносит славу лагерю"
+        contract_line.add_theme_color_override("font_color", Color("8b9495"))
+    else:
+        contract_line.text = "КОНТРАКТ · %s · %s · +%d славы" % [
+            str(active_contract.get("name", "")),
+            str(active_contract.get("risk", "СРЕДНИЙ")),
+            int(active_contract.get("renown", 1))
+        ]
+        contract_line.add_theme_color_override("font_color", Color("d7ba7b"))
+    contract_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    contract_line.add_theme_font_size_override("font_size", 8)
+
+    var contract_button := _button(departure_box, "ВЫБРАТЬ КОНТРАКТ", false)
+    contract_button.custom_minimum_size = Vector2(0, 38)
+    contract_button.pressed.connect(_show_contracts)
 
     var play := _button(departure_box, "В ЭКСПЕДИЦИЮ", true)
     play.custom_minimum_size = Vector2(0, 48)
@@ -273,6 +294,139 @@ func _show_map() -> void:
 
     var play := _button(body, "В ЭКСПЕДИЦИЮ: " + str(biome_data.get("name", "Регион")).to_upper(), true)
     play.pressed.connect(_start_game)
+
+func _show_contracts() -> void:
+    _clear_body()
+    GameState.ensure_contract_board()
+
+    _section(
+        "Контракты Последнего Очагa",
+        "На день доступны три поручения. Выполни выбранный контракт в экспедиции, чтобы получить монеты и Славу — она физически развивает лагерь."
+    )
+
+    var progress_panel := _panel(body)
+    var progress_box := VBoxContainer.new()
+    progress_panel.add_child(progress_box)
+    progress_box.add_theme_constant_override("separation", 4)
+
+    var level := Label.new()
+    progress_box.add_child(level)
+    level.text = "%s · УРОВЕНЬ ЛАГЕРЯ %d" % [GameState.camp_level_name(), GameState.camp_level()]
+    level.add_theme_font_size_override("font_size", 14)
+    level.add_theme_color_override("font_color", Color("e4c27d"))
+
+    var next := Label.new()
+    progress_box.add_child(next)
+    if GameState.camp_level() >= 5:
+        next.text = "Слава %d · лагерь достиг текущего максимума развития." % GameState.camp_renown()
+    else:
+        next.text = "Слава %d/%d · следующий рост изменит Последний Очаг визуально." % [
+            GameState.camp_renown(),
+            GameState.camp_next_renown()
+        ]
+    next.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    next.add_theme_font_size_override("font_size", 9)
+    next.add_theme_color_override("font_color", Color("9faeac"))
+
+    var state: Dictionary = GameState.data.get("contract_state", {})
+    var completed_today: Array = state.get("completed_today", [])
+    var selected_id: String = GameState.selected_contract_id()
+
+    for contract_id: String in GameState.contract_offers():
+        var spec: Dictionary = GameRules.contract_by_id(contract_id)
+        var completed: bool = completed_today.has(contract_id)
+        var selected: bool = selected_id == contract_id
+
+        var panel := _panel(body)
+        var box := VBoxContainer.new()
+        panel.add_child(box)
+        box.add_theme_constant_override("separation", 5)
+
+        var top := HBoxContainer.new()
+        box.add_child(top)
+        var title := Label.new()
+        top.add_child(title)
+        title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        title.text = str(spec.get("name", "КОНТРАКТ"))
+        title.add_theme_font_size_override("font_size", 13)
+        title.add_theme_color_override("font_color", Color("f0dfbd"))
+
+        var badge := Label.new()
+        top.add_child(badge)
+        badge.add_theme_font_size_override("font_size", 8)
+        if completed:
+            badge.text = "ВЫПОЛНЕНО"
+            badge.add_theme_color_override("font_color", Color("8fd5b0"))
+        elif selected:
+            badge.text = "ВЫБРАН"
+            badge.add_theme_color_override("font_color", Color("d8bd7b"))
+        else:
+            badge.text = str(spec.get("risk", "СРЕДНИЙ"))
+            badge.add_theme_color_override("font_color", Color("a9b3b4"))
+
+        var desc := Label.new()
+        box.add_child(desc)
+        desc.text = str(spec.get("desc", ""))
+        desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        desc.add_theme_font_size_override("font_size", 9)
+        desc.add_theme_color_override("font_color", Color("aeb8b9"))
+
+        var reward := Label.new()
+        box.add_child(reward)
+        reward.text = "НАГРАДА · %d мон. · +%d славы · риск %s" % [
+            int(spec.get("reward", 0)),
+            int(spec.get("renown", 1)),
+            str(spec.get("risk", "СРЕДНИЙ"))
+        ]
+        reward.add_theme_font_size_override("font_size", 8)
+        reward.add_theme_color_override("font_color", Color("c9ad72"))
+
+        if not completed:
+            var choose := _button(box, "ВЫБРАН" if selected else "ВЗЯТЬ КОНТРАКТ", selected)
+            choose.disabled = selected
+            choose.custom_minimum_size = Vector2(0, 40)
+            choose.pressed.connect(_select_contract_from_camp.bind(contract_id))
+
+    _section("Люди меняют экспедицию", "Доверие жителей теперь даёт небольшие практические преимущества, а не только текст в лагере.")
+
+    var bonuses: Dictionary = GameState.expedition_resident_bonuses()
+    var resident_panel := _panel(body)
+    var resident_box := VBoxContainer.new()
+    resident_panel.add_child(resident_box)
+    resident_box.add_theme_constant_override("separation", 4)
+
+    var mira := Label.new()
+    resident_box.add_child(mira)
+    mira.text = "МИРА · доверие %d/%d · скорость +%d%% · предвестие ночи раньше на %.1f сек." % [
+        GameState.resident_trust("mira"),
+        ResidentRules.max_trust("mira"),
+        int(round((float(bonuses.get("move_mult", 1.0)) - 1.0) * 100.0)),
+        float(bonuses.get("preview_bonus", 0.0))
+    ]
+    mira.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    mira.add_theme_font_size_override("font_size", 9)
+    mira.add_theme_color_override("font_color", Color("9fc3a5"))
+
+    var thorn := Label.new()
+    resident_box.add_child(thorn)
+    thorn.text = "ТОРН · доверие %d/%d · стартовые детали %d · усиление Башни %s" % [
+        GameState.resident_trust("thorn"),
+        ResidentRules.max_trust("thorn"),
+        int(bonuses.get("starting_parts", 0)),
+        "+5%" if float(bonuses.get("tower_damage_mult", 1.0)) > 1.0 else "нет"
+    ]
+    thorn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    thorn.add_theme_font_size_override("font_size", 9)
+    thorn.add_theme_color_override("font_color", Color("c1aa91"))
+
+    var back := _button(body, "К ЛАГЕРЮ", false)
+    back.pressed.connect(_show_home)
+
+func _select_contract_from_camp(contract_id: String) -> void:
+    if GameState.select_contract(contract_id):
+        Feedback.play("level", 8)
+        Analytics.event("camp_contract_selected", {"id":contract_id})
+    _show_contracts()
 
 func _show_chronicle() -> void:
     GameState.mark_chronicle_seen()
@@ -760,6 +914,8 @@ func _on_camp_action(action: String) -> void:
             _show_goals()
         "quests":
             _show_quests()
+        "contracts":
+            _show_contracts()
         "chronicle":
             _show_chronicle()
         "map":

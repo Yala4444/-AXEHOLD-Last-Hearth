@@ -122,6 +122,10 @@ func _start_run() -> void:
     var upgrades: Dictionary = GameState.data["upgrades"]
     var skin_index: int = int(GameState.data.get("selected_skin", 0))
     player.setup(upgrades, GameRules.skin(skin_index))
+    var resident_bonuses: Dictionary = GameState.expedition_resident_bonuses()
+    player.move_speed *= float(resident_bonuses.get("move_mult", 1.0))
+    storage["parts"] = int(storage.get("parts", 0)) + int(resident_bonuses.get("starting_parts", 0))
+    turret_global_damage_mult *= float(resident_bonuses.get("tower_damage_mult", 1.0))
     player.set_world_bounds(world_rect.grow(-34.0))
     player.set_home_target(base_position)
     _setup_camera()
@@ -140,7 +144,13 @@ func _start_run() -> void:
 
     Analytics.event("run_start", {"biome": biome_index, "weapon": player.weapon_id})
     hud.show_banner(str(biome["name"]).to_upper())
-    hud.set_status("Собирай добычу и возвращайся к Очагу.")
+    var resident_part_bonus: int = int(storage.get("parts", 0))
+    if resident_part_bonus > 0:
+        hud.set_status("Торн подготовил %d дет. · собирай добычу и возвращайся к Очагу." % resident_part_bonus)
+    elif GameState.resident_trust("mira") > 0:
+        hud.set_status("Мира отметила маршрут. Собирай добычу и возвращайся к Очагу.")
+    else:
+        hud.set_status("Собирай добычу и возвращайся к Очагу.")
 
     var settings: Dictionary = GameState.data["settings"]
     if bool(settings.get("hints", true)) and not bool(GameState.data.get("v1_tutorial_complete", false)):
@@ -1060,7 +1070,8 @@ func _finish_run(won: bool) -> void:
         "shards": earned_shards,
         "kills": kills,
         "parts_unused": unused_parts,
-        "parts_bonus": unused_parts * 8
+        "parts_bonus": unused_parts * 8,
+        "contract": run_variation.contract_result() if run_variation != null else {}
     })
 
 func _refresh_hud() -> void:
