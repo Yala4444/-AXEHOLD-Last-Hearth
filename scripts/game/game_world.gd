@@ -1053,7 +1053,7 @@ func _on_enemy_killed(enemy: AxEnemy) -> void:
         return
     enemies.erase(enemy)
     if core_fx != null:
-        core_fx.enemy_down(enemy.global_position, enemy.enemy_type, enemy.boss, biome_index)
+        core_fx.enemy_down(enemy.global_position, enemy.enemy_type, enemy.boss, biome_index, enemy.elite)
     if enemy.boss:
         trigger_camera_shake(7.0, 0.34)
     kills += 1
