@@ -1,7 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://axehold_save.json"
-const SAVE_VERSION := 7
+const SAVE_VERSION := 8
 
 var data: Dictionary = {}
 
@@ -48,6 +48,19 @@ func defaults() -> Dictionary:
         "trophies_claimed": [],
         "quest_state": {"date":"", "active":[], "used_ids":[], "claimed_today":0, "archive":0},
         "building_projects": {"wall": false, "forge": false, "turret": false, "shrine": false},
+        "story_state": {
+            "chapter1_complete": false,
+            "frontier_signal": false
+        },
+        "frontier_state": {
+            "selected_assignment": "",
+            "assignment_progress": 0,
+            "assignment_ready": false,
+            "assignment_failed": false,
+            "assignments_completed": 0,
+            "assignment_history": {},
+            "selected_support": ""
+        },
         "residents": {
             "mira": {"unlocked": false, "trust": 0, "quest_step": 0, "quest_progress": 0},
             "thorn": {"unlocked": false, "trust": 0, "quest_step": 0, "quest_progress": 0}
@@ -92,6 +105,21 @@ func _migrate_save() -> void:
             "hammer":{"runs":0,"wins":0,"kills":0},
             "twin_blades":{"runs":0,"wins":0,"kills":0}
         }
+    if version < 8:
+        data["story_state"] = {
+            "chapter1_complete": false,
+            "frontier_signal": false
+        }
+        data["frontier_state"] = {
+            "selected_assignment": "",
+            "assignment_progress": 0,
+            "assignment_ready": false,
+            "assignment_failed": false,
+            "assignments_completed": 0,
+            "assignment_history": {},
+            "selected_support": ""
+        }
+        _sync_chapter_one_from_relics(false)
     data["save_version"] = SAVE_VERSION
     save()
 
@@ -111,6 +139,7 @@ func _retrofit_meta_progression() -> void:
     data["biome_mastery"] = mastery
     data["boss_relics"] = relics
     data["weapons_owned"] = owned
+    _sync_chapter_one_from_relics(true)
     var selected: String = str(data.get("selected_weapon", "axes"))
     data["selected_weapon"] = selected if owned.has(selected) else "axes"
     data["meta_notices"] = []
@@ -209,6 +238,100 @@ func buy_building_project(build_type: String) -> bool:
         "shards": shard_cost
     })
     return true
+
+func chapter_one_complete() -> bool:
+    var story: Dictionary = data.get("story_state", {})
+    if bool(story.get("chapter1_complete", false)):
+        return true
+    return _all_relics_collected()
+
+func frontier_signal_unlocked() -> bool:
+    var story: Dictionary = data.get("story_state", {})
+    return bool(story.get("frontier_signal", false)) or chapter_one_complete()
+
+func frontier_assignment_id() -> String:
+    var state: Dictionary = data.get("frontier_state", {})
+    return str(state.get("selected_assignment", ""))
+
+func select_frontier_assignment(assignment_id: String) -> bool:
+    if not chapter_one_complete() or FrontierRules.assignment(assignment_id).is_empty():
+        return false
+    var state: Dictionary = data.get("frontier_state", {})
+    state["selected_assignment"] = assignment_id
+    state["assignment_progress"] = 0
+    state["assignment_ready"] = false
+    state["assignment_failed"] = false
+    data["frontier_state"] = state
+    save()
+    Analytics.event("frontier_assignment_selected", {"id":assignment_id})
+    return true
+
+func clear_frontier_assignment() -> void:
+    var state: Dictionary = data.get("frontier_state", {})
+    state["selected_assignment"] = ""
+    state["assignment_progress"] = 0
+    state["assignment_ready"] = false
+    state["assignment_failed"] = false
+    data["frontier_state"] = state
+    save()
+
+func selected_run_support() -> String:
+    var state: Dictionary = data.get("frontier_state", {})
+    return str(state.get("selected_support", ""))
+
+func support_available(support_id: String) -> bool:
+    var spec: Dictionary = FrontierRules.support(support_id)
+    if spec.is_empty():
+        return false
+    var resident_id: String = str(spec.get("resident", ""))
+    var residents: Dictionary = data.get("residents", {})
+    var resident: Dictionary = residents.get(resident_id, {})
+    return bool(resident.get("unlocked", false)) and int(resident.get("trust", 0)) >= int(spec.get("trust", 1))
+
+func select_run_support(support_id: String) -> bool:
+    if not support_available(support_id):
+        return false
+    var state: Dictionary = data.get("frontier_state", {})
+    state["selected_support"] = support_id
+    data["frontier_state"] = state
+    save()
+    Analytics.event("resident_support_selected", {"id":support_id})
+    return true
+
+func consume_run_support() -> String:
+    var state: Dictionary = data.get("frontier_state", {})
+    var support_id: String = str(state.get("selected_support", ""))
+    if support_id.is_empty() or not support_available(support_id):
+        return ""
+    state["selected_support"] = ""
+    data["frontier_state"] = state
+    save()
+    return support_id
+
+func _all_relics_collected() -> bool:
+    var relics: Array = data.get("boss_relics", [false, false, false])
+    if relics.size() < 3:
+        return false
+    for i: int in range(3):
+        if not bool(relics[i]):
+            return false
+    return true
+
+func _sync_chapter_one_from_relics(grant_reward: bool) -> void:
+    if not _all_relics_collected():
+        return
+    var story: Dictionary = data.get("story_state", {})
+    if bool(story.get("chapter1_complete", false)):
+        return
+    story["chapter1_complete"] = true
+    story["frontier_signal"] = true
+    data["story_state"] = story
+    if grant_reward:
+        data["shards"] = int(data.get("shards", 0)) + 2
+        _push_meta_notice("ГЛАВА I ЗАВЕРШЕНА: три реликвии отозвались вместе. С севера пришёл сигнал другого Очагa. +2 оск.")
+    else:
+        _push_meta_notice("Три реликвии указывают дальше: за Пепельными землями обнаружен сигнал другого Очагa.")
+    Analytics.event("chapter_one_completed", {"rewarded":grant_reward})
 
 func mission_add(kind: String, amount: int = 1) -> void:
     ensure_daily_state()
