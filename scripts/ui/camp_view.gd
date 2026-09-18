@@ -440,15 +440,23 @@ func _draw_resident(pos: Vector2, index: int) -> void:
     draw_line(pos + Vector2(2, 6), pos + Vector2(5, 14), Color("343b3a"), 3.0)
 
 func _resident_count() -> int:
+    var progression_count: int = 0
     if mastery >= 9:
-        return 6
-    if mastery >= 5:
-        return 4
-    if mastery >= 2:
-        return 2
-    if mastery >= 1:
-        return 1
-    return 0
+        progression_count = 6
+    elif mastery >= 5:
+        progression_count = 4
+    elif mastery >= 2:
+        progression_count = 2
+    elif mastery >= 1:
+        progression_count = 1
+
+    var rescued_count: int = 0
+    var residents: Dictionary = GameState.data.get("residents", {})
+    for resident_variant: Variant in residents.values():
+        var resident: Dictionary = resident_variant as Dictionary
+        if bool(resident.get("unlocked", false)):
+            rescued_count += 1
+    return maxi(progression_count, rescued_count)
 
 func _relic_count() -> int:
     var count: int = 0
