@@ -3,6 +3,7 @@ extends Node
 const GameScene: PackedScene = preload("res://scenes/game.tscn")
 
 var failures: Array[String] = []
+var captured_result: Dictionary = {}
 
 func _ready() -> void:
     call_deferred("_run")
@@ -102,14 +103,12 @@ func _test_level_two_buildings() -> void:
     if world.hud.storage_part_label == null or world.hud.storage_part_label.text != str(int(world.storage.get("parts", 0))):
         _fail("Mechanism Parts are not represented in the HUD")
 
-    var result_snapshot: Dictionary = {}
-    world.run_finished.connect(func(result: Dictionary) -> void:
-        result_snapshot = result.duplicate(true)
-    )
+    captured_result = {}
+    world.run_finished.connect(_capture_result)
     world.storage["parts"] = 3
     world._finish_run(false)
     await _wait_frames(2)
-    if int(result_snapshot.get("parts_bonus", -1)) != 24:
+    if int(captured_result.get("parts_bonus", -1)) != 24:
         _fail("Unused mechanism parts did not convert to coins at 8 each")
 
     world.queue_free()
@@ -123,6 +122,9 @@ func _test_building_rules() -> void:
         var cost: Dictionary = BuildingRules.upgrade_cost(build_type)
         if int(cost.get("parts", 0)) <= 0:
             _fail("Level-II building does not require mechanism parts: " + build_type)
+
+func _capture_result(result: Dictionary) -> void:
+    captured_result = result.duplicate(true)
 
 func _find_pad(world: GameWorld, kind: String) -> BuildPad:
     for pad: BuildPad in world.pads:
