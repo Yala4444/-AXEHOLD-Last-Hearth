@@ -695,7 +695,7 @@ func _update_day_enemies(delta: float) -> void:
         if behavior == "attack_anchor" and player_distance >= 128.0:
             var anchor_variant: Variant = enemy.get_meta("day_anchor", player.global_position)
             if anchor_variant is Vector2:
-                target = anchor_variant as Vector2
+                target = anchor_variant
         enemy.set_target_position(target)
 
         enemy.hit_cooldown = maxf(0.0, enemy.hit_cooldown - delta)
