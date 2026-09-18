@@ -1056,6 +1056,13 @@ func _on_enemy_killed(enemy: AxEnemy) -> void:
         core_fx.enemy_down(enemy.global_position, enemy.enemy_type, enemy.boss, biome_index, enemy.elite)
     if enemy.boss:
         trigger_camera_shake(7.0, 0.34)
+    elif enemy.elite:
+        trigger_camera_shake(3.4, 0.16)
+        if enemy.elite_trait == "volatile":
+            if player.global_position.distance_to(enemy.global_position) < 58.0:
+                player.take_damage(10.0 * float(biome["difficulty"]))
+            if core_fx != null:
+                core_fx.hammer_slam(enemy.global_position, 54.0)
     kills += 1
     GameState.mission_add("kills")
     QuestDirector.record("kill_enemy", 1, {"enemy":enemy.enemy_type, "biome":biome_index})
