@@ -289,6 +289,7 @@ func _harvest(delta: float) -> void:
                 GameState.mission_add("trees")
             player.gain_xp(2)
             if actual > 0:
+                QuestDirector.record("harvest_" + kind, actual, {"biome":biome_index})
                 var resource_name: String = "дерево" if kind == "wood" else ("камень" if kind == "stone" else "руда")
                 hud.set_status("+%d %s в рюкзак" % [actual, resource_name])
                 if core_fx != null:
@@ -356,6 +357,7 @@ func _complete_build(pad: BuildPad) -> void:
     built[pad.build_type] = true
     builds += 1
     GameState.mission_add("builds")
+    QuestDirector.record("build_structure", 1, {"type":pad.build_type, "biome":biome_index})
     player.gain_xp(7)
 
     match pad.build_type:
@@ -602,6 +604,7 @@ func _on_enemy_killed(enemy: AxEnemy) -> void:
     enemies.erase(enemy)
     kills += 1
     GameState.mission_add("kills")
+    QuestDirector.record("kill_enemy", 1, {"enemy":enemy.enemy_type, "biome":biome_index})
     var reward: int = 25 if enemy.boss else (3 if enemy.enemy_type == "brute" or enemy.enemy_type == "guardian" else 1)
     if not enemy.boss and run_variation != null:
         reward = maxi(1, int(round(float(reward) * run_variation.reward_multiplier())))
@@ -645,6 +648,8 @@ func _finish_run(won: bool) -> void:
         run_variation.on_run_finished(won)
     var reward: int = 22 + wave * 15 + run_coins + builds * 4
     GameState.register_run(wave, won, biome_index, kills, builds, trees_cut)
+    if won:
+        QuestDirector.record("run_win", 1, {"biome":biome_index, "wave":wave})
     Analytics.event("run_end", {"won": won, "wave": wave, "biome": biome_index, "kills": kills})
     var earned_shards: int = run_shards if won else 0
     run_finished.emit({
