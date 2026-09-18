@@ -15,12 +15,6 @@ func _show_result() -> void:
     panel.add_child(box)
     box.add_theme_constant_override("separation", 10)
 
-    var icon := Label.new()
-    box.add_child(icon)
-    icon.text = "🏆" if won else "🏕️"
-    icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    icon.add_theme_font_size_override("font_size", 46)
-
     var eyebrow := Label.new()
     box.add_child(eyebrow)
     eyebrow.text = "ТРОФЕЙ ЭКСПЕДИЦИИ" if won else "ЭКСПЕДИЦИЯ ЗАВЕРШЕНА"
@@ -46,7 +40,7 @@ func _show_result() -> void:
 
     var stats := Label.new()
     box.add_child(stats)
-    stats.text = "Ночь %d · ⚔️ %d\n🪙 %d · 🔥 %d" % [
+    stats.text = "Ночь %d · Убийства %d\n%d мон. · %d оск." % [
         int(result_data.get("wave", 0)),
         int(result_data.get("kills", 0)),
         int(result_data.get("coins", 0)),
@@ -55,11 +49,11 @@ func _show_result() -> void:
     stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     stats.add_theme_color_override("font_color", Color(0.78, 0.81, 0.83))
 
-    var claim_text: String = "🔥 Забрать трофей и вернуться" if won else "Вернуться в лагерь"
+    var claim_text: String = "Забрать трофей и вернуться" if won else "Вернуться в лагерь"
     var claim := _button(box, claim_text, true)
     claim.pressed.connect(_grant_result.bind(1))
 
-    var double := _button(box, "▶ Удвоить монеты", false)
+    var double := _button(box, "Удвоить монеты", false)
     double.pressed.connect(_double_result)
 
 func _victory_trophy_line(biome_index: int) -> String:
