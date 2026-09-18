@@ -9,6 +9,7 @@ var preview_wave: int = 0
 var contract: Dictionary = {}
 var contract_from_board: bool = false
 var contract_completed: bool = false
+var contract_renown_awarded: int = 0
 var max_distance_from_hearth: float = 0.0
 var night_rift: NightRift = null
 var effective_threat: float = 0.0
@@ -196,6 +197,15 @@ func threat_name() -> String:
     var value: float = effective_threat if world != null and world.phase == "night" else threat
     return _threat_name_for(value)
 
+func contract_result() -> Dictionary:
+    return {
+        "id":str(contract.get("id", "")),
+        "name":str(contract.get("name", "")),
+        "completed":contract_completed,
+        "board":contract_from_board,
+        "renown":contract_renown_awarded
+    }
+
 func contract_summary() -> String:
     if contract.is_empty():
         return ""
@@ -239,6 +249,7 @@ func _complete_contract() -> void:
     if contract_from_board:
         meta_result = GameState.complete_contract_meta(str(contract.get("id", "")))
     var renown_gain: int = int(meta_result.get("renown", 0))
+    contract_renown_awarded = renown_gain
     world.hud.show_banner("КОНТРАКТ ВЫПОЛНЕН", Color("efcf83"))
     var renown_text: String = " · +%d славы" % renown_gain if renown_gain > 0 else ""
     world.hud.set_status("+%d мон.%s · %s" % [reward, renown_text, str(contract.get("name", ""))])
