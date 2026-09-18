@@ -46,7 +46,7 @@ func _build_shell() -> void:
 
     var subtitle := Label.new()
     title_box.add_child(subtitle)
-    subtitle.text = "LAST HEARTH  •  V1.4 IDENTITY"
+    subtitle.text = "LAST HEARTH  •  V1.5.1 STABILITY"
     subtitle.add_theme_font_size_override("font_size", 8)
     subtitle.add_theme_color_override("font_color", Color("c5a66b"))
 
