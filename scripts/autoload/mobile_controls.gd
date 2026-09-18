@@ -87,6 +87,11 @@ func _process(_delta: float) -> void:
     if not _controls_allowed():
         if touch_index >= 0 or test_input_active:
             _release_control()
+        elif root != null and root.visible and not visible_for_test:
+            if fade_tween != null and fade_tween.is_valid():
+                fade_tween.kill()
+            root.modulate.a = 0.0
+            root.visible = false
         return
 
     if touch_index >= 0 or test_input_active:
