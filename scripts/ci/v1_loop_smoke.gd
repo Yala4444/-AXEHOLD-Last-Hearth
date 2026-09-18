@@ -50,7 +50,7 @@ func _run_tests() -> void:
         _fail("Backpack was not cleared after deposit")
 
     game.call("_refresh_hud")
-    if not game.hud.backpack_label.text.contains("ДЕР") or not game.hud.storage_label.text.contains("НА БАЗЕ"):
+    if not game.hud.backpack_label.text.contains("РЮКЗАК") or not game.hud.storage_label.text.contains("СКЛАД"):
         _fail("HUD does not expose backpack and base storage separately")
 
     var wall: BuildPad = _pad(game, "wall")
