@@ -59,6 +59,7 @@ var world_generator: WorldGenerator
 var activity_director: WorldActivityDirector
 var run_variation: RunVariationDirector
 var dynamic_world: DynamicWorldDirector
+var biome_events: BiomeEventDirector
 
 var resource_yield_multiplier: float = 1.0
 var turret_global_damage_mult: float = 1.0
@@ -138,6 +139,10 @@ func _start_run() -> void:
     dynamic_world = DynamicWorldDirector.new()
     add_child(dynamic_world)
     dynamic_world.setup(self)
+
+    biome_events = BiomeEventDirector.new()
+    add_child(biome_events)
+    biome_events.setup(self)
 
     _create_pads()
     for _i in range(52):
@@ -641,6 +646,8 @@ func _spawn_enemy(is_boss: bool = false, forced_kind: String = "") -> void:
     enemy.configure(kind, float(biome["difficulty"]), wave, Color(str(biome["enemy"])), is_boss, biome_index)
     if run_variation != null:
         run_variation.tune_enemy(enemy)
+    if biome_events != null:
+        biome_events.apply_enemy_behavior(enemy)
     if is_boss:
         enemy.max_hp *= 1.0 + biome_index * 0.28
         enemy.hp = enemy.max_hp
@@ -662,6 +669,8 @@ func spawn_event_enemy(kind: String, position: Vector2, elite_trait: String = ""
     enemy.configure(kind, float(biome["difficulty"]) * (1.0 + float(wave) * 0.06), wave, Color(str(biome["enemy"])), false, biome_index)
     if not elite_trait.is_empty():
         enemy.configure_elite(elite_trait)
+    if biome_events != null:
+        biome_events.apply_enemy_behavior(enemy)
     enemy.set_meta("dynamic_event_id", event_id)
     enemy.set_meta("day_anchor", anchor)
     enemy.set_meta("day_behavior", behavior)
@@ -689,6 +698,9 @@ func _update_day_enemies(delta: float) -> void:
         if not is_instance_valid(enemy) or enemy.dying:
             continue
 
+        if biome_events != null:
+            biome_events.update_enemy_behavior(enemy)
+
         var player_distance: float = enemy.global_position.distance_to(player.global_position)
         var behavior: String = str(enemy.get_meta("day_behavior", "hunt"))
         var target: Vector2 = player.global_position
@@ -702,6 +714,8 @@ func _update_day_enemies(delta: float) -> void:
         var contact_distance: float = 27.0 if enemy.elite else 23.0
         if enemy.hit_cooldown <= 0.0 and player_distance < contact_distance:
             player.take_damage(enemy.contact_damage)
+            if biome_events != null:
+                biome_events.on_enemy_contact(enemy)
             enemy.hit_cooldown = 0.78
 
     _update_turret(delta)
@@ -725,6 +739,8 @@ func _update_night(delta: float) -> void:
             continue
 
         _update_boss_special(enemy, delta)
+        if biome_events != null:
+            biome_events.update_enemy_behavior(enemy)
 
         var dist_to_base: float = enemy.global_position.distance_to(base_position)
         enemy.movement_multiplier = wall_slow_multiplier if bool(built["wall"]) and dist_to_base < 102.0 else 1.0
@@ -756,6 +772,8 @@ func _update_night(delta: float) -> void:
             var player_contact: float = 34.0 if enemy.boss else 23.0
             if enemy.global_position.distance_to(player.global_position) < player_contact:
                 player.take_damage(enemy.contact_damage)
+                if biome_events != null:
+                    biome_events.on_enemy_contact(enemy)
                 enemy.hit_cooldown = 0.78
             elif dist_to_base < 53.0:
                 var wall_multiplier: float = wall_damage_multiplier if bool(built["wall"]) else 1.0
@@ -1140,7 +1158,8 @@ func _finish_run(won: bool) -> void:
         "parts_unused": unused_parts,
         "parts_bonus": unused_parts * 8,
         "contract": run_variation.contract_result() if run_variation != null else {},
-        "dynamic_world": dynamic_world.result_summary() if dynamic_world != null else {}
+        "dynamic_world": dynamic_world.result_summary() if dynamic_world != null else {},
+        "biome_events": biome_events.result_summary() if biome_events != null else {}
     })
 
 func _refresh_hud() -> void:
