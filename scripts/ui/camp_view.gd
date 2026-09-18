@@ -15,7 +15,7 @@ var weapon_label: Label
 var action_buttons: Dictionary = {}
 
 func _ready() -> void:
-    custom_minimum_size = Vector2(0, 362)
+    custom_minimum_size = Vector2(0, 300)
     size_flags_horizontal = Control.SIZE_EXPAND_FILL
     clip_contents = true
     mouse_filter = Control.MOUSE_FILTER_PASS
@@ -82,10 +82,10 @@ func _build_overlay() -> void:
     weapon_label.add_theme_color_override("font_color", Color("e9d6b5"))
     weapon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
-    _make_action_button("forge", "⚒ Кузница")
-    _make_action_button("arsenal", "⚔ Арсенал")
-    _make_action_button("goals", "🏆 Трофеи")
-    _make_action_button("map", "🗺 Карта")
+    _make_action_button("forge", "КУЗНЯ")
+    _make_action_button("arsenal", "АРСЕНАЛ")
+    _make_action_button("goals", "ТРОФЕИ")
+    _make_action_button("map", "КАРТА")
 
 func _make_action_button(action: String, text: String) -> void:
     var button := Button.new()
@@ -93,12 +93,12 @@ func _make_action_button(action: String, text: String) -> void:
     action_buttons[action] = button
     button.text = text
     button.focus_mode = Control.FOCUS_NONE
-    button.add_theme_font_size_override("font_size", 11)
+    button.add_theme_font_size_override("font_size", 7)
     button.add_theme_color_override("font_color", Color("f0eadf"))
     button.add_theme_color_override("font_hover_color", Color.WHITE)
-    button.add_theme_stylebox_override("normal", _button_style(Color(0.08, 0.11, 0.13, 0.76), Color(0.38, 0.45, 0.48, 0.42)))
-    button.add_theme_stylebox_override("hover", _button_style(Color(0.12, 0.18, 0.19, 0.94), Color(0.70, 0.56, 0.34, 0.85)))
-    button.add_theme_stylebox_override("pressed", _button_style(Color(0.09, 0.15, 0.15, 1.0), Color("d1a862")))
+    button.add_theme_stylebox_override("normal", _button_style(Color(0.05, 0.08, 0.08, 0.62), Color(0.48, 0.52, 0.46, 0.30)))
+    button.add_theme_stylebox_override("hover", _button_style(Color(0.10, 0.15, 0.14, 0.88), Color(0.78, 0.62, 0.34, 0.80)))
+    button.add_theme_stylebox_override("pressed", _button_style(Color(0.09, 0.14, 0.13, 0.94), Color("d1a862")))
     button.pressed.connect(_emit_action.bind(action))
 
 func _button_style(bg: Color, border: Color) -> StyleBoxFlat:
@@ -106,10 +106,10 @@ func _button_style(bg: Color, border: Color) -> StyleBoxFlat:
     style.bg_color = bg
     style.border_color = border
     style.set_border_width_all(1)
-    style.corner_radius_top_left = 12
-    style.corner_radius_top_right = 12
-    style.corner_radius_bottom_left = 12
-    style.corner_radius_bottom_right = 12
+    style.corner_radius_top_left = 3
+    style.corner_radius_top_right = 3
+    style.corner_radius_bottom_left = 3
+    style.corner_radius_bottom_right = 3
     return style
 
 func _emit_action(action: String) -> void:
@@ -117,29 +117,37 @@ func _emit_action(action: String) -> void:
 
 func _layout_overlay() -> void:
     var width: float = maxf(size.x, 320.0)
-    title_label.position = Vector2(12, 12)
-    title_label.size = Vector2(width - 24.0, 24)
-    meta_label.position = Vector2(12, 37)
-    meta_label.size = Vector2(width - 24.0, 20)
-    weapon_label.position = Vector2(width * 0.5 - 92.0, 261)
-    weapon_label.size = Vector2(184, 22)
+    title_label.position = Vector2(12, 8)
+    title_label.size = Vector2(width - 24.0, 22)
+    meta_label.position = Vector2(12, 30)
+    meta_label.size = Vector2(width - 24.0, 18)
+    weapon_label.position = Vector2(width * 0.5 - 82.0, 265)
+    weapon_label.size = Vector2(164, 17)
+    weapon_label.add_theme_font_size_override("font_size", 8)
 
-    var visible_actions: Array[String] = ["forge"]
-    if weapons_owned.size() > 1:
-        visible_actions.append("arsenal")
-    visible_actions.append("goals")
-    visible_actions.append("map")
-    var gap: float = 6.0
-    var button_width: float = (width - 24.0 - gap * float(visible_actions.size() - 1)) / float(visible_actions.size())
-    for i: int in range(visible_actions.size()):
-        var id: String = visible_actions[i]
-        var button: Button = action_buttons[id] as Button
-        button.position = Vector2(12.0 + float(i) * (button_width + gap), 310)
-        button.size = Vector2(button_width, 38)
+    var forge: Button = action_buttons.get("forge") as Button
+    if forge != null:
+        forge.position = Vector2(width * 0.27 - 33.0, 247)
+        forge.size = Vector2(66, 24)
+
+    var arsenal: Button = action_buttons.get("arsenal") as Button
+    if arsenal != null:
+        arsenal.position = Vector2(width * 0.73 - 36.0, 247)
+        arsenal.size = Vector2(72, 24)
+
+    var goals: Button = action_buttons.get("goals") as Button
+    if goals != null:
+        goals.position = Vector2(width * 0.50 - 34.0, 145)
+        goals.size = Vector2(68, 23)
+
+    var map: Button = action_buttons.get("map") as Button
+    if map != null:
+        map.position = Vector2(width * 0.88 - 30.0, 247)
+        map.size = Vector2(60, 24)
 
 func _draw() -> void:
     var width: float = maxf(size.x, 320.0)
-    var height: float = maxf(size.y, 362.0)
+    var height: float = maxf(size.y, 300.0)
     _draw_background(width, height)
     _draw_path(width)
 
@@ -148,16 +156,17 @@ func _draw() -> void:
     if mastery >= 9:
         _draw_stronghold(width)
 
-    _draw_tent(Vector2(width * 0.18, 215.0), 1.0 + minf(0.20, float(mastery) * 0.02))
+    _draw_tent(Vector2(width * 0.16, 208.0), 1.0 + minf(0.20, float(mastery) * 0.02))
     if mastery >= 1 or _has_relic(0):
-        _draw_forge(Vector2(width * 0.27, 224.0))
+        _draw_forge(Vector2(width * 0.27, 213.0))
     if weapons_owned.size() > 1:
-        _draw_weapon_rack(Vector2(width * 0.74, 222.0))
+        _draw_weapon_rack(Vector2(width * 0.73, 213.0))
     if mastery >= 5:
-        _draw_watchtower(Vector2(width * 0.88, 179.0))
+        _draw_watchtower(Vector2(width * 0.88, 174.0))
 
-    _draw_hearth(Vector2(width * 0.50, 225.0))
+    _draw_hearth(Vector2(width * 0.50, 211.0))
     _draw_trophies(width)
+    _draw_map_board(Vector2(width * 0.88, 220.0))
     _draw_residents(width)
 
 func _draw_background(width: float, height: float) -> void:
@@ -184,8 +193,8 @@ func _draw_background(width: float, height: float) -> void:
 func _draw_path(width: float) -> void:
     var center: float = width * 0.5
     var path := PackedVector2Array([
-        Vector2(center - 23, 352), Vector2(center - 35, 285), Vector2(center - 26, 246),
-        Vector2(center + 27, 246), Vector2(center + 36, 285), Vector2(center + 23, 352)
+        Vector2(center - 23, 299), Vector2(center - 31, 262), Vector2(center - 26, 246),
+        Vector2(center + 27, 246), Vector2(center + 32, 262), Vector2(center + 23, 299)
     ])
     draw_colored_polygon(path, Color(0.47, 0.39, 0.28, 0.52))
     for i: int in range(7):
@@ -267,6 +276,15 @@ func _draw_weapon_icon(id: String, pos: Vector2, scale_value: float) -> void:
     else:
         draw_line(pos + Vector2(-16, 20) * scale_value, pos + Vector2(8, -14) * scale_value, Color("6a4932"), 5.0 * scale_value)
         draw_line(pos + Vector2(0, -16) * scale_value, pos + Vector2(17, -22) * scale_value, Color("bfc8cb"), 7.0 * scale_value)
+
+func _draw_map_board(pos: Vector2) -> void:
+    draw_rect(Rect2(pos + Vector2(-20, 12), Vector2(40, 5)), Color(0.03, 0.04, 0.03, 0.20))
+    draw_rect(Rect2(pos + Vector2(-17, -18), Vector2(34, 29)), Color("4f3928"))
+    draw_rect(Rect2(pos + Vector2(-14, -15), Vector2(28, 23)), Color("b69a68"))
+    draw_line(pos + Vector2(-10, -8), pos + Vector2(8, 3), Color("6d805b"), 2.0)
+    draw_line(pos + Vector2(0, -11), pos + Vector2(10, -5), Color("80615b"), 2.0)
+    draw_circle(pos + Vector2(7, 2), 2.2, Color("b4493f"))
+    draw_rect(Rect2(pos + Vector2(-2, 10), Vector2(4, 14)), Color("60432c"))
 
 func _draw_trophies(width: float) -> void:
     var positions: Array[Vector2] = [
