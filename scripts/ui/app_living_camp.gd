@@ -288,17 +288,39 @@ func _show_quests() -> void:
         var resident_panel := _panel(body)
         var resident_box := VBoxContainer.new()
         resident_panel.add_child(resident_box)
+        resident_box.add_theme_constant_override("separation", 5)
+
         var resident_title := Label.new()
         resident_box.add_child(resident_title)
         resident_title.text = "РАЗВЕДЧИЦА МИРА · ДОВЕРИЕ %d/3" % int(mira.get("trust", 0))
         resident_title.add_theme_font_size_override("font_size", 11)
         resident_title.add_theme_color_override("font_color", Color("e6c98c"))
+
+        var resident_quest: Dictionary = QuestDirector.resident_quest_state("mira")
         var resident_desc := Label.new()
         resident_box.add_child(resident_desc)
-        resident_desc.text = "Мира отмечает дальние события. Её первая цепочка откроется после следующего выхода."
+        resident_desc.text = str(resident_quest.get("desc", "Мира отмечает дальние события."))
         resident_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         resident_desc.add_theme_font_size_override("font_size", 9)
         resident_desc.add_theme_color_override("font_color", Color("aeb8b9"))
+
+        if not bool(resident_quest.get("complete", false)):
+            var rq_goal: int = maxi(1, int(resident_quest.get("goal", 1)))
+            var rq_progress: int = mini(rq_goal, int(resident_quest.get("progress", 0)))
+            var resident_progress := Label.new()
+            resident_box.add_child(resident_progress)
+            resident_progress.text = "%s · %d/%d" % [str(resident_quest.get("title", "ПОРУЧЕНИЕ")), rq_progress, rq_goal]
+            resident_progress.add_theme_font_size_override("font_size", 9)
+            resident_progress.add_theme_color_override("font_color", Color("c9d2cf"))
+            if bool(resident_quest.get("ready", false)):
+                var resident_claim := _button(resident_box, "ЗАБРАТЬ НАГРАДУ МИРЫ", false)
+                resident_claim.pressed.connect(_claim_resident_quest.bind("mira"))
+        else:
+            var completed := Label.new()
+            resident_box.add_child(completed)
+            completed.text = "Текущая цепочка Миры завершена."
+            completed.add_theme_font_size_override("font_size", 9)
+            completed.add_theme_color_override("font_color", Color("8fd5b0"))
     else:
         var locked := Label.new()
         body.add_child(locked)
@@ -358,6 +380,12 @@ func _daily_quest_card(quest: Dictionary) -> void:
     claim.custom_minimum_size = Vector2(126, 40)
     claim.disabled = not bool(quest.get("ready", false))
     claim.pressed.connect(_claim_daily_quest.bind(str(quest.get("id", ""))))
+
+func _claim_resident_quest(resident_id: String) -> void:
+    var result: Dictionary = QuestDirector.claim_resident(resident_id)
+    if bool(result.get("ok", false)):
+        _refresh_currency()
+    _show_quests()
 
 func _claim_daily_quest(quest_id: String) -> void:
     var result: Dictionary = QuestDirector.claim(quest_id)
