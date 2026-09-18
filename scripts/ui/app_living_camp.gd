@@ -38,6 +38,13 @@ func _show_home() -> void:
     quest_button.custom_minimum_size = Vector2(0, 40)
     quest_button.pressed.connect(_show_quests)
 
+    if GameState.chapter_one_complete():
+        var frontier_button := _button(body, "СИГНАЛ ЗА ПЕПЛОМ · ДАЛЬНИЕ ВЫХОДЫ", true)
+        frontier_button.custom_minimum_size = Vector2(0, 44)
+        frontier_button.pressed.connect(_show_frontier)
+
+    _add_resident_support_picker()
+
     var departure := _panel(body)
     var departure_box := VBoxContainer.new()
     departure.add_child(departure_box)
@@ -68,6 +75,26 @@ func _show_home() -> void:
     ]
     progress.add_theme_font_size_override("font_size", 8)
     progress.add_theme_color_override("font_color", Color(0.63, 0.69, 0.70))
+
+    var frontier_assignment: Dictionary = QuestDirector.frontier_assignment_state()
+    if not frontier_assignment.is_empty():
+        var assignment_line := Label.new()
+        departure_box.add_child(assignment_line)
+        assignment_line.text = "ДАЛЬНИЙ ВЫХОД · %s · до ночи %d" % [
+            str(frontier_assignment.get("name", "")),
+            int(frontier_assignment.get("deadline_wave", 1)) + 1
+        ]
+        assignment_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        assignment_line.add_theme_font_size_override("font_size", 8)
+        assignment_line.add_theme_color_override("font_color", Color("d2b270"))
+
+    var support_id: String = GameState.selected_run_support()
+    if not support_id.is_empty():
+        var support_line := Label.new()
+        departure_box.add_child(support_line)
+        support_line.text = "ПОДДЕРЖКА · " + str(FrontierRules.support(support_id).get("name", ""))
+        support_line.add_theme_font_size_override("font_size", 8)
+        support_line.add_theme_color_override("font_color", Color("9bc9b6"))
 
     var play := _button(departure_box, "В ЭКСПЕДИЦИЮ", true)
     play.custom_minimum_size = Vector2(0, 48)
@@ -238,6 +265,7 @@ func _show_map() -> void:
     body.add_child(map_view)
     map_view.configure(selected_biome)
     map_view.biome_selected.connect(_select_biome_from_map)
+    map_view.frontier_requested.connect(_show_frontier)
 
     var biome_data: Dictionary = GameRules.biome(selected_biome)
     var lore_panel := _panel(body)
@@ -287,6 +315,31 @@ func _show_goals() -> void:
         clue.add_theme_font_size_override("font_size", 9)
         clue.add_theme_color_override("font_color", Color("c9c2ad"))
 
+    if GameState.chapter_one_complete():
+        var finale_panel := _panel(body)
+        var finale_box := VBoxContainer.new()
+        finale_panel.add_child(finale_box)
+        finale_box.add_theme_constant_override("separation", 4)
+
+        var finale_title := Label.new()
+        finale_box.add_child(finale_title)
+        finale_title.text = "ГЛАВА I ЗАВЕРШЕНА · ПОГАСАНИЕ"
+        finale_title.add_theme_font_size_override("font_size", 11)
+        finale_title.add_theme_color_override("font_color", Color("dfc27e"))
+
+        var finale_text := Label.new()
+        finale_box.add_child(finale_text)
+        finale_text.text = LoreRules.CHAPTER_ONE_FINALE + "\n\n" + LoreRules.FRONTIER_SIGNAL
+        finale_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        finale_text.add_theme_font_size_override("font_size", 9)
+        finale_text.add_theme_color_override("font_color", Color("bdc7c5"))
+
+        var lore_count := Label.new()
+        finale_box.add_child(lore_count)
+        lore_count.text = "Фрагменты памяти: %d" % int(GameState.data.get("lore_fragments", 0))
+        lore_count.add_theme_font_size_override("font_size", 8)
+        lore_count.add_theme_color_override("font_color", Color("929fa0"))
+
     var quests := _button(body, "ОТКРЫТЬ ДОСКУ ЗАДАНИЙ", false)
     quests.pressed.connect(_show_quests)
 
@@ -330,56 +383,187 @@ func _show_quests() -> void:
         for quest: Dictionary in quests:
             _daily_quest_card(quest)
 
-    _section("Поручения жителей", "Спасённые жители будут давать собственные цепочки и новые возможности лагеря.")
-    var residents: Dictionary = GameState.data.get("residents", {})
-    var mira: Dictionary = residents.get("mira", {})
-    if bool(mira.get("unlocked", false)):
-        var resident_panel := _panel(body)
-        var resident_box := VBoxContainer.new()
-        resident_panel.add_child(resident_box)
-        resident_box.add_theme_constant_override("separation", 5)
-
-        var resident_title := Label.new()
-        resident_box.add_child(resident_title)
-        resident_title.text = "РАЗВЕДЧИЦА МИРА · ДОВЕРИЕ %d/3" % int(mira.get("trust", 0))
-        resident_title.add_theme_font_size_override("font_size", 11)
-        resident_title.add_theme_color_override("font_color", Color("e6c98c"))
-
-        var resident_quest: Dictionary = QuestDirector.resident_quest_state("mira")
-        var resident_desc := Label.new()
-        resident_box.add_child(resident_desc)
-        resident_desc.text = str(resident_quest.get("desc", "Мира отмечает дальние события."))
-        resident_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        resident_desc.add_theme_font_size_override("font_size", 9)
-        resident_desc.add_theme_color_override("font_color", Color("aeb8b9"))
-
-        if not bool(resident_quest.get("complete", false)):
-            var rq_goal: int = maxi(1, int(resident_quest.get("goal", 1)))
-            var rq_progress: int = mini(rq_goal, int(resident_quest.get("progress", 0)))
-            var resident_progress := Label.new()
-            resident_box.add_child(resident_progress)
-            resident_progress.text = "%s · %d/%d" % [str(resident_quest.get("title", "ПОРУЧЕНИЕ")), rq_progress, rq_goal]
-            resident_progress.add_theme_font_size_override("font_size", 9)
-            resident_progress.add_theme_color_override("font_color", Color("c9d2cf"))
-            if bool(resident_quest.get("ready", false)):
-                var resident_claim := _button(resident_box, "ЗАБРАТЬ НАГРАДУ МИРЫ", false)
-                resident_claim.pressed.connect(_claim_resident_quest.bind("mira"))
-        else:
-            var completed := Label.new()
-            resident_box.add_child(completed)
-            completed.text = "Текущая цепочка Миры завершена."
-            completed.add_theme_font_size_override("font_size", 9)
-            completed.add_theme_color_override("font_color", Color("8fd5b0"))
-    else:
-        var locked := Label.new()
-        body.add_child(locked)
-        locked.text = "В мире ещё есть выжившие. Исследуй дальние области и ищи сигналы."
-        locked.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        locked.add_theme_font_size_override("font_size", 9)
-        locked.add_theme_color_override("font_color", Color("7f898a"))
+    _section("Поручения жителей", "Спасённые жители дают последовательные цепочки, а доверие открывает поддержку перед экспедицией.")
+    _resident_quest_card("mira", "РАЗВЕДЧИЦА МИРА")
+    if GameState.chapter_one_complete():
+        _resident_quest_card("thorn", "МЕХАНИК ТОРН")
 
     var trophies := _button(body, "К РЕЛИКВИЯМ И ДОСТИЖЕНИЯМ", false)
     trophies.pressed.connect(_show_goals)
+
+func _resident_quest_card(resident_id: String, display_name: String) -> void:
+    var residents: Dictionary = GameState.data.get("residents", {})
+    var resident: Dictionary = residents.get(resident_id, {})
+    if not bool(resident.get("unlocked", false)):
+        var locked := Label.new()
+        body.add_child(locked)
+        locked.text = "%s · %s" % [
+            display_name,
+            "ищи разведчицу в дальних областях" if resident_id == "mira" else "после трёх реликвий найди механика за границей света"
+        ]
+        locked.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        locked.add_theme_font_size_override("font_size", 9)
+        locked.add_theme_color_override("font_color", Color("777f81"))
+        return
+
+    var panel := _panel(body)
+    var box := VBoxContainer.new()
+    panel.add_child(box)
+    box.add_theme_constant_override("separation", 5)
+
+    var title := Label.new()
+    box.add_child(title)
+    title.text = "%s · ДОВЕРИЕ %d/3" % [display_name, int(resident.get("trust", 0))]
+    title.add_theme_font_size_override("font_size", 11)
+    title.add_theme_color_override("font_color", Color("e6c98c"))
+
+    var quest: Dictionary = QuestDirector.resident_quest_state(resident_id)
+    var desc := Label.new()
+    box.add_child(desc)
+    desc.text = str(quest.get("desc", "Поручений пока нет."))
+    desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    desc.add_theme_font_size_override("font_size", 9)
+    desc.add_theme_color_override("font_color", Color("aeb8b9"))
+
+    if bool(quest.get("complete", false)):
+        var done := Label.new()
+        box.add_child(done)
+        done.text = "Текущая цепочка завершена. Поддержка жителя остаётся доступной."
+        done.add_theme_font_size_override("font_size", 9)
+        done.add_theme_color_override("font_color", Color("8fd5b0"))
+        return
+
+    var goal: int = maxi(1, int(quest.get("goal", 1)))
+    var progress: int = mini(goal, int(quest.get("progress", 0)))
+    var progress_label := Label.new()
+    box.add_child(progress_label)
+    progress_label.text = "%s · %d/%d" % [str(quest.get("title", "ПОРУЧЕНИЕ")), progress, goal]
+    progress_label.add_theme_font_size_override("font_size", 9)
+    progress_label.add_theme_color_override("font_color", Color("c9d2cf"))
+
+    if bool(quest.get("ready", false)):
+        var claim := _button(box, "ЗАБРАТЬ НАГРАДУ", false)
+        claim.pressed.connect(_claim_resident_quest.bind(resident_id))
+
+func _add_resident_support_picker() -> void:
+    var available: Array[String] = []
+    for support_id: String in FrontierRules.support_ids():
+        if GameState.support_available(support_id):
+            available.append(support_id)
+    if available.is_empty():
+        return
+
+    var panel := _panel(body)
+    var box := VBoxContainer.new()
+    panel.add_child(box)
+    box.add_theme_constant_override("separation", 4)
+
+    var title := Label.new()
+    box.add_child(title)
+    title.text = "ПОДДЕРЖКА ЖИТЕЛЕЙ · ОДНА НА СЛЕДУЮЩИЙ ВЫХОД"
+    title.add_theme_font_size_override("font_size", 8)
+    title.add_theme_color_override("font_color", Color("bca36e"))
+
+    var selected: String = GameState.selected_run_support()
+    for support_id: String in available:
+        var spec: Dictionary = FrontierRules.support(support_id)
+        var button := _button(box, ("%s · %s" % [str(spec.get("name", "")), str(spec.get("desc", ""))]), selected == support_id)
+        button.custom_minimum_size = Vector2(0, 46)
+        button.disabled = selected == support_id
+        button.pressed.connect(_select_run_support.bind(support_id))
+
+func _select_run_support(support_id: String) -> void:
+    if GameState.select_run_support(support_id):
+        Feedback.play("level", 6)
+    _show_home()
+
+func _show_frontier() -> void:
+    _clear_body()
+    _section(LoreRules.FRONTIER_SIGNAL_TITLE, LoreRules.CHAPTER_TWO_TEASE)
+
+    var story := _panel(body)
+    var story_box := VBoxContainer.new()
+    story.add_child(story_box)
+    story_box.add_theme_constant_override("separation", 5)
+
+    var finale := Label.new()
+    story_box.add_child(finale)
+    finale.text = LoreRules.CHAPTER_ONE_FINALE
+    finale.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    finale.add_theme_font_size_override("font_size", 10)
+    finale.add_theme_color_override("font_color", Color("e0d1b0"))
+
+    var signal := Label.new()
+    story_box.add_child(signal)
+    signal.text = LoreRules.FRONTIER_SIGNAL
+    signal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    signal.add_theme_font_size_override("font_size", 9)
+    signal.add_theme_color_override("font_color", Color("aebabc"))
+
+    var frontier_state: Dictionary = GameState.data.get("frontier_state", {})
+    var completed: int = int(frontier_state.get("assignments_completed", 0))
+    var progress := Label.new()
+    story_box.add_child(progress)
+    progress.text = "ДАЛЬНИЕ ВЫХОДЫ: %d · %s" % [completed, LoreRules.frontier_progress_text(completed)]
+    progress.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    progress.add_theme_font_size_override("font_size", 9)
+    progress.add_theme_color_override("font_color", Color("b9b7d8"))
+
+    _section("Разведывательные задания", "Выбери одно. Цель нужно выполнить до второй ночи, а затем физически вернуться к Последнему Очагу.")
+
+    var selected: String = GameState.frontier_assignment_id()
+    for assignment_id: String in FrontierRules.assignment_ids():
+        var spec: Dictionary = FrontierRules.assignment(assignment_id)
+        var panel := _panel(body)
+        var box := VBoxContainer.new()
+        panel.add_child(box)
+        box.add_theme_constant_override("separation", 4)
+
+        var top := HBoxContainer.new()
+        box.add_child(top)
+        var assignment_title := Label.new()
+        top.add_child(assignment_title)
+        assignment_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        assignment_title.text = str(spec.get("name", "ЗАДАНИЕ"))
+        assignment_title.add_theme_font_size_override("font_size", 12)
+        assignment_title.add_theme_color_override("font_color", Color("e8dcc4"))
+
+        var reward := Label.new()
+        top.add_child(reward)
+        reward.text = FrontierRules.reward_text(spec)
+        reward.add_theme_font_size_override("font_size", 8)
+        reward.add_theme_color_override("font_color", Color("d7b86e"))
+
+        var desc := Label.new()
+        box.add_child(desc)
+        desc.text = str(spec.get("desc", ""))
+        desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        desc.add_theme_font_size_override("font_size", 9)
+        desc.add_theme_color_override("font_color", Color("aeb8b9"))
+
+        var pick := _button(box, "ВЫБРАНО" if selected == assignment_id else "ВЗЯТЬ ЗАДАНИЕ", selected == assignment_id)
+        pick.disabled = selected == assignment_id
+        pick.pressed.connect(_select_frontier_assignment.bind(assignment_id))
+
+    if not selected.is_empty():
+        var current: Dictionary = FrontierRules.assignment(selected)
+        var current_note := Label.new()
+        body.add_child(current_note)
+        current_note.text = "Следующая экспедиция: %s. Регион можно выбрать на Карте." % str(current.get("name", "Дальний выход"))
+        current_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        current_note.add_theme_font_size_override("font_size", 9)
+        current_note.add_theme_color_override("font_color", Color("d7c58e"))
+
+        var depart := _button(body, "В ЭКСПЕДИЦИЮ С ЗАДАНИЕМ", true)
+        depart.pressed.connect(_start_game)
+
+    var back := _button(body, "К КАРТЕ", false)
+    back.pressed.connect(_show_map)
+
+func _select_frontier_assignment(assignment_id: String) -> void:
+    if GameState.select_frontier_assignment(assignment_id):
+        Feedback.play("level", 8)
+    _show_frontier()
 
 func _daily_quest_card(quest: Dictionary) -> void:
     var panel := _panel(body)
