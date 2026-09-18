@@ -114,7 +114,7 @@ func configure_elite(trait_id: String) -> void:
             hp = max_hp
             move_speed *= 0.90
             contact_damage *= 1.12
-            armor = minf(0.52, armor + 0.18)
+            armor = minf(0.52, armor + 0.28)
             base_scale *= 1.13
         "volatile":
             elite_title = "ИСКАЖЁННЫЙ"
