@@ -124,20 +124,24 @@ func resident_quest_state(resident_id: String) -> Dictionary:
 
     var step: int = int(resident.get("quest_step", 0))
     var progress: int = int(resident.get("quest_progress", 0))
-    if resident_id == "mira":
-        var chain: Array[Dictionary] = [
-            {"title":"МЕТКИ НА ДОРОГЕ","desc":"Зажги 2 сигнальных костра в экспедициях.","event":"signal_fire","goal":2,"reward_type":"shards","reward":1},
-            {"title":"ДАЛЬНИЙ ПУТЬ","desc":"Доберись до внешнего кольца мира 2 раза.","event":"reach_outer","goal":2,"reward_type":"coins","reward":90},
-            {"title":"ЧЁРНЫЕ КОРНИ","desc":"Уничтожь 3 гнезда Тьмы.","event":"nest_destroyed","goal":3,"reward_type":"shards","reward":1}
-        ]
-        if step >= chain.size():
-            return {"complete":true,"title":"РАЗВЕДЧИЦА МИРА","desc":"Все текущие поручения выполнены.","progress":3,"goal":3}
-        var spec: Dictionary = chain[step].duplicate(true)
-        spec["progress"] = progress
-        spec["ready"] = progress >= int(spec.get("goal", 1))
-        spec["complete"] = false
-        return spec
-    return {}
+    var chain_size: int = ResidentRules.chain_size(resident_id)
+    if chain_size <= 0:
+        return {}
+
+    if step >= chain_size:
+        return {
+            "complete":true,
+            "title":"ЦЕПОЧКА ЗАВЕРШЕНА",
+            "desc":"Все текущие поручения %s выполнены." % ResidentRules.name_for(resident_id),
+            "progress":chain_size,
+            "goal":chain_size
+        }
+
+    var spec: Dictionary = ResidentRules.quest(resident_id, step)
+    spec["progress"] = progress
+    spec["ready"] = progress >= int(spec.get("goal", 1))
+    spec["complete"] = false
+    return spec
 
 func claim_resident(resident_id: String) -> Dictionary:
     var quest: Dictionary = resident_quest_state(resident_id)
@@ -153,36 +157,69 @@ func claim_resident(resident_id: String) -> Dictionary:
     else:
         GameState.data["coins"] = int(GameState.data.get("coins", 0)) + reward
 
-    resident["trust"] = mini(3, int(resident.get("trust", 0)) + 1)
+    resident["trust"] = mini(ResidentRules.max_trust(resident_id), int(resident.get("trust", 0)) + 1)
     resident["quest_step"] = int(resident.get("quest_step", 0)) + 1
     resident["quest_progress"] = 0
     residents[resident_id] = resident
     GameState.data["residents"] = residents
+
+    var completed_now: bool = int(resident.get("quest_step", 0)) >= ResidentRules.chain_size(resident_id)
+    if completed_now:
+        var notices: Array = GameState.data.get("meta_notices", [])
+        notices.append("%s завершает текущую цепочку поручений и остаётся у Последнего Очагa." % ResidentRules.name_for(resident_id))
+        GameState.data["meta_notices"] = notices
+
     GameState.save()
     Feedback.play("victory", 10)
     Analytics.event("resident_quest_claimed", {
         "resident":resident_id,
         "step":int(resident.get("quest_step", 0)),
-        "trust":int(resident.get("trust", 0))
+        "trust":int(resident.get("trust", 0)),
+        "chain_complete":completed_now
     })
-    return {"ok":true,"reward":reward,"reward_type":reward_type}
+    return {
+        "ok":true,
+        "reward":reward,
+        "reward_type":reward_type,
+        "chain_complete":completed_now
+    }
 
-func _record_resident_event(event_name: String, amount: int, _context: Dictionary) -> void:
+func _record_resident_event(event_name: String, amount: int, context: Dictionary) -> void:
     var residents: Dictionary = GameState.data.get("residents", {})
-    var resident: Dictionary = residents.get("mira", {})
-    if not bool(resident.get("unlocked", false)):
-        return
-    var quest: Dictionary = resident_quest_state("mira")
-    if quest.is_empty() or bool(quest.get("complete", false)):
-        return
-    if str(quest.get("event", "")) != event_name:
-        return
+    var changed: bool = false
 
-    var goal: int = maxi(1, int(quest.get("goal", 1)))
-    resident["quest_progress"] = mini(goal, int(resident.get("quest_progress", 0)) + amount)
-    residents["mira"] = resident
-    GameState.data["residents"] = residents
-    GameState.save()
+    for resident_id: String in ResidentRules.ids():
+        var resident: Dictionary = residents.get(resident_id, {})
+        if not bool(resident.get("unlocked", false)):
+            continue
+
+        var quest: Dictionary = resident_quest_state(resident_id)
+        if quest.is_empty() or bool(quest.get("complete", false)):
+            continue
+        if str(quest.get("event", "")) != event_name:
+            continue
+
+        var filter_key: String = str(quest.get("filter_key", ""))
+        if not filter_key.is_empty():
+            if not context.has(filter_key) or context.get(filter_key) != quest.get("filter_value"):
+                continue
+
+        var goal: int = maxi(1, int(quest.get("goal", 1)))
+        var before: int = int(resident.get("quest_progress", 0))
+        resident["quest_progress"] = mini(goal, before + amount)
+        residents[resident_id] = resident
+        changed = true
+
+        if before < goal and int(resident["quest_progress"]) >= goal:
+            Feedback.play("level", 6)
+            Analytics.event("resident_quest_completed", {
+                "resident":resident_id,
+                "step":int(resident.get("quest_step", 0))
+            })
+
+    if changed:
+        GameState.data["residents"] = residents
+        GameState.save()
 
 func claims_left_today() -> int:
     ensure_daily_quests()
