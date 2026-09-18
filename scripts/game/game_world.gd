@@ -604,84 +604,136 @@ func _on_revive_ad(_placement: String) -> void:
 func _draw() -> void:
     var size: Vector2 = get_viewport_rect().size
     var night: bool = phase == "night"
-    var top: Color = Color(str(biome.get("sky", "dceabc")))
-    var bottom: Color = Color(str(biome.get("ground", "9fc77c")))
+    var top: Color = Color(str(biome.get("sky", "b9cf8d")))
+    var bottom: Color = Color(str(biome.get("ground", "7fa268")))
     if night:
-        top = Color("213647") if biome_index < 2 else Color("38262d")
-        bottom = Color("304a40") if biome_index < 2 else Color("58322f")
+        top = Color("20313a") if biome_index < 2 else Color("34242a")
+        bottom = Color("30483d") if biome_index < 2 else Color("57332f")
 
     draw_rect(Rect2(Vector2.ZERO, size), bottom)
-    var band_h: float = 16.0
+
+    var band_h: float = 14.0
     var bands: int = int(ceil(size.y / band_h))
     for i: int in range(bands):
         var t: float = float(i) / float(maxi(1, bands - 1))
         var band_color: Color = top.lerp(bottom, t)
         draw_rect(Rect2(0, float(i) * band_h, size.x, band_h + 1.0), band_color)
 
-    # Pixel-ground clusters: deliberately chunky instead of smooth procedural noise.
-    for i: int in range(52):
-        var px: float = floor(fmod(float(i * 73), size.x) / 4.0) * 4.0
-        var py: float = floor(fmod(float(i * 47 + 220), size.y) / 4.0) * 4.0
-        var patch: Color = Color(0.18, 0.31, 0.16, 0.09) if not night else Color(0.08, 0.12, 0.13, 0.11)
-        draw_rect(Rect2(px, py, 4, 8), patch)
-
+    _draw_ground_detail(size, night)
+    _draw_clearing(night)
     _draw_hearth(night)
 
     if bool(built["wall"]):
         _draw_palisade()
 
     if deposit_pulse > 0.0:
-        var pulse_size: float = 116.0 + (1.0 - deposit_pulse) * 24.0
-        draw_rect(
-            Rect2(base_position - Vector2(pulse_size, pulse_size) * 0.5, Vector2(pulse_size, pulse_size)),
-            Color(0.88, 0.73, 0.36, deposit_pulse * 0.34),
-            false,
-            3.0
-        )
+        var radius: float = 66.0 + (1.0 - deposit_pulse) * 30.0
+        draw_arc(base_position, radius, 0.0, TAU, 40, Color(0.94, 0.76, 0.36, deposit_pulse * 0.54), 2.5)
 
     var ratio: float = clampf(base_hp / maxf(1.0, base_max_hp), 0.0, 1.0)
-    draw_rect(Rect2(base_position + Vector2(-48, -82), Vector2(96, 6)), Color(0.08, 0.09, 0.08, 0.32))
-    draw_rect(Rect2(base_position + Vector2(-48, -82), Vector2(96 * ratio, 6)), Color("79aa6d"))
+    draw_rect(Rect2(base_position + Vector2(-45, -76), Vector2(90, 5)), Color(0.07, 0.08, 0.07, 0.34))
+    draw_rect(Rect2(base_position + Vector2(-45, -76), Vector2(90 * ratio, 5)), Color("83b06e"))
 
     if turret_shot_time > 0.0:
-        draw_line(turret_shot_from, turret_shot_to, Color(1.0, 0.82, 0.38, 0.65 + turret_shot_time * 0.30), 3.0)
-        draw_rect(Rect2(turret_shot_to - Vector2(3, 3), Vector2(6, 6)), Color("ffe8a3"))
+        draw_line(turret_shot_from, turret_shot_to, Color(1.0, 0.83, 0.38, 0.58 + turret_shot_time * 0.32), 2.5)
+        draw_rect(Rect2(turret_shot_to - Vector2(3, 3), Vector2(6, 6)), Color("ffe7a0"))
 
     if boss_warning_active:
-        draw_rect(Rect2(boss_warning_position - Vector2(62, 62), Vector2(124, 124)), Color(0.84, 0.27, 0.27, 0.10))
-        draw_rect(Rect2(boss_warning_position - Vector2(62, 62), Vector2(124, 124)), Color(0.9, 0.35, 0.35, 0.72), false, 3.0)
+        draw_circle(boss_warning_position, 62.0, Color(0.84, 0.27, 0.27, 0.09))
+        draw_arc(boss_warning_position, 62.0, 0.0, TAU, 36, Color(0.92, 0.38, 0.34, 0.72), 2.5)
+
+func _draw_ground_detail(size: Vector2, night: bool) -> void:
+    var tuft: Color = Color(0.18, 0.32, 0.18, 0.16) if not night else Color(0.05, 0.10, 0.10, 0.16)
+    var patch: Color = Color(0.12, 0.24, 0.14, 0.08) if not night else Color(0.04, 0.08, 0.09, 0.09)
+
+    for i: int in range(64):
+        var px: float = floor(fmod(float(i * 73 + 31), size.x) / 4.0) * 4.0
+        var py: float = floor(fmod(float(i * 47 + 149), size.y) / 4.0) * 4.0
+        if Vector2(px, py).distance_to(base_position) < 88.0:
+            continue
+        if i % 3 == 0:
+            draw_rect(Rect2(px, py, 12, 4), patch)
+        else:
+            draw_rect(Rect2(px, py, 3, 7), tuft)
+            draw_rect(Rect2(px + 4, py + 2, 2, 5), Color(tuft, tuft.a * 0.75))
+
+    # Darker forest edges create depth and keep the eye on the Hearth.
+    var edge: Color = Color(0.04, 0.09, 0.06, 0.12) if not night else Color(0.01, 0.03, 0.04, 0.22)
+    for i: int in range(5):
+        var alpha: float = edge.a * (1.0 - float(i) * 0.14)
+        var c: Color = Color(edge.r, edge.g, edge.b, alpha)
+        draw_rect(Rect2(i * 7.0, 0, 7.0, size.y), c)
+        draw_rect(Rect2(size.x - (i + 1) * 7.0, 0, 7.0, size.y), c)
+
+func _draw_clearing(night: bool) -> void:
+    var clearing: Color = Color(0.66, 0.75, 0.45, 0.24) if not night else Color(0.39, 0.46, 0.32, 0.20)
+    draw_circle(base_position, 95.0, clearing)
+
+    # A worn path from the lower screen to the Last Hearth.
+    var path: Color = Color(0.54, 0.48, 0.31, 0.20) if not night else Color(0.29, 0.27, 0.22, 0.16)
+    var bottom_y: float = get_viewport_rect().size.y
+    var points := PackedVector2Array([
+        Vector2(base_position.x - 19, base_position.y + 28),
+        Vector2(base_position.x + 20, base_position.y + 28),
+        Vector2(base_position.x + 35, bottom_y),
+        Vector2(base_position.x - 38, bottom_y)
+    ])
+    draw_colored_polygon(points, path)
+    for i: int in range(6):
+        var y: float = base_position.y + 58.0 + float(i) * 43.0
+        draw_rect(Rect2(base_position.x - 11 + float((i % 2) * 4), y, 20, 3), Color(0.36, 0.31, 0.21, 0.12))
 
 func _draw_hearth(night: bool) -> void:
-    var zone_color: Color = Color("b49b6d") if night else Color("d7c18f")
-    draw_rect(Rect2(base_position - Vector2(58, 48), Vector2(116, 96)), zone_color)
-    draw_rect(Rect2(base_position - Vector2(58, 48), Vector2(116, 96)), Color("8f7653"), false, 3.0)
+    var glow_strength: float = 0.13 if not night else 0.22
+    draw_circle(base_position, 56.0, Color(1.0, 0.55, 0.18, glow_strength))
+    draw_circle(base_position, 35.0, Color(1.0, 0.45, 0.12, glow_strength * 0.75))
 
-    # Small pixel hearth / depot.
-    draw_rect(Rect2(base_position + Vector2(-24, -18), Vector2(48, 36)), Color("7d5a3d"))
-    draw_rect(Rect2(base_position + Vector2(-19, -13), Vector2(38, 31)), Color("936b48"))
+    # Stone fire ring.
+    for i: int in range(10):
+        var angle: float = TAU * float(i) / 10.0
+        var stone_pos: Vector2 = base_position + Vector2(cos(angle), sin(angle)) * 22.0
+        var stone_color: Color = Color("73756b") if i % 2 == 0 else Color("85867a")
+        draw_rect(Rect2(stone_pos - Vector2(4, 3), Vector2(8, 6)), Color("464941"))
+        draw_rect(Rect2(stone_pos - Vector2(3, 3), Vector2(6, 5)), stone_color)
+
+    # Crossed logs.
+    draw_line(base_position + Vector2(-11, 8), base_position + Vector2(10, -5), Color("54331f"), 5.0)
+    draw_line(base_position + Vector2(11, 8), base_position + Vector2(-9, -5), Color("6a4226"), 5.0)
+
+    var flicker: float = (sin(Time.get_ticks_msec() * 0.010) + 1.0) * 0.5
+    var flame := PackedVector2Array([
+        base_position + Vector2(-8, 5),
+        base_position + Vector2(-4, -13 - flicker * 3.0),
+        base_position + Vector2(0, -6),
+        base_position + Vector2(5, -20 + flicker * 2.0),
+        base_position + Vector2(9, 5)
+    ])
+    draw_colored_polygon(flame, Color("ee7c32"))
     draw_colored_polygon(PackedVector2Array([
-        base_position + Vector2(-30, -18),
-        base_position + Vector2(0, -39),
-        base_position + Vector2(30, -18)
-    ]), Color("513a2b"))
-    draw_rect(Rect2(base_position + Vector2(-7, 2), Vector2(14, 16)), Color("3c2b23"))
-    draw_rect(Rect2(base_position + Vector2(-5, 7), Vector2(10, 10)), Color("f2a442"))
-    draw_rect(Rect2(base_position + Vector2(-2, 5), Vector2(4, 8)), Color("ffe19a"))
+        base_position + Vector2(-4, 4),
+        base_position + Vector2(0, -10 - flicker * 2.0),
+        base_position + Vector2(5, 4)
+    ]), Color("ffd879"))
+
+    # Storage crate makes deposit function visually obvious.
+    var crate_pos := base_position + Vector2(39, 20)
+    draw_rect(Rect2(crate_pos - Vector2(13, 9), Vector2(26, 18)), Color("4e321f"))
+    draw_rect(Rect2(crate_pos - Vector2(11, 7), Vector2(22, 14)), Color("865a31"))
+    draw_rect(Rect2(crate_pos + Vector2(-11, -1), Vector2(22, 3)), Color("b27c42"))
+    draw_rect(Rect2(crate_pos + Vector2(-2, -7), Vector2(4, 14)), Color("5d3d24"))
 
 func _draw_palisade() -> void:
-    var left: float = base_position.x - 73.0
-    var right: float = base_position.x + 73.0
-    var top_y: float = base_position.y - 61.0
-    var bottom_y: float = base_position.y + 61.0
-    var wood: Color = Color("68472f")
-    var light: Color = Color("8e6544")
+    var radius_x: float = 78.0
+    var radius_y: float = 66.0
+    for i: int in range(28):
+        var angle: float = TAU * float(i) / 28.0
+        # Leave a small gate on the lower side.
+        if angle > 1.30 and angle < 1.84:
+            continue
+        var pos: Vector2 = base_position + Vector2(cos(angle) * radius_x, sin(angle) * radius_y)
+        draw_rect(Rect2(pos - Vector2(3, 8), Vector2(6, 17)), Color("4e3321"))
+        draw_rect(Rect2(pos - Vector2(2, 7), Vector2(4, 14)), Color("8d633b"))
+        draw_colored_polygon(PackedVector2Array([
+            pos + Vector2(-3, -8), pos + Vector2(0, -14), pos + Vector2(3, -8)
+        ]), Color("b68a54"))
 
-    for x: int in range(int(left), int(right) + 1, 14):
-        draw_rect(Rect2(float(x) - 3.0, top_y - 8.0, 6, 16), wood)
-        draw_rect(Rect2(float(x) - 2.0, top_y - 7.0, 4, 14), light)
-        draw_rect(Rect2(float(x) - 3.0, bottom_y - 8.0, 6, 16), wood)
-        draw_rect(Rect2(float(x) - 2.0, bottom_y - 7.0, 4, 14), light)
-
-    for y: int in range(int(top_y), int(bottom_y) + 1, 14):
-        draw_rect(Rect2(left - 8.0, float(y) - 3.0, 16, 6), wood)
-        draw_rect(Rect2(right - 8.0, float(y) - 3.0, 16, 6), wood)
