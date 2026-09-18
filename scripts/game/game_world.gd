@@ -145,7 +145,7 @@ func _process(delta: float) -> void:
     _update_building_passives(delta)
     _update_camera_lookahead(delta)
     var bag_ratio: float = float(player.inventory_total()) / float(maxi(1, player.capacity))
-    var return_soon: bool = bag_ratio >= 0.82 or (phase == "day" and phase_time <= 12.0)
+    var return_soon: bool = phase == "night" or bag_ratio >= 0.82 or (phase == "day" and phase_time <= 12.0)
     player.set_home_hint(return_soon and player.global_position.distance_to(base_position) > 110.0)
 
     if phase == "day":
@@ -380,7 +380,10 @@ func _start_night() -> void:
     for value: Variant in built.values():
         if bool(value):
             active_count += 1
-    hud.set_status("Защищай Очаг • активных построек: %d" % active_count)
+    if player.global_position.distance_to(base_position) > 170.0:
+        hud.set_status("ОЧАГ ПОД УГРОЗОЙ — ВЕРНИСЬ К БАЗЕ")
+    else:
+        hud.set_status("Защищай Очаг • активных построек: %d" % active_count)
     Analytics.event("wave_start", {"wave": wave, "biome": biome_index})
 
 func _start_day() -> void:
