@@ -12,6 +12,7 @@ var max_distance_from_hearth: float = 0.0
 var night_rift: NightRift = null
 var effective_threat: float = 0.0
 var last_announced_contract_progress: int = -1
+var outer_reach_recorded: bool = false
 
 func setup(world_ref: GameWorld) -> void:
     world = world_ref
@@ -26,6 +27,9 @@ func _process(_delta: float) -> void:
         max_distance_from_hearth,
         world.player.global_position.distance_to(world.base_position)
     )
+    if not outer_reach_recorded and max_distance_from_hearth >= 720.0:
+        outer_reach_recorded = true
+        QuestDirector.record("reach_outer", 1, {"biome":world.biome_index})
     _check_contract_progress()
     _maybe_preview_night()
 
@@ -117,7 +121,10 @@ func prepare_night(wave: int) -> Dictionary:
     return current_modifier.duplicate(true)
 
 func on_night_completed(wave: int) -> void:
+    QuestDirector.record("night_survive", 1, {"wave":wave, "biome":world.biome_index})
     if wave == 1:
+        if not bool(world.built.get("turret", false)):
+            QuestDirector.record("night_no_tower", 1, {"biome":world.biome_index})
         var id: String = str(contract.get("id", ""))
         if id == "lean_defense" and world.builds <= 1:
             _complete_contract()
@@ -226,6 +233,7 @@ func _complete_contract() -> void:
     world.hud.set_status("+%d мон. · %s" % [reward, str(contract.get("name", ""))])
     world.hud.set_run_objective("КОНТРАКТ ВЫПОЛНЕН · +%d МОН." % reward)
     Feedback.play("level", 12)
+    QuestDirector.record("contract_complete", 1, {"id":str(contract.get("id", "")), "biome":world.biome_index})
     Analytics.event("run_contract_completed", {
         "id": str(contract.get("id", "")),
         "reward": reward,
@@ -265,6 +273,7 @@ func _on_rift_destroyed(_rift: NightRift) -> void:
     reduce_threat(1.5, "rift_destroyed")
     world.hud.show_banner("РАЗЛОМ ЗАКРЫТ", Color("d7cf98"))
     world.hud.set_status("+12 мон. · поток подкреплений остановлен.")
+    QuestDirector.record("rift_destroyed", 1, {"wave":world.wave, "biome":world.biome_index})
     Analytics.event("night_objective_completed", {
         "type":"rift",
         "wave":world.wave,
