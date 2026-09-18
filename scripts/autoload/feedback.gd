@@ -17,7 +17,10 @@ func _ready() -> void:
         "victory": _make_chime([392.0, 523.25, 659.25, 783.99], 0.09),
         "stalker": _make_tone(310.0, 0.095, 0.12, 460.0),
         "guardian": _make_chime([110.0, 146.83], 0.070),
-        "danger": _make_chime([220.0, 174.61, 146.83], 0.055)
+        "danger": _make_chime([220.0, 174.61, 146.83], 0.055),
+        "spear": _make_tone(340.0, 0.075, 0.13, 520.0),
+        "hammer": _make_chime([123.47, 92.50], 0.095),
+        "blades": _make_chime([620.0, 740.0], 0.030)
     }
 
 func play(kind: String, haptic_ms: int = 0) -> void:
