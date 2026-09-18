@@ -85,6 +85,7 @@ func _build_overlay() -> void:
     _make_action_button("forge", "КУЗНЯ")
     _make_action_button("arsenal", "АРСЕНАЛ")
     _make_action_button("goals", "ТРОФЕИ")
+    _make_action_button("quests", "ЗАДАНИЯ")
     _make_action_button("map", "КАРТА")
 
 func _make_action_button(action: String, text: String) -> void:
@@ -142,6 +143,11 @@ func _layout_overlay() -> void:
         goals.position = Vector2(width * 0.50 - 35.0, 181.0)
         goals.size = Vector2(70, 23)
 
+    var quests: Button = action_buttons.get("quests") as Button
+    if quests != null:
+        quests.position = Vector2(width * 0.14 - 35.0, height - 187.0)
+        quests.size = Vector2(70, 23)
+
     var map: Button = action_buttons.get("map") as Button
     if map != null:
         map.position = Vector2(width * 0.88 - 31.0, height - 113.0)
@@ -160,6 +166,7 @@ func _draw() -> void:
         _draw_stronghold(width)
 
     _draw_tent(Vector2(width * 0.15, hearth_y + 6.0), 1.0 + minf(0.20, float(mastery) * 0.02))
+    _draw_quest_board(Vector2(width * 0.14, hearth_y - 53.0))
     if mastery >= 1 or _has_relic(0):
         _draw_forge(Vector2(width * 0.27, hearth_y + 12.0))
     if weapons_owned.size() > 1:
@@ -310,6 +317,14 @@ func _draw_weapon_icon(id: String, pos: Vector2, scale_value: float) -> void:
     else:
         draw_line(pos + Vector2(-16, 20) * scale_value, pos + Vector2(8, -14) * scale_value, Color("6a4932"), 5.0 * scale_value)
         draw_line(pos + Vector2(0, -16) * scale_value, pos + Vector2(17, -22) * scale_value, Color("bfc8cb"), 7.0 * scale_value)
+
+func _draw_quest_board(pos: Vector2) -> void:
+    draw_rect(Rect2(pos + Vector2(-18, -16), Vector2(36, 26)), Color("5d412c"))
+    draw_rect(Rect2(pos + Vector2(-15, -13), Vector2(30, 20)), Color("8b6945"))
+    draw_rect(Rect2(pos + Vector2(-9, -9), Vector2(18, 12)), Color("c8b98f"))
+    draw_line(pos + Vector2(-4, -5), pos + Vector2(5, -5), Color("62584a"), 1.0)
+    draw_line(pos + Vector2(-4, -1), pos + Vector2(7, -1), Color("62584a"), 1.0)
+    draw_rect(Rect2(pos + Vector2(-2, 10), Vector2(4, 15)), Color("5d412c"))
 
 func _draw_map_board(pos: Vector2) -> void:
     draw_rect(Rect2(pos + Vector2(-20, 12), Vector2(40, 5)), Color(0.03, 0.04, 0.03, 0.20))
