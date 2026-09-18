@@ -115,6 +115,21 @@ func _show_arsenal() -> void:
     selected_desc.add_theme_font_size_override("font_size", 10)
     selected_desc.add_theme_color_override("font_color", Color("aeb8b9"))
 
+    var identity := Label.new()
+    hero_box.add_child(identity)
+    identity.text = str(selected_profile.get("identity", "")).to_upper()
+    identity.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    identity.add_theme_font_size_override("font_size", 9)
+    identity.add_theme_color_override("font_color", Color("d2af6c"))
+
+    var signature := Label.new()
+    hero_box.add_child(signature)
+    signature.text = str(selected_profile.get("signature", ""))
+    signature.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    signature.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    signature.add_theme_font_size_override("font_size", 9)
+    signature.add_theme_color_override("font_color", Color("c7d0cc"))
+
     _add_weapon_meters(hero_box, selected_profile)
 
     var unlock_hints: Dictionary = {
@@ -159,7 +174,10 @@ func _show_arsenal() -> void:
 
         var role := Label.new()
         box.add_child(role)
-        role.text = str(profile.get("desc", ""))
+        role.text = "%s · %s" % [
+            str(profile.get("identity", "")),
+            str(profile.get("signature", ""))
+        ]
         role.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         role.add_theme_font_size_override("font_size", 9)
         role.add_theme_color_override("font_color", Color("aeb7b9"))
@@ -572,9 +590,11 @@ func _weapon_meter(parent: Control, title_text: String, value: float) -> void:
 func _weapon_stats_text(profile: Dictionary) -> String:
     var damage_percent: int = int(round(float(profile.get("damage_mult", 1.0)) * 100.0))
     var speed_percent: int = int(round(float(profile.get("speed_mult", 1.0)) * 100.0))
-    var reach: int = int(round(float(profile.get("orbit_radius", 44.0))))
+    var reach: int = int(round(float(profile.get("attack_range", profile.get("orbit_radius", 44.0)))))
     var crit: int = int(round(float(profile.get("crit_bonus", 0.0)) * 100.0))
-    return "Урон %d%% · Скорость %d%% · Радиус %d · Крит +%d%%" % [damage_percent, speed_percent, reach, crit]
+    var cooldown: float = float(profile.get("attack_cooldown", 0.0))
+    var rhythm: String = "ПОСТОЯННО" if cooldown <= 0.01 else "%.2f С" % cooldown
+    return "Урон %d%% · Скорость %d%% · Дистанция %d · Крит +%d%% · Ритм %s" % [damage_percent, speed_percent, reach, crit, rhythm]
 
 func _select_weapon_from_camp(weapon_id: String) -> void:
     if not GameState.select_weapon(weapon_id):
