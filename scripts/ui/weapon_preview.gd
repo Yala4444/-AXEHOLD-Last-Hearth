@@ -50,10 +50,21 @@ func _draw() -> void:
         draw_line(hero + dir * 9.0, hero + dir * 70.0, Color(0.72, 0.83, 0.72, 0.16), 4.0)
         _draw_weapon(hero + dir * 58.0, angle, 1.05)
     elif weapon_id == "hammer":
-        var angle: float = base_angle
+        var cycle: float = fmod(elapsed, 1.18) / 1.18
+        var angle: float = -0.55 + sin(elapsed * 1.5) * 0.20
         var p := hero + Vector2(cos(angle), sin(angle)) * radius
-        draw_arc(hero, radius, angle - 0.85, angle, 18, Color(0.72, 0.84, 0.94, 0.14), 6.0)
         _draw_weapon(p, angle, 1.08)
+        if cycle < 0.30:
+            var slam_t: float = cycle / 0.30
+            draw_arc(hero, 18.0 + slam_t * 47.0, 0.0, TAU, 32, Color(0.64, 0.84, 0.94, 0.42 * (1.0 - slam_t)), 3.0)
+    elif weapon_id == "twin_blades":
+        var combo: int = 1 + int(fmod(elapsed * 2.6, 6.0))
+        for i: int in range(2):
+            var angle: float = base_angle + PI * float(i)
+            var p := hero + Vector2(cos(angle), sin(angle)) * radius
+            draw_arc(hero, radius, angle - 0.52, angle + 0.08, 12, Color(0.94, 0.50, 0.30, 0.18), 5.0)
+            _draw_weapon(p, angle, 0.92)
+        draw_arc(hero, 31.0, -2.6, -2.6 + TAU * float(combo) / 6.0, 28, Color("e79d6f"), 2.0)
     else:
         for i: int in range(maxi(1, count)):
             var angle: float = base_angle + TAU * float(i) / float(maxi(1, count))
