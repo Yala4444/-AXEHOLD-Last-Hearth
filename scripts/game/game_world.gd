@@ -115,13 +115,21 @@ func _setup_camera() -> void:
     player.add_child(camera)
     camera.position = Vector2.ZERO
     camera.position_smoothing_enabled = true
-    camera.position_smoothing_speed = 5.8
+    camera.position_smoothing_speed = 6.2
     camera.limit_left = int(world_rect.position.x)
     camera.limit_top = int(world_rect.position.y)
     camera.limit_right = int(world_rect.end.x)
     camera.limit_bottom = int(world_rect.end.y)
     camera.limit_smoothed = true
     camera.make_current()
+
+func _update_camera_lookahead(delta: float) -> void:
+    if camera == null or player == null:
+        return
+    var target_offset := Vector2.ZERO
+    if player.velocity.length_squared() > 64.0:
+        target_offset = player.velocity.normalized() * 24.0
+    camera.position = camera.position.lerp(target_offset, clampf(delta * 4.6, 0.0, 1.0))
 
 func _process(delta: float) -> void:
     deposit_pulse = maxf(0.0, deposit_pulse - delta * 2.8)
@@ -135,6 +143,7 @@ func _process(delta: float) -> void:
     _deposit_and_build(delta)
     _maintain_resources()
     _update_building_passives(delta)
+    _update_camera_lookahead(delta)
     var bag_ratio: float = float(player.inventory_total()) / float(maxi(1, player.capacity))
     var return_soon: bool = bag_ratio >= 0.82 or (phase == "day" and phase_time <= 12.0)
     player.set_home_hint(return_soon and player.global_position.distance_to(base_position) > 110.0)
