@@ -11,7 +11,7 @@ const BIOMES := [
         "ground":"5e795c",
         "reward":1,
         "boss_name":"Лесной Хранитель",
-        "rule":"Много дерева, спокойный старт и смешанные угрозы.",
+        "rule":"Много дерева. Стаи ускоряются рядом друг с другом, а старые корни могут ожить прямо под ногами.",
         "night_speed":1.0,
         "enemy_weights":{"normal":0.52,"runner":0.16,"brute":0.14,"stalker":0.12,"guardian":0.06}
     },
@@ -24,7 +24,7 @@ const BIOMES := [
         "ground":"69898e",
         "reward":1,
         "boss_name":"Ледяной Страж",
-        "rule":"Больше камня. Ночью холод замедляет героя, а Сталкеры давят рывками.",
+        "rule":"Больше камня. Морозные удары замедляют героя, а белые бури меняют безопасный маршрут.",
         "night_speed":0.90,
         "enemy_weights":{"normal":0.40,"runner":0.27,"brute":0.10,"stalker":0.17,"guardian":0.06}
     },
@@ -37,7 +37,7 @@ const BIOMES := [
         "ground":"72473e",
         "reward":2,
         "boss_name":"Пепельный Тиран",
-        "rule":"Больше руды. Тяжёлые и бронированные враги проверяют развитый лагерь.",
+        "rule":"Больше руды. Тяжёлые враги оставляют жар после смерти, а разломы земли давят на позиционирование.",
         "night_speed":1.0,
         "enemy_weights":{"normal":0.38,"runner":0.08,"brute":0.25,"stalker":0.09,"guardian":0.20}
     }
@@ -236,6 +236,24 @@ static func random_doctrines(count: int = 3) -> Array[Dictionary]:
     for i: int in range(mini(count, pool.size())):
         result.append(pool[i])
     return result
+
+static func biome_event_name(index: int) -> String:
+    match clampi(index, 0, 2):
+        1:
+            return "БЕЛАЯ БУРЯ"
+        2:
+            return "РАЗЛОМ ЖАРА"
+        _:
+            return "КОРНИ ПРОБУЖДАЮТСЯ"
+
+static func regional_target_name(index: int) -> String:
+    match clampi(index, 0, 2):
+        1:
+            return "БЕЛЫЙ ОХОТНИК"
+        2:
+            return "ПЕПЕЛЬНЫЙ СЕЯТЕЛЬ"
+        _:
+            return "ВОЖАК КОРНЕЙ"
 
 static func biome(index: int) -> Dictionary:
     return BIOMES[clampi(index, 0, BIOMES.size() - 1)].duplicate(true)
