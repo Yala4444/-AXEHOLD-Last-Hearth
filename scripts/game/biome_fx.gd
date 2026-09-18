@@ -7,6 +7,7 @@ var world: GameWorld = null
 var biome_index: int = 0
 var hazards: Array[Dictionary] = []
 var ambience_time: float = 0.0
+var night_mix: float = 0.0
 
 func setup(world_ref: GameWorld, index: int) -> void:
     world = world_ref
@@ -31,6 +32,8 @@ func clear_hazards() -> void:
 
 func _process(delta: float) -> void:
     ambience_time += delta
+    var night_target: float = 1.0 if world != null and is_instance_valid(world) and world.phase == "night" else 0.0
+    night_mix = move_toward(night_mix, night_target, delta * 1.65)
     _refresh_boss_hud()
 
     if not hazards.is_empty():
@@ -73,6 +76,7 @@ func _draw() -> void:
         center += world.camera.position
     var view_rect := Rect2(center - viewport_size * 0.5, viewport_size)
     _draw_biome_atmosphere(view_rect)
+    _draw_phase_wash(view_rect)
     _draw_edge_vignette(view_rect)
 
     for hazard_variant: Variant in hazards:
@@ -126,6 +130,22 @@ func _draw_ash_atmosphere(view_rect: Rect2) -> void:
         var ember: bool = i % 4 == 0
         var particle_color: Color = Color(1.0, 0.45, 0.20, 0.24 if night else 0.14) if ember else Color(0.20, 0.16, 0.14, 0.18)
         draw_circle(Vector2(x, y), 1.7 if ember else 1.2, particle_color)
+
+func _draw_phase_wash(view_rect: Rect2) -> void:
+    if night_mix <= 0.001:
+        return
+    var color: Color
+    match biome_index:
+        1:
+            color = Color(0.05, 0.10, 0.18, 0.10 * night_mix)
+        2:
+            color = Color(0.14, 0.025, 0.025, 0.11 * night_mix)
+        _:
+            color = Color(0.025, 0.07, 0.075, 0.12 * night_mix)
+    draw_rect(view_rect, color)
+
+func night_visual_strength() -> float:
+    return night_mix
 
 func _draw_edge_vignette(view_rect: Rect2) -> void:
     var edge_color: Color
