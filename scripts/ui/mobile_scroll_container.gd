@@ -19,7 +19,7 @@ var mouse_last_position: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
     horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-    vertical_scroll_mode = ScrollContainer.SCROLL_MODE_ALWAYS
+    vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
     scroll_deadzone = 2
     follow_focus = true
     clip_contents = true
