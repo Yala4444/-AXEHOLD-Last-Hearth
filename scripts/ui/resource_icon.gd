@@ -15,6 +15,8 @@ func _draw() -> void:
             _draw_stone()
         "ore":
             _draw_ore()
+        "part":
+            _draw_part()
         _:
             _draw_wood()
 
@@ -37,3 +39,10 @@ func _draw_ore() -> void:
     draw_rect(Rect2(4, 2, 5, 4), Color("a978c5"))
     draw_rect(Rect2(5, 3, 3, 2), Color("d1a6e8"))
     draw_rect(Rect2(9, 6, 2, 2), Color("bc8bd8"))
+
+func _draw_part() -> void:
+    draw_circle(Vector2(6.5, 6.5), 5.2, Color("5a5f61"))
+    draw_circle(Vector2(6.5, 6.5), 3.4, Color("90989a"))
+    draw_circle(Vector2(6.5, 6.5), 1.5, Color("303638"))
+    for p: Vector2 in [Vector2(5.5,0), Vector2(5.5,10), Vector2(0,5.5), Vector2(10,5.5)]:
+        draw_rect(Rect2(p, Vector2(3,3)), Color("b2b9b8"))
