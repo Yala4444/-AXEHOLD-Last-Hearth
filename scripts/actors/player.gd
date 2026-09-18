@@ -327,51 +327,120 @@ func _draw() -> void:
         var slam_radius: float = 42.0 + (1.0 - weapon_action_ratio()) * 20.0
         draw_arc(Vector2.ZERO, slam_radius, 0.0, TAU, 30, Color(0.62, 0.83, 0.94, weapon_action_ratio() * 0.42), 3.0)
 
-    # Cape is a crisp pixel silhouette behind the hero.
-    var cape_shift: float = -facing_x * (3.0 if moving else 1.0)
+    # Production silhouette: hooded wanderer with readable cape, shoulders and satchel.
+    var cape_shift: float = -facing_x * (4.0 if moving else 1.5)
     if weapon_action_time > 0.0:
-        cape_shift -= facing_x * 2.0 * action_ratio
+        cape_shift -= facing_x * 2.5 * action_ratio
+
+    var cape_color: Color = skin_cape.darkened(0.04)
+    var cape_shadow: Color = cape_color.darkened(0.25)
     var cape := PackedVector2Array([
-        body_offset + Vector2(-8 + cape_shift, -3),
-        body_offset + Vector2(-9 + cape_shift, 14),
-        body_offset + Vector2(0 + cape_shift, 18),
-        body_offset + Vector2(9 + cape_shift, 14),
+        body_offset + Vector2(-10 + cape_shift, -5),
+        body_offset + Vector2(-12 + cape_shift, 9),
+        body_offset + Vector2(-7 + cape_shift, 19),
+        body_offset + Vector2(0 + cape_shift, 23),
+        body_offset + Vector2(8 + cape_shift, 18),
+        body_offset + Vector2(11 + cape_shift, 7),
+        body_offset + Vector2(8 + cape_shift, -5)
+    ])
+    draw_colored_polygon(cape, cape_shadow)
+    var cape_inner := PackedVector2Array([
+        body_offset + Vector2(-8 + cape_shift, -4),
+        body_offset + Vector2(-9 + cape_shift, 8),
+        body_offset + Vector2(-5 + cape_shift, 16),
+        body_offset + Vector2(0 + cape_shift, 19),
+        body_offset + Vector2(7 + cape_shift, 15),
         body_offset + Vector2(8 + cape_shift, -3)
     ])
-    draw_colored_polygon(cape, skin_cape.darkened(0.06))
-    draw_polyline(cape, skin_cape.lightened(0.16), 1.0)
+    draw_colored_polygon(cape_inner, cape_color)
+    draw_line(body_offset + Vector2(-7 + cape_shift, 7), body_offset + Vector2(6 + cape_shift, 13), cape_color.lightened(0.14), 1.2)
 
-    var flash_body: Color = skin_body.lightened(damage_flash * 0.38)
-    var leg: Color = skin_body.darkened(0.34)
-    var boot: Color = Color("292626")
+    var flash_body: Color = skin_body.lightened(damage_flash * 0.40)
+    var armor_dark: Color = flash_body.darkened(0.34)
+    var cloth_dark: Color = Color("253039")
+    var leather: Color = Color("8f6740")
+    var skin: Color = Color("d4a077").lightened(damage_flash * 0.16)
 
-    draw_rect(Rect2(body_offset + Vector2(-7 + stride, 8), Vector2(5, 10)), leg)
-    draw_rect(Rect2(body_offset + Vector2(2 - stride, 8), Vector2(5, 10)), leg)
-    draw_rect(Rect2(body_offset + Vector2(-8 + stride, 16), Vector2(7, 4)), boot)
-    draw_rect(Rect2(body_offset + Vector2(1 - stride, 16), Vector2(7, 4)), boot)
+    # Legs and boots — slightly exaggerated so movement reads on a phone.
+    draw_colored_polygon(PackedVector2Array([
+        body_offset + Vector2(-7 + stride, 8),
+        body_offset + Vector2(-1 + stride, 8),
+        body_offset + Vector2(-2 + stride, 19),
+        body_offset + Vector2(-8 + stride, 19)
+    ]), cloth_dark)
+    draw_colored_polygon(PackedVector2Array([
+        body_offset + Vector2(2 - stride, 8),
+        body_offset + Vector2(8 - stride, 8),
+        body_offset + Vector2(9 - stride, 19),
+        body_offset + Vector2(3 - stride, 19)
+    ]), cloth_dark)
+    draw_rect(Rect2(body_offset + Vector2(-9 + stride, 17), Vector2(8, 4)), Color("171c20"))
+    draw_rect(Rect2(body_offset + Vector2(2 - stride, 17), Vector2(8, 4)), Color("171c20"))
 
-    # Torso with one-pixel-like outline.
-    draw_rect(Rect2(body_offset + Vector2(-9, -5), Vector2(18, 16)), Color("20242a"))
-    draw_rect(Rect2(body_offset + Vector2(-7, -4), Vector2(14, 14)), flash_body)
-    draw_rect(Rect2(body_offset + Vector2(-7, 5), Vector2(14, 3)), Color("9d7144"))
-    draw_rect(Rect2(body_offset + Vector2(-1, 5), Vector2(3, 3)), Color("e0b65b"))
+    # Torso / armor. Broad shoulders make the hero distinct from thin runners.
+    var torso := PackedVector2Array([
+        body_offset + Vector2(-10, -6),
+        body_offset + Vector2(-13, 0),
+        body_offset + Vector2(-9, 11),
+        body_offset + Vector2(0, 15),
+        body_offset + Vector2(9, 11),
+        body_offset + Vector2(13, 0),
+        body_offset + Vector2(10, -6)
+    ])
+    draw_colored_polygon(torso, Color("1c2429"))
+    var chest := PackedVector2Array([
+        body_offset + Vector2(-8, -5),
+        body_offset + Vector2(-10, 1),
+        body_offset + Vector2(-6, 10),
+        body_offset + Vector2(0, 12),
+        body_offset + Vector2(6, 10),
+        body_offset + Vector2(10, 1),
+        body_offset + Vector2(8, -5)
+    ])
+    draw_colored_polygon(chest, flash_body)
+    draw_line(body_offset + Vector2(-7, 1), body_offset + Vector2(7, 1), flash_body.lightened(0.16), 1.4)
+    draw_line(body_offset + Vector2(-6, 8), body_offset + Vector2(6, 8), leather, 3.0)
+    draw_rect(Rect2(body_offset + Vector2(-1.5, 6.5), Vector2(3, 4)), VisualSystem.GOLD)
 
-    var sleeve: Color = flash_body.darkened(0.14)
-    draw_rect(Rect2(body_offset + Vector2(-12, -2), Vector2(5, 10)), sleeve)
-    draw_rect(Rect2(body_offset + Vector2(7, -2), Vector2(5, 10)), sleeve)
-    draw_rect(Rect2(body_offset + Vector2(-13, 6), Vector2(4, 4)), Color("d4a077"))
-    draw_rect(Rect2(body_offset + Vector2(9, 6), Vector2(4, 4)), Color("d4a077"))
+    # Shoulder guards and hands.
+    draw_circle(body_offset + Vector2(-10.5, -1.5), 4.0, armor_dark)
+    draw_circle(body_offset + Vector2(10.5, -1.5), 4.0, armor_dark)
+    draw_rect(Rect2(body_offset + Vector2(-14, 2), Vector2(4, 7)), armor_dark)
+    draw_rect(Rect2(body_offset + Vector2(10, 2), Vector2(4, 7)), armor_dark)
+    draw_circle(body_offset + Vector2(-13, 9), 2.3, skin)
+    draw_circle(body_offset + Vector2(13, 9), 2.3, skin)
 
-    # Square readable head / hood: intentionally 16-bit rather than vector-cartoon.
-    var head := body_offset + Vector2(0, -12)
-    draw_rect(Rect2(head + Vector2(-7, -7), Vector2(14, 14)), Color("2d2522"))
-    draw_rect(Rect2(head + Vector2(-6, -5), Vector2(12, 11)), Color("d6a47d").lightened(damage_flash * 0.20))
-    draw_rect(Rect2(head + Vector2(-7, -7), Vector2(14, 4)), skin_cape.lightened(0.08))
-    draw_rect(Rect2(head + Vector2(-5, -4), Vector2(10, 3)), Color("4a372e"))
-    var eye_x: float = 2.0 * facing_x
-    draw_rect(Rect2(head + Vector2(eye_x, 0), Vector2(2, 2)), Color("211d1b"))
+    # Hooded head. Face remains tiny, but light/dark masses read immediately.
+    var head := body_offset + Vector2(0, -15)
+    draw_circle(head, 9.0, Color("1c2024"))
+    var hood := PackedVector2Array([
+        head + Vector2(0, -10),
+        head + Vector2(8, -5),
+        head + Vector2(8, 4),
+        head + Vector2(4, 8),
+        head + Vector2(-5, 8),
+        head + Vector2(-9, 3),
+        head + Vector2(-8, -5)
+    ])
+    draw_colored_polygon(hood, skin_cape.darkened(0.08))
+    var face := PackedVector2Array([
+        head + Vector2(-5, -3),
+        head + Vector2(5, -3),
+        head + Vector2(4, 5),
+        head + Vector2(-4, 5)
+    ])
+    draw_colored_polygon(face, skin)
+    draw_rect(Rect2(head + Vector2(-5, -4), Vector2(10, 3)), Color("49362e"))
+    var eye_x: float = 2.3 * facing_x
+    draw_rect(Rect2(head + Vector2(eye_x - 0.8, 0), Vector2(2, 2)), Color("1c1715"))
 
-    draw_rect(Rect2(body_offset + Vector2(-8 * facing_x - 1, -4), Vector2(3, 3)), Color("dfb45a"))
+    # Scarf and backpack/satchel communicate the explorer fantasy.
+    draw_line(body_offset + Vector2(-7 * facing_x, -7), body_offset + Vector2(-12 * facing_x, 1), VisualSystem.GOLD.darkened(0.12), 3.0)
+    var bag_ratio: float = clampf(float(inventory_total()) / float(maxi(1, capacity)), 0.0, 1.0)
+    if bag_ratio > 0.05:
+        var bag_x: float = -11.0 * facing_x
+        draw_rect(Rect2(body_offset + Vector2(bag_x - 4, 4), Vector2(8, 10)), leather.darkened(0.12))
+        draw_line(body_offset + Vector2(bag_x - 3, 7), body_offset + Vector2(bag_x + 3, 7), leather.lightened(0.16), 1.0)
 
     if weapon_style == "spear":
         var spear_dir: Vector2 = weapon_action_direction if weapon_action_time > 0.0 else Vector2(facing_x, 0.0)
