@@ -178,6 +178,9 @@ func _check_contract_progress() -> void:
             elif resolved != last_announced_contract_progress and resolved > 0:
                 last_announced_contract_progress = resolved
                 world.hud.set_status("Контракт: события мира %d/3" % resolved)
+        "rekindle":
+            if world.activity_director.hearths_relit >= 1 and world.wave <= 2:
+                _complete_contract()
 
 func _complete_contract() -> void:
     if contract_completed or contract.is_empty() or world == null:
