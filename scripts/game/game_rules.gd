@@ -11,7 +11,7 @@ const BIOMES := [
         "ground":"9fc77c",
         "reward":1,
         "boss_name":"Лесной Хранитель",
-        "rule":"Сбалансированный биом. Больше дерева, смешанные враги.",
+        "rule":"Много дерева, спокойный старт и смешанные угрозы.",
         "night_speed":1.0,
         "enemy_weights":{"normal":0.52,"runner":0.16,"brute":0.14,"stalker":0.12,"guardian":0.06}
     },
@@ -24,7 +24,7 @@ const BIOMES := [
         "ground":"8db8c3",
         "reward":1,
         "boss_name":"Ледяной Страж",
-        "rule":"Ночью холод замедляет героя. Больше бегунов и Сталкеров.",
+        "rule":"Больше камня. Ночью холод замедляет героя, а Сталкеры давят рывками.",
         "night_speed":0.90,
         "enemy_weights":{"normal":0.40,"runner":0.27,"brute":0.10,"stalker":0.17,"guardian":0.06}
     },
@@ -37,7 +37,7 @@ const BIOMES := [
         "ground":"a66652",
         "reward":2,
         "boss_name":"Пепельный Тиран",
-        "rule":"Ночью земля извергает огонь. Больше тяжёлых и бронированных врагов.",
+        "rule":"Больше руды. Тяжёлые и бронированные враги проверяют развитый лагерь.",
         "night_speed":1.0,
         "enemy_weights":{"normal":0.38,"runner":0.08,"brute":0.25,"stalker":0.09,"guardian":0.20}
     }
@@ -51,21 +51,37 @@ const SKINS := [
 ]
 
 const BUILD_SPECS := [
-    {"id":"wall","name":"ЗАБОР","offset":Vector2(-118,92),"cost":{"wood":14,"stone":0,"ore":0}},
-    {"id":"forge","name":"КУЗНИЦА","offset":Vector2(118,92),"cost":{"wood":18,"stone":6,"ore":1}},
-    {"id":"turret","name":"ТУРЕЛЬ","offset":Vector2(0,-136),"cost":{"wood":23,"stone":11,"ore":3}},
-    {"id":"shrine","name":"СВЯТИЛИЩЕ","offset":Vector2(118,-88),"cost":{"wood":15,"stone":10,"ore":4}}
+    {
+        "id":"wall","name":"ПАЛИСАД","offset":Vector2(-118,92),
+        "cost":{"wood":12,"stone":0,"ore":0},
+        "effect":"Замедляет врагов у Очага и снижает урон базе на 65%."
+    },
+    {
+        "id":"forge","name":"КУЗНИЦА","offset":Vector2(118,92),
+        "cost":{"wood":12,"stone":5,"ore":0},
+        "effect":"+30% урона оружия и +6 к радиусу атаки."
+    },
+    {
+        "id":"turret","name":"БАШНЯ","offset":Vector2(0,-136),
+        "cost":{"wood":15,"stone":8,"ore":2},
+        "effect":"Автоматически стреляет по ближайшему врагу всю ночь."
+    },
+    {
+        "id":"shrine","name":"СВЯТИЛИЩЕ","offset":Vector2(118,-88),
+        "cost":{"wood":10,"stone":8,"ore":3},
+        "effect":"Лечит героя и постепенно восстанавливает прочность Очага."
+    }
 ]
 
 const PERKS := [
-    {"id":"axe","icon":"🪓","name":"Вихрь стали","desc":"+1 вращающийся топор","category":"offense"},
-    {"id":"damage","icon":"⚔️","name":"Острые лезвия","desc":"+22% урона","category":"offense"},
-    {"id":"crit","icon":"💥","name":"Точный удар","desc":"+12% шанс двойного урона","category":"offense"},
-    {"id":"hp","icon":"❤️","name":"Живучесть","desc":"+25 HP и лечение","category":"survival"},
-    {"id":"shield","icon":"🛡️","name":"Оберег","desc":"Щит на 3 удара","category":"survival"},
-    {"id":"orbit","icon":"🌀","name":"Широкая дуга","desc":"+16% радиуса атаки","category":"utility"},
-    {"id":"speed","icon":"👢","name":"Лёгкие сапоги","desc":"+14% скорости","category":"utility"},
-    {"id":"bag","icon":"🎒","name":"Сборщик","desc":"+8 вместимости","category":"utility"}
+    {"id":"axe","icon":"X2","name":"Вихрь стали","desc":"+1 вращающееся оружие","category":"offense"},
+    {"id":"damage","icon":"DMG","name":"Острые лезвия","desc":"+22% урона","category":"offense"},
+    {"id":"crit","icon":"CRT","name":"Точный удар","desc":"+12% шанс двойного урона","category":"offense"},
+    {"id":"hp","icon":"HP","name":"Живучесть","desc":"+25 HP и лечение","category":"survival"},
+    {"id":"shield","icon":"SHD","name":"Оберег","desc":"Щит на 3 удара","category":"survival"},
+    {"id":"orbit","icon":"RNG","name":"Широкая дуга","desc":"+16% радиуса атаки","category":"utility"},
+    {"id":"speed","icon":"SPD","name":"Лёгкие сапоги","desc":"+14% скорости","category":"utility"},
+    {"id":"bag","icon":"BAG","name":"Сборщик","desc":"+8 вместимости","category":"utility"}
 ]
 
 static func biome(index: int) -> Dictionary:
@@ -74,16 +90,26 @@ static func biome(index: int) -> Dictionary:
 static func skin(index: int) -> Dictionary:
     return SKINS[clampi(index, 0, SKINS.size() - 1)].duplicate(true)
 
+static func build_spec(id: String) -> Dictionary:
+    for spec_variant: Variant in BUILD_SPECS:
+        var spec: Dictionary = spec_variant
+        if str(spec.get("id", "")) == id:
+            return spec.duplicate(true)
+    return {}
+
+static func build_effect(id: String) -> String:
+    return str(build_spec(id).get("effect", ""))
+
 static func day_duration(wave: int) -> float:
     match wave:
         0:
-            return 36.0
+            return 46.0
         1:
-            return 31.0
+            return 40.0
         2:
-            return 26.0
+            return 34.0
         _:
-            return 24.0
+            return 30.0
 
 static func wave_count(wave: int, difficulty: float) -> int:
     var base_count: int = 8
@@ -91,24 +117,24 @@ static func wave_count(wave: int, difficulty: float) -> int:
         1:
             base_count = 8
         2:
-            base_count = 12
+            base_count = 11
         _:
-            base_count = 16
+            base_count = 15
     return maxi(1, int(round(float(base_count) * difficulty)))
 
 static func resource_yield(kind: String, biome_index: int) -> int:
     if kind == "tree":
         return 5 if biome_index == 0 else 4
     if kind == "rock":
-        return 4 if biome_index == 1 else 3
-    return 3 if biome_index == 2 else 2
+        return 5 if biome_index == 1 else 4
+    return 4 if biome_index == 2 else 3
 
 static func harvest_multiplier(kind: String) -> float:
     if kind == "tree":
-        return 1.52
+        return 1.62
     if kind == "rock":
-        return 0.95
-    return 0.70
+        return 1.04
+    return 0.78
 
 static func random_enemy_type() -> String:
     return enemy_type_for_biome(0)
