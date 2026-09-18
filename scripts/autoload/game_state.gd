@@ -1,7 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://axehold_save.json"
-const SAVE_VERSION := 9
+const SAVE_VERSION := 10
 
 var data: Dictionary = {}
 
@@ -47,6 +47,13 @@ func defaults() -> Dictionary:
             "selected":"",
             "completed_today":[],
             "completed_total":0
+        },
+        "dynamic_world_stats": {
+            "events":0,
+            "failures":0,
+            "elites":0,
+            "rescues":0,
+            "chains":0
         },
         "skins_owned": [true, false, false, false],
         "selected_skin": 0,
@@ -140,6 +147,14 @@ func _migrate_save() -> void:
             "selected":"",
             "completed_today":[],
             "completed_total":0
+        }
+    if version < 10:
+        data["dynamic_world_stats"] = {
+            "events":0,
+            "failures":0,
+            "elites":0,
+            "rescues":0,
+            "chains":0
         }
     data["save_version"] = SAVE_VERSION
     save()
@@ -353,6 +368,19 @@ func expedition_resident_bonuses() -> Dictionary:
         "starting_parts": 2 if thorn_trust >= 4 else (1 if thorn_trust >= 2 else 0),
         "tower_damage_mult": 1.05 if thorn_trust >= 4 else 1.0
     }
+
+func record_dynamic_world(delta_stats: Dictionary) -> void:
+    var stats: Dictionary = data.get("dynamic_world_stats", {
+        "events":0,"failures":0,"elites":0,"rescues":0,"chains":0
+    })
+    for key_variant: Variant in delta_stats.keys():
+        var key: String = str(key_variant)
+        stats[key] = int(stats.get(key, 0)) + int(delta_stats.get(key_variant, 0))
+    data["dynamic_world_stats"] = stats
+    save()
+
+func dynamic_world_stats() -> Dictionary:
+    return (data.get("dynamic_world_stats", {}) as Dictionary).duplicate(true)
 
 func add_coins(amount: int) -> void:
     data["coins"] = int(data.get("coins", 0)) + amount
