@@ -67,6 +67,23 @@ func _show_result() -> void:
         contract_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         contract_note.add_theme_font_size_override("font_size", 9)
 
+    var dynamic_result: Dictionary = result_data.get("dynamic_world", {}) as Dictionary
+    if not dynamic_result.is_empty():
+        var dynamic_note := Label.new()
+        box.add_child(dynamic_note)
+        dynamic_note.text = "СОБЫТИЯ МИРА · %d завершено · %d упущено · %d элит · %d спасений" % [
+            int(dynamic_result.get("completed", 0)),
+            int(dynamic_result.get("failed", 0)),
+            int(dynamic_result.get("elites", 0)),
+            int(dynamic_result.get("rescues", 0))
+        ]
+        if int(dynamic_result.get("chains", 0)) > 0:
+            dynamic_note.text += "\nЦепочки событий: %d" % int(dynamic_result.get("chains", 0))
+        dynamic_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        dynamic_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        dynamic_note.add_theme_font_size_override("font_size", 9)
+        dynamic_note.add_theme_color_override("font_color", Color("b8c7c1"))
+
     var parts_unused: int = int(result_data.get("parts_unused", 0))
     if parts_unused > 0:
         var parts_note := Label.new()
