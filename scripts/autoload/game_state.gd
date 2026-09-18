@@ -292,15 +292,26 @@ func camp_renown() -> int:
 
 func camp_level() -> int:
     var value: int = camp_renown()
+    var level: int = 1
     if value >= 25:
-        return 5
-    if value >= 15:
-        return 4
-    if value >= 8:
-        return 3
-    if value >= 3:
-        return 2
-    return 1
+        level = 5
+    elif value >= 15:
+        level = 4
+    elif value >= 8:
+        level = 3
+    elif value >= 3:
+        level = 2
+
+    # Legacy mastery remains meaningful for long-time saves. Renown adds a
+    # second growth route instead of visually downgrading an established camp.
+    var mastery_value: int = total_mastery()
+    if mastery_value >= 9:
+        level = maxi(level, 5)
+    elif mastery_value >= 5:
+        level = maxi(level, 3)
+    elif mastery_value >= 2:
+        level = maxi(level, 2)
+    return level
 
 func camp_level_name() -> String:
     match camp_level():
