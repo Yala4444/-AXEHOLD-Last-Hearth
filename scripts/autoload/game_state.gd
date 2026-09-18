@@ -27,6 +27,7 @@ func defaults() -> Dictionary:
         "weapons_owned": ["axes"],
         "selected_weapon": "axes",
         "meta_notices": [],
+        "lore_fragments": 0,
         "skins_owned": [true, false, false, false],
         "selected_skin": 0,
         "daily_date": "",
