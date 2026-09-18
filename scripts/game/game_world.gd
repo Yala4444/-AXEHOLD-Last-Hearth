@@ -47,6 +47,9 @@ var boss_warning_position: Vector2 = Vector2.ZERO
 var boss_warning_time: float = 0.0
 var bag_full_announced: bool = false
 var deposit_pulse: float = 0.0
+var world_size: Vector2 = Vector2(1170, 2532)
+var world_rect: Rect2 = Rect2(Vector2.ZERO, world_size)
+var camera: Camera2D
 
 func configure(index: int) -> void:
     biome_index = index
@@ -62,7 +65,13 @@ func _ready() -> void:
 func _start_run() -> void:
     biome_index = clampi(biome_index, 0, GameRules.BIOMES.size() - 1)
     biome = GameRules.biome(biome_index)
-    base_position = get_viewport_rect().size * Vector2(0.5, 0.53)
+    var viewport_size: Vector2 = get_viewport_rect().size
+    world_size = Vector2(
+        maxf(1080.0, viewport_size.x * 3.0),
+        maxf(2100.0, viewport_size.y * 3.0)
+    )
+    world_rect = Rect2(Vector2.ZERO, world_size)
+    base_position = world_size * 0.5
     phase_max = GameRules.day_duration(0)
     phase_time = phase_max
 
@@ -72,16 +81,19 @@ func _start_run() -> void:
     var upgrades: Dictionary = GameState.data["upgrades"]
     var skin_index: int = int(GameState.data.get("selected_skin", 0))
     player.setup(upgrades, GameRules.skin(skin_index))
+    player.set_world_bounds(world_rect.grow(-34.0))
+    player.set_home_target(base_position)
+    _setup_camera()
     player.died.connect(_on_player_died)
     player.damaged.connect(_on_player_damaged)
     player.level_up_requested.connect(_show_perks)
 
     _create_pads()
-    for _i in range(22):
+    for _i in range(52):
         _spawn_resource("tree")
-    for _i in range(9):
+    for _i in range(20):
         _spawn_resource("rock")
-    var initial_ore: int = 6 if biome_index == 2 else 4
+    var initial_ore: int = 12 if biome_index == 2 else 9
     for _i in range(initial_ore):
         _spawn_resource("ore")
 
@@ -93,14 +105,23 @@ func _start_run() -> void:
     if bool(settings.get("hints", true)) and not bool(GameState.data.get("v1_tutorial_complete", false)):
         GameState.data["v1_tutorial_complete"] = true
         GameState.save()
-        hud.show_modal(
-            "",
-            "ДОБЫЧА → БАЗА → СТРОЙКА",
-            "Двигайся стиком. Оружие само рубит и атакует. Ресурсы попадают в РЮКЗАК. Вернись к Очагу, чтобы переложить их на СКЛАД, затем подойди к нужному чертежу.",
-            [{"text": "ПОНЯТНО", "action": "close"}]
-        )
+        hud.show_banner("РУБИ ДНЁМ. ДЕРЖИ ОБОРОНУ НОЧЬЮ.", Color("f3d58d"))
+        hud.set_status("Коснись свободного места и веди пальцем. Оружие работает само.")
     _refresh_hud()
     queue_redraw()
+
+func _setup_camera() -> void:
+    camera = Camera2D.new()
+    player.add_child(camera)
+    camera.position = Vector2.ZERO
+    camera.position_smoothing_enabled = true
+    camera.position_smoothing_speed = 5.8
+    camera.limit_left = int(world_rect.position.x)
+    camera.limit_top = int(world_rect.position.y)
+    camera.limit_right = int(world_rect.end.x)
+    camera.limit_bottom = int(world_rect.end.y)
+    camera.limit_smoothed = true
+    camera.make_current()
 
 func _process(delta: float) -> void:
     deposit_pulse = maxf(0.0, deposit_pulse - delta * 2.8)
@@ -114,6 +135,9 @@ func _process(delta: float) -> void:
     _deposit_and_build(delta)
     _maintain_resources()
     _update_building_passives(delta)
+    var bag_ratio: float = float(player.inventory_total()) / float(maxi(1, player.capacity))
+    var return_soon: bool = bag_ratio >= 0.82 or (phase == "day" and phase_time <= 12.0)
+    player.set_home_hint(return_soon and player.global_position.distance_to(base_position) > 110.0)
 
     if phase == "day":
         phase_time -= delta
@@ -133,20 +157,17 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
     if finishing or paused_local or hud.modal_open():
         return
-    if event is InputEventScreenTouch:
-        var touch := event as InputEventScreenTouch
-        if touch.pressed:
-            player.set_target(touch.position)
-    elif event is InputEventScreenDrag:
-        var drag := event as InputEventScreenDrag
-        player.set_target(drag.position)
-    elif event is InputEventMouseButton:
+    # Touch input is owned by the floating joystick. Mouse remains a desktop fallback.
+    if event is InputEventMouseButton:
         var button := event as InputEventMouseButton
         if button.button_index == MOUSE_BUTTON_LEFT and button.pressed:
-            player.set_target(button.position)
+            player.set_target(_screen_to_world(button.position))
     elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
         var motion := event as InputEventMouseMotion
-        player.set_target(motion.position)
+        player.set_target(_screen_to_world(motion.position))
+
+func _screen_to_world(screen_position: Vector2) -> Vector2:
+    return get_viewport().get_canvas_transform().affine_inverse() * screen_position
 
 func _create_pads() -> void:
     for spec_variant: Variant in GameRules.BUILD_SPECS:
@@ -168,32 +189,51 @@ func _create_pads() -> void:
 func _spawn_resource(kind: String) -> void:
     var spot: ResourceSpot = ResourceScene.instantiate() as ResourceSpot
     add_child(spot)
-    spot.global_position = _free_spawn_position()
+    spot.global_position = _resource_spawn_position(kind)
     spot.configure(kind, randi() % 3)
     resources.append(spot)
 
-func _free_spawn_position() -> Vector2:
-    var size: Vector2 = get_viewport_rect().size
-    var min_y: float = minf(250.0, size.y * 0.31)
-    var max_y: float = maxf(min_y + 80.0, size.y - 95.0)
-    for _i in range(50):
-        var point := Vector2(randf_range(24.0, size.x - 24.0), randf_range(min_y, max_y))
-        if point.distance_to(base_position) > 165.0:
+func _resource_spawn_position(kind: String) -> Vector2:
+    var min_radius: float = 145.0
+    var max_radius: float = 500.0
+    match kind:
+        "rock":
+            min_radius = 260.0
+            max_radius = 690.0
+        "ore":
+            min_radius = 470.0 if biome_index != 2 else 390.0
+            max_radius = 900.0
+
+    var safe_rect: Rect2 = world_rect.grow(-42.0)
+    for _i in range(80):
+        var angle: float = randf_range(0.0, TAU)
+        var radius: float = randf_range(min_radius, max_radius)
+        var point: Vector2 = base_position + Vector2(cos(angle), sin(angle)) * radius
+        point.x = clampf(point.x, safe_rect.position.x, safe_rect.end.x)
+        point.y = clampf(point.y, safe_rect.position.y, safe_rect.end.y)
+        if point.distance_to(base_position) < 135.0:
+            continue
+        var too_close: bool = false
+        for pad: BuildPad in pads:
+            if is_instance_valid(pad) and point.distance_to(pad.global_position) < 58.0:
+                too_close = true
+                break
+        if not too_close:
             return point
-    return Vector2(38, min_y + 30.0)
+    return base_position + Vector2(min_radius, 0)
 
 func _maintain_resources() -> void:
     var counts: Dictionary = {"tree": 0, "rock": 0, "ore": 0}
     for spot: ResourceSpot in resources:
         if is_instance_valid(spot):
             counts[spot.resource_type] = int(counts.get(spot.resource_type, 0)) + 1
-    while int(counts["tree"]) < 18:
+    while int(counts["tree"]) < 38:
         _spawn_resource("tree")
         counts["tree"] = int(counts["tree"]) + 1
-    while int(counts["rock"]) < 7:
+    while int(counts["rock"]) < 15:
         _spawn_resource("rock")
         counts["rock"] = int(counts["rock"]) + 1
-    var ore_target: int = 5 if biome_index == 2 else 3
+    var ore_target: int = 9 if biome_index == 2 else 7
     while int(counts["ore"]) < ore_target:
         _spawn_resource("ore")
         counts["ore"] = int(counts["ore"]) + 1
@@ -358,18 +398,13 @@ func _spawn_enemy(is_boss: bool = false) -> void:
     enemies.append(enemy)
 
 func _edge_position() -> Vector2:
-    var size: Vector2 = get_viewport_rect().size
-    var top_y: float = minf(245.0, size.y * 0.30)
-    var bottom_y: float = size.y - 70.0
-    match randi() % 4:
-        0:
-            return Vector2(randf_range(10.0, size.x - 10.0), top_y)
-        1:
-            return Vector2(size.x - 8.0, randf_range(top_y, bottom_y))
-        2:
-            return Vector2(randf_range(10.0, size.x - 10.0), bottom_y)
-        _:
-            return Vector2(8.0, randf_range(top_y, bottom_y))
+    var angle: float = randf_range(0.0, TAU)
+    var radius: float = randf_range(330.0, 430.0)
+    var point: Vector2 = base_position + Vector2(cos(angle), sin(angle)) * radius
+    var safe_rect: Rect2 = world_rect.grow(-30.0)
+    point.x = clampf(point.x, safe_rect.position.x, safe_rect.end.x)
+    point.y = clampf(point.y, safe_rect.position.y, safe_rect.end.y)
+    return point
 
 func _update_night(delta: float) -> void:
     spawn_timer -= delta
@@ -602,7 +637,7 @@ func _on_revive_ad(_placement: String) -> void:
     hud.set_status("Воскрешение использовано.")
 
 func _draw() -> void:
-    var size: Vector2 = get_viewport_rect().size
+    var size: Vector2 = world_size
     var night: bool = phase == "night"
     var top: Color = Color(str(biome.get("sky", "b9cf8d")))
     var bottom: Color = Color(str(biome.get("ground", "7fa268")))
@@ -646,7 +681,7 @@ func _draw_ground_detail(size: Vector2, night: bool) -> void:
     var tuft: Color = Color(0.18, 0.32, 0.18, 0.16) if not night else Color(0.05, 0.10, 0.10, 0.16)
     var patch: Color = Color(0.12, 0.24, 0.14, 0.08) if not night else Color(0.04, 0.08, 0.09, 0.09)
 
-    for i: int in range(64):
+    for i: int in range(210):
         var px: float = floor(fmod(float(i * 73 + 31), size.x) / 4.0) * 4.0
         var py: float = floor(fmod(float(i * 47 + 149), size.y) / 4.0) * 4.0
         if Vector2(px, py).distance_to(base_position) < 88.0:
@@ -671,7 +706,7 @@ func _draw_clearing(night: bool) -> void:
 
     # A worn path from the lower screen to the Last Hearth.
     var path: Color = Color(0.54, 0.48, 0.31, 0.20) if not night else Color(0.29, 0.27, 0.22, 0.16)
-    var bottom_y: float = get_viewport_rect().size.y
+    var bottom_y: float = minf(world_rect.end.y, base_position.y + 430.0)
     var points := PackedVector2Array([
         Vector2(base_position.x - 19, base_position.y + 28),
         Vector2(base_position.x + 20, base_position.y + 28),
