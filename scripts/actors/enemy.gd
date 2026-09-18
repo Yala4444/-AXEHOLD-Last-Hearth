@@ -4,6 +4,7 @@ extends CharacterBody2D
 signal killed(enemy: AxEnemy)
 
 var enemy_type: String = "normal"
+var biome_index: int = 0
 var hp: float = 40.0
 var max_hp: float = 40.0
 var move_speed: float = 30.0
@@ -33,8 +34,9 @@ var surge_windup: float = 0.0
 var surge_time: float = 0.0
 var surge_direction: Vector2 = Vector2.ZERO
 
-func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss: bool = false) -> void:
+func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss: bool = false, region_index: int = 0) -> void:
     enemy_type = kind
+    biome_index = clampi(region_index, 0, 2)
     boss = is_boss
     tint = color
     armor = 0.0
@@ -263,6 +265,7 @@ func _draw() -> void:
     var light: Color = body_color.lightened(0.18)
 
     if boss:
+        _draw_boss_aura()
         _draw_pixel_boss(body_color, dark, light)
     elif enemy_type == "runner":
         _draw_pixel_runner(body_color, dark, light)
@@ -339,16 +342,70 @@ func _draw_pixel_guardian(body: Color, dark: Color, light: Color) -> void:
     draw_rect(Rect2(2, 12, 7, 7), dark)
     _pixel_eyes(4.0, Color("f4e6bf"))
 
+func _draw_boss_aura() -> void:
+    var pulse: float = (sin(animation_time * 3.2) + 1.0) * 0.5
+    var aura: Color
+    match biome_index:
+        1:
+            aura = Color(0.52, 0.84, 0.96, 0.09 + pulse * 0.05)
+        2:
+            aura = Color(1.0, 0.30, 0.12, 0.10 + pulse * 0.07)
+        _:
+            aura = Color(0.52, 0.78, 0.36, 0.08 + pulse * 0.05)
+    draw_circle(Vector2(0, -2), 38.0 + pulse * 4.0, aura)
+    draw_arc(Vector2(0, -2), 31.0 + pulse * 2.0, 0.0, TAU, 28, Color(aura.r, aura.g, aura.b, aura.a * 2.8), 1.5)
+
 func _draw_pixel_boss(body: Color, dark: Color, light: Color) -> void:
     draw_rect(Rect2(-24, -20, 48, 39), dark)
     draw_rect(Rect2(-20, -23, 40, 40), body)
     draw_rect(Rect2(-27, -9, 8, 22), body)
     draw_rect(Rect2(19, -9, 8, 22), body)
-    draw_colored_polygon(PackedVector2Array([Vector2(-13,-21),Vector2(-26,-34),Vector2(-7,-27)]), Color("d8c39e"))
-    draw_colored_polygon(PackedVector2Array([Vector2(13,-21),Vector2(26,-34),Vector2(7,-27)]), Color("d8c39e"))
     draw_rect(Rect2(-14, 5, 28, 6), light)
     draw_rect(Rect2(-12, 16, 9, 8), dark)
     draw_rect(Rect2(3, 16, 9, 8), dark)
+
+    match biome_index:
+        1:
+            # Frost Guardian: ice crown and frozen core.
+            draw_colored_polygon(PackedVector2Array([
+                Vector2(-16,-20),Vector2(-11,-35),Vector2(-4,-24)
+            ]), Color("b9e5f2"))
+            draw_colored_polygon(PackedVector2Array([
+                Vector2(-4,-23),Vector2(0,-40),Vector2(6,-23)
+            ]), Color("d8f4fb"))
+            draw_colored_polygon(PackedVector2Array([
+                Vector2(5,-24),Vector2(13,-34),Vector2(17,-19)
+            ]), Color("9fd2e4"))
+            draw_colored_polygon(PackedVector2Array([
+                Vector2(0,-5),Vector2(7,3),Vector2(4,12),Vector2(-5,12),Vector2(-8,3)
+            ]), Color("86cfe8").lightened(hit_flash * 0.28))
+            draw_line(Vector2(-17, 0), Vector2(-26, 10), Color("d7f2f8"), 3.0)
+            draw_line(Vector2(17, 0), Vector2(26, 10), Color("d7f2f8"), 3.0)
+        2:
+            # Ash Guardian: broken horns and furnace core.
+            draw_colored_polygon(PackedVector2Array([
+                Vector2(-13,-20),Vector2(-28,-33),Vector2(-20,-15)
+            ]), Color("684239"))
+            draw_colored_polygon(PackedVector2Array([
+                Vector2(13,-20),Vector2(30,-29),Vector2(19,-14)
+            ]), Color("684239"))
+            draw_circle(Vector2(0, 3), 9.0, Color("7b2c22"))
+            draw_circle(Vector2(0, 3), 5.0, Color("ff7c2f"))
+            draw_rect(Rect2(-3, 11, 6, 5), Color("e14a25"))
+            for i: int in range(3):
+                var x: float = -9.0 + float(i) * 9.0
+                draw_line(Vector2(x, -18), Vector2(x + 2, -9), Color("e26a3b"), 2.0)
+        _:
+            # Forest Guardian: antlers, root mantle and living heart.
+            draw_colored_polygon(PackedVector2Array([Vector2(-13,-21),Vector2(-27,-34),Vector2(-18,-17)]), Color("8f7651"))
+            draw_colored_polygon(PackedVector2Array([Vector2(13,-21),Vector2(27,-34),Vector2(18,-17)]), Color("8f7651"))
+            draw_line(Vector2(-23,-29), Vector2(-31,-21), Color("8f7651"), 3.0)
+            draw_line(Vector2(23,-29), Vector2(31,-21), Color("8f7651"), 3.0)
+            draw_line(Vector2(-17, 7), Vector2(-28, 17), Color("4e6d3f"), 4.0)
+            draw_line(Vector2(17, 7), Vector2(28, 17), Color("4e6d3f"), 4.0)
+            draw_circle(Vector2(0, 3), 7.0, Color("6ca752"))
+            draw_circle(Vector2(0, 3), 3.0, Color("b6e781"))
+
     _pixel_eyes(7.0, Color("ffe2c8"))
 
 func _pixel_eyes(offset: float, color: Color) -> void:
