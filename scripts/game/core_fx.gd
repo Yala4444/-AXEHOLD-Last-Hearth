@@ -4,6 +4,7 @@ extends Node2D
 var particles: Array[Dictionary] = []
 var popups: Array[Dictionary] = []
 var pulses: Array[Dictionary] = []
+var pickups: Array[Dictionary] = []
 
 func _ready() -> void:
     z_index = 70
@@ -40,24 +41,57 @@ func _process(delta: float) -> void:
             continue
         pulses[i] = pulse
 
-    if not particles.is_empty() or not popups.is_empty() or not pulses.is_empty():
+    for i: int in range(pickups.size() - 1, -1, -1):
+        var pickup: Dictionary = pickups[i]
+        pickup["life"] = float(pickup["life"]) - delta
+        if float(pickup["life"]) <= 0.0:
+            pickups.remove_at(i)
+            continue
+        var duration: float = maxf(0.001, float(pickup["duration"]))
+        var t: float = clampf(1.0 - float(pickup["life"]) / duration, 0.0, 1.0)
+        var start: Vector2 = pickup["start"] as Vector2
+        var control: Vector2 = pickup["control"] as Vector2
+        var target: Vector2 = pickup["target"] as Vector2
+        var a: Vector2 = start.lerp(control, t)
+        var b: Vector2 = control.lerp(target, t)
+        pickup["pos"] = a.lerp(b, t)
+        pickups[i] = pickup
+
+    if not particles.is_empty() or not popups.is_empty() or not pulses.is_empty() or not pickups.is_empty():
         queue_redraw()
 
-func harvest(kind: String, pos: Vector2, amount: int) -> void:
+func harvest(kind: String, pos: Vector2, amount: int, target: Vector2) -> void:
     var color: Color = _resource_color(kind)
-    for i: int in range(9):
-        var angle: float = TAU * float(i) / 9.0 + randf_range(-0.25, 0.25)
-        var speed: float = randf_range(34.0, 72.0)
-        _particle(pos, Vector2(cos(angle), sin(angle)) * speed + Vector2(0, -18), color, randf_range(0.34, 0.52), randf_range(2.0, 4.0), 74.0, 2.4)
-    _popup(pos + Vector2(0, -18), "+%d %s" % [amount, _resource_short(kind)], color.lightened(0.22), 0.72)
+    for i: int in range(7):
+        var angle: float = TAU * float(i) / 7.0 + randf_range(-0.25, 0.25)
+        var speed: float = randf_range(32.0, 66.0)
+        _particle(pos, Vector2(cos(angle), sin(angle)) * speed + Vector2(0, -16), color, randf_range(0.28, 0.42), randf_range(1.8, 3.2), 72.0, 2.6)
 
-func deposit(inventory: Dictionary, pos: Vector2) -> void:
+    var token_count: int = clampi(int(ceil(float(amount) / 2.0)), 2, 5)
+    for i: int in range(token_count):
+        var start: Vector2 = pos + Vector2(randf_range(-8.0, 8.0), randf_range(-6.0, 6.0))
+        var arc: Vector2 = start.lerp(target, 0.5) + Vector2(randf_range(-18.0, 18.0), randf_range(-42.0, -24.0))
+        _pickup(start, target, arc, color.lightened(0.08), 0.30 + float(i) * 0.035, 4.0)
+
+    _popup(pos + Vector2(0, -18), "+%d %s" % [amount, _resource_short(kind)], color.lightened(0.22), 0.62)
+
+func deposit(inventory: Dictionary, from_pos: Vector2, target: Vector2) -> void:
     var total: int = int(inventory.get("wood", 0)) + int(inventory.get("stone", 0)) + int(inventory.get("ore", 0))
-    for i: int in range(14):
-        var angle: float = TAU * float(i) / 14.0 + randf_range(-0.18, 0.18)
-        _particle(pos, Vector2(cos(angle), sin(angle)) * randf_range(30.0, 66.0), Color("e0ba68"), 0.52, randf_range(2.0, 4.0), -8.0, 3.0)
-    _pulse(pos, 26.0, 78.0, Color(0.93, 0.73, 0.31, 0.64), 0.55)
-    _popup(pos + Vector2(0, -40), "СКЛАД +%d" % total, Color("ffe0a0"), 0.88)
+    var kinds: Array[String] = ["wood", "stone", "ore"]
+    var token_index: int = 0
+    for kind: String in kinds:
+        var amount: int = int(inventory.get(kind, 0))
+        if amount <= 0:
+            continue
+        var token_count: int = clampi(int(ceil(float(amount) / 4.0)), 1, 5)
+        for _i: int in range(token_count):
+            var start: Vector2 = from_pos + Vector2(randf_range(-8.0, 8.0), randf_range(-8.0, 5.0))
+            var control: Vector2 = start.lerp(target, 0.5) + Vector2(randf_range(-20.0, 20.0), -34.0 - randf_range(0.0, 18.0))
+            _pickup(start, target, control, _resource_color(kind), 0.30 + float(token_index) * 0.018, 4.2)
+            token_index += 1
+
+    _pulse(target, 22.0, 68.0, Color(0.93, 0.73, 0.31, 0.58), 0.48)
+    _popup(target + Vector2(0, -26), "СКЛАД +%d" % total, Color("ffe0a0"), 0.82)
 
 func build_complete(pos: Vector2, title: String) -> void:
     for i: int in range(22):
@@ -113,6 +147,18 @@ func _pulse(pos: Vector2, start_radius: float, end_radius: float, color: Color, 
         "max_life": life
     })
 
+func _pickup(start: Vector2, target: Vector2, control: Vector2, color: Color, duration: float, size: float) -> void:
+    pickups.append({
+        "start": start,
+        "pos": start,
+        "target": target,
+        "control": control,
+        "color": color,
+        "life": duration,
+        "duration": duration,
+        "size": size
+    })
+
 func _draw() -> void:
     for p: Dictionary in pulses:
         var life: float = float(p["life"])
@@ -132,6 +178,17 @@ func _draw() -> void:
         var size: float = float(p["size"])
         var pos: Vector2 = Vector2(p["pos"])
         draw_rect(Rect2(pos - Vector2(size, size) * 0.5, Vector2(size, size)), color)
+
+    for pickup: Dictionary in pickups:
+        var pos: Vector2 = pickup["pos"] as Vector2
+        var color: Color = pickup["color"] as Color
+        var life: float = float(pickup["life"])
+        var duration: float = maxf(0.001, float(pickup["duration"]))
+        var alpha: float = clampf(life / duration, 0.0, 1.0)
+        color.a *= minf(1.0, alpha * 1.8)
+        var size: float = float(pickup["size"])
+        draw_rect(Rect2(pos - Vector2(size, size) * 0.5, Vector2(size, size)), color)
+        draw_rect(Rect2(pos - Vector2(size, size) * 0.5, Vector2(size, size)), color.lightened(0.22), false, 1.0)
 
     var font: Font = ThemeDB.fallback_font
     for popup: Dictionary in popups:
