@@ -13,7 +13,7 @@ const RESIDENTS := {
             {"title":"ДАЛЬНИЙ ПУТЬ","desc":"Доберись до внешнего кольца мира 2 раза.","event":"reach_outer","goal":2,"reward_type":"coins","reward":90},
             {"title":"ЧЁРНЫЕ КОРНИ","desc":"Уничтожь 3 гнезда Тьмы.","event":"nest_destroyed","goal":3,"reward_type":"shards","reward":1},
             {"title":"ГОЛОСА ЗА ГРАНИЦЕЙ","desc":"Исследуй 2 Разлома памяти.","event":"memory_rift","goal":2,"reward_type":"coins","reward":110},
-            {"title":"ОГНИ НА КАРТЕ","desc":"Зажги 2 старых Очагa.","event":"hearth_relit","goal":2,"reward_type":"shards","reward":2}
+            {"title":"ОГНИ НА КАРТЕ","desc":"Зажги 2 старых Очага.","event":"hearth_relit","goal":2,"reward_type":"shards","reward":2}
         ]
     },
     "thorn": {
