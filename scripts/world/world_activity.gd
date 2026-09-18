@@ -12,6 +12,7 @@ var hp: float = 80.0
 var max_hp: float = 80.0
 var focus: bool = false
 var elapsed: float = 0.0
+var cursed: bool = false
 
 func configure(kind: String, index: int) -> void:
     activity_type = kind
@@ -20,7 +21,8 @@ func configure(kind: String, index: int) -> void:
         "caravan":
             required_time = 0.80
         "chest":
-            required_time = 0.58
+            cursed = randf() < 0.32
+            required_time = 0.76 if cursed else 0.58
         "altar":
             required_time = 0.0
         "nest":
@@ -129,10 +131,14 @@ func _draw_caravan() -> void:
 
 func _draw_chest() -> void:
     draw_rect(Rect2(-17, 11, 34, 5), Color(0.04, 0.05, 0.04, 0.16))
-    draw_rect(Rect2(-15, -7, 30, 19), Color("6d4426"))
-    draw_rect(Rect2(-13, -5, 26, 15), Color("9b6535"))
-    draw_rect(Rect2(-15, -9, 30, 6), Color("b27b42"))
-    draw_rect(Rect2(-2, -4, 4, 10), Color("d4ae5e"))
+    if cursed:
+        var pulse: float = (sin(elapsed * 4.0) + 1.0) * 0.5
+        draw_circle(Vector2.ZERO, 27.0 + pulse * 2.0, Color(0.62, 0.20, 0.42, 0.08 + pulse * 0.04))
+        draw_arc(Vector2.ZERO, 24.0 + pulse * 2.0, 0.0, TAU, 24, Color(0.76, 0.36, 0.62, 0.48), 1.5)
+    draw_rect(Rect2(-15, -7, 30, 19), Color("5e3340") if cursed else Color("6d4426"))
+    draw_rect(Rect2(-13, -5, 26, 15), Color("874557") if cursed else Color("9b6535"))
+    draw_rect(Rect2(-15, -9, 30, 6), Color("a85a73") if cursed else Color("b27b42"))
+    draw_rect(Rect2(-2, -4, 4, 10), Color("e09abd") if cursed else Color("d4ae5e"))
 
 func _draw_nest() -> void:
     var dark := Color("412d42") if biome_index != 2 else Color("3a2425")
