@@ -1,9 +1,9 @@
 extends CanvasLayer
 
-const BASE_SIZE := 92.0
-const KNOB_SIZE := 42.0
-const STICK_RADIUS := 31.0
-const DRIFT_START := 43.0
+const BASE_SIZE := 78.0
+const KNOB_SIZE := 34.0
+const STICK_RADIUS := 27.0
+const DRIFT_START := 38.0
 const DRIFT_FACTOR := 0.42
 const DEADZONE := 0.10
 const TOP_SAFE_Y := 102.0
@@ -38,8 +38,8 @@ func _build_visuals() -> void:
     root.add_child(base_panel)
     base_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     base_panel.add_theme_stylebox_override("panel", _circle_style(
-        Color(0.035, 0.060, 0.055, 0.48),
-        Color(0.82, 0.90, 0.84, 0.34),
+        Color(0.025, 0.045, 0.042, 0.34),
+        Color(0.73, 0.82, 0.77, 0.25),
         1
     ))
 
@@ -49,7 +49,7 @@ func _build_visuals() -> void:
     inner_panel.size = Vector2(BASE_SIZE - 20.0, BASE_SIZE - 20.0)
     inner_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     inner_panel.add_theme_stylebox_override("panel", _circle_style(
-        Color(0.18, 0.31, 0.26, 0.15),
+        Color(0.18, 0.31, 0.26, 0.10),
         Color(0.71, 0.83, 0.75, 0.13),
         1
     ))
@@ -59,8 +59,8 @@ func _build_visuals() -> void:
     knob_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     knob_panel.size = Vector2(KNOB_SIZE, KNOB_SIZE)
     knob_panel.add_theme_stylebox_override("panel", _circle_style(
-        Color(0.41, 0.76, 0.64, 0.88),
-        Color(0.94, 0.98, 0.95, 0.66),
+        Color(0.49, 0.69, 0.58, 0.76),
+        Color(0.91, 0.95, 0.92, 0.48),
         1
     ))
 
