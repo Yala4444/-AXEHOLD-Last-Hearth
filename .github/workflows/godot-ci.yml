@@ -240,6 +240,16 @@ jobs:
             exit 1
           fi
 
+      - name: V1.12 dynamic world + elites regression
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_v112_dynamic_world_smoke.tscn 2>&1 | tee /tmp/godot-v112-world.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v112-world.log; then
+            echo "GDScript parse errors detected during v1.12 dynamic-world test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |
