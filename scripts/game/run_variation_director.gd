@@ -4,6 +4,8 @@ extends Node
 var world: GameWorld
 var threat: float = 0.0
 var current_modifier: Dictionary = {}
+var previewed_modifier: Dictionary = {}
+var preview_wave: int = 0
 var contract: Dictionary = {}
 var contract_completed: bool = false
 var max_distance_from_hearth: float = 0.0
@@ -25,6 +27,7 @@ func _process(_delta: float) -> void:
         world.player.global_position.distance_to(world.base_position)
     )
     _check_contract_progress()
+    _maybe_preview_night()
 
     if night_rift != null and not is_instance_valid(night_rift):
         night_rift = null
@@ -39,6 +42,39 @@ func _announce_contract() -> void:
         "id": str(contract.get("id", "")),
         "biome": world.biome_index
     })
+
+func _maybe_preview_night() -> void:
+    if world == null or world.phase != "day" or world.phase_time > 18.0:
+        return
+    var upcoming_wave: int = world.wave + 1
+    if preview_wave == upcoming_wave:
+        return
+
+    var active_nests: int = world.activity_director.unresolved_nests() if world.activity_director != null else 0
+    var preview_threat: float = clampf(threat + float(active_nests) * 1.25, 0.0, 12.0)
+    previewed_modifier = GameRules.random_night_modifier(upcoming_wave, preview_threat)
+    preview_wave = upcoming_wave
+
+    var name: String = str(previewed_modifier.get("name", "НОЧЬ"))
+    var desc: String = str(previewed_modifier.get("desc", ""))
+    world.hud.show_banner("ПРЕДВЕСТИЕ: " + name, Color("d8c7a0"))
+    world.hud.set_status(desc)
+    world.hud.set_run_objective("ГРЯДЁТ %s · УГРОЗА %s" % [name, _threat_name_for(preview_threat)])
+    Analytics.event("night_modifier_previewed", {
+        "id": str(previewed_modifier.get("id", "")),
+        "wave": upcoming_wave,
+        "threat": preview_threat,
+        "biome": world.biome_index
+    })
+
+func _threat_name_for(value: float) -> String:
+    if value < 2.5:
+        return "НИЗКАЯ"
+    if value < 5.0:
+        return "СРЕДНЯЯ"
+    if value < 8.0:
+        return "ВЫСОКАЯ"
+    return "КРИТИЧЕСКАЯ"
 
 func add_threat(amount: float, reason: String = "") -> void:
     threat = clampf(threat + amount, 0.0, 12.0)
@@ -57,7 +93,11 @@ func reduce_threat(amount: float, reason: String = "") -> void:
 func prepare_night(wave: int) -> Dictionary:
     var active_nests: int = world.activity_director.unresolved_nests() if world.activity_director != null else 0
     effective_threat = clampf(threat + float(active_nests) * 1.25, 0.0, 12.0)
-    current_modifier = GameRules.random_night_modifier(wave, effective_threat)
+    if preview_wave == wave and not previewed_modifier.is_empty():
+        current_modifier = previewed_modifier.duplicate(true)
+    else:
+        current_modifier = GameRules.random_night_modifier(wave, effective_threat)
+    previewed_modifier.clear()
 
     var modifier_name: String = str(current_modifier.get("name", "НОЧЬ"))
     var modifier_desc: String = str(current_modifier.get("desc", ""))
@@ -141,13 +181,7 @@ func blocks_night_end() -> bool:
 
 func threat_name() -> String:
     var value: float = effective_threat if world != null and world.phase == "night" else threat
-    if value < 2.5:
-        return "НИЗКАЯ"
-    if value < 5.0:
-        return "СРЕДНЯЯ"
-    if value < 8.0:
-        return "ВЫСОКАЯ"
-    return "КРИТИЧЕСКАЯ"
+    return _threat_name_for(value)
 
 func contract_summary() -> String:
     if contract.is_empty():
