@@ -1,8 +1,8 @@
 extends CanvasLayer
 
-const BASE_SIZE := 116.0
-const KNOB_SIZE := 54.0
-const STICK_RADIUS := 38.0
+const BASE_SIZE := 94.0
+const KNOB_SIZE := 44.0
+const STICK_RADIUS := 30.0
 const DEADZONE := 0.12
 
 var root: Control
@@ -32,25 +32,25 @@ func _build_visuals() -> void:
     base_panel = Panel.new()
     root.add_child(base_panel)
     base_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    base_panel.add_theme_stylebox_override("panel", _circle_style(Color(0.025, 0.045, 0.055, 0.62), Color(0.71, 0.83, 0.76, 0.34), 2))
+    base_panel.add_theme_stylebox_override("panel", _circle_style(Color(0.04, 0.07, 0.07, 0.34), Color(0.76, 0.86, 0.80, 0.28), 1))
 
     var inner := Panel.new()
     base_panel.add_child(inner)
-    inner.position = Vector2(13, 13)
-    inner.size = Vector2(BASE_SIZE - 26.0, BASE_SIZE - 26.0)
+    inner.position = Vector2(11, 11)
+    inner.size = Vector2(BASE_SIZE - 22.0, BASE_SIZE - 22.0)
     inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    inner.add_theme_stylebox_override("panel", _circle_style(Color(0.18, 0.31, 0.27, 0.24), Color(0.63, 0.80, 0.70, 0.16), 1))
+    inner.add_theme_stylebox_override("panel", _circle_style(Color(0.18, 0.31, 0.27, 0.12), Color(0.63, 0.80, 0.70, 0.12), 1))
 
     knob_panel = Panel.new()
     root.add_child(knob_panel)
     knob_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    knob_panel.add_theme_stylebox_override("panel", _circle_style(Color(0.26, 0.66, 0.55, 0.94), Color(0.87, 0.95, 0.89, 0.72), 2))
+    knob_panel.add_theme_stylebox_override("panel", _circle_style(Color(0.38, 0.72, 0.62, 0.82), Color(0.92, 0.97, 0.94, 0.62), 1))
 
     hint_label = Label.new()
     root.add_child(hint_label)
-    hint_label.text = "ДВИЖЕНИЕ"
+    hint_label.text = ""
     hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    hint_label.add_theme_font_size_override("font_size", 9)
+    hint_label.add_theme_font_size_override("font_size", 1)
     hint_label.add_theme_color_override("font_color", Color(0.88, 0.93, 0.90, 0.72))
     hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -71,13 +71,13 @@ func _layout() -> void:
     if root == null:
         return
     var size: Vector2 = get_viewport().get_visible_rect().size
-    center = Vector2(76.0, maxf(148.0, size.y - 170.0))
+    center = Vector2(61.0, maxf(130.0, size.y - 112.0))
     base_panel.position = center - Vector2(BASE_SIZE, BASE_SIZE) * 0.5
     base_panel.size = Vector2(BASE_SIZE, BASE_SIZE)
     knob_panel.size = Vector2(KNOB_SIZE, KNOB_SIZE)
     _move_knob(direction)
-    hint_label.position = Vector2(center.x - 55.0, center.y + 63.0)
-    hint_label.size = Vector2(110.0, 18.0)
+    hint_label.position = Vector2(center.x - 1.0, center.y + 1.0)
+    hint_label.size = Vector2(1.0, 1.0)
 
 func _process(delta: float) -> void:
     scan_timer -= delta

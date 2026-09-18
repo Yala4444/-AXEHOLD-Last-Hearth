@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.0-alpha.1 — Visual Reboot
+- Rebuilt the in-run HUD around five permanent signals only: hero HP, Hearth HP, phase, backpack and Hearth storage.
+- Removed the permanent exit button and replaced persistent debug-like status copy with temporary toasts.
+- Replaced large parchment-like construction cards with in-world circular blueprints, focus/affordability states and compact contextual build info.
+- Rebuilt the Last Hearth as a campfire-centered landmark with stone ring, storage crate, clearing and worn approach path.
+- Deepened biome palettes and added forest edge depth/ground detail to focus attention on the camp.
+- Added CoreFX for harvest chips, pickup text, storage bursts, construction bursts, combat sparks, Hearth damage and turret impacts.
+- Slimmed the mobile joystick and removed the permanent movement caption.
+- Delayed random risk events until after the first night so the opening minute teaches the core loop without interruption.
+- Gave enemy archetypes distinct role palettes in addition to silhouette differences.
+- Added a production visual-direction document and a dedicated visual regression test.
+- Preserved the existing resource-first gameplay, mobile movement and expedition systems while replacing the prototype presentation layer.
+
+
 ## 1.0.0-alpha.1 — Resource-first mobile redesign
 - Recentered the run around the original satisfying loop: harvest -> backpack -> hearth storage -> construction -> night defense.
 - Added always-visible, separate Backpack and Hearth Storage panels with wood/stone/ore counts.

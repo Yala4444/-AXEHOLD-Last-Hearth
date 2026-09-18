@@ -46,9 +46,6 @@ func _process(_delta: float) -> void:
     if scene == null:
         return
     _sanitize_tree(scene)
-    var world: GameWorld = _find_world(scene)
-    if world != null:
-        _polish_game_hud(world)
 
 func _sanitize_tree(node: Node) -> void:
     if node is Label:
@@ -75,32 +72,6 @@ func clean_text(source: String) -> String:
         result = result.replace("  ", " ")
     result = result.replace(" \n", "\n").replace("\n ", "\n")
     return result.strip_edges()
-
-func _polish_game_hud(world: GameWorld) -> void:
-    if world.hud == null or world.player == null:
-        return
-    if not is_instance_valid(world.hud) or not is_instance_valid(world.player):
-        return
-
-    var hud: GameHud = world.hud
-    hud.hp_label.text = "HP %d" % int(ceil(world.player.hp))
-    hud.base_label.text = "ОЧАГ %d" % int(ceil(maxf(world.base_hp, 0.0)))
-    hud.bag_label.text = "РЮК %d/%d" % [world.player.inventory_total(), world.player.capacity]
-    hud.wave_label.text = "НОЧЬ %d/3" % world.wave
-    hud.resources_label.text = "Д %d   К %d   Р %d" % [
-        int(world.storage.get("wood", 0)),
-        int(world.storage.get("stone", 0)),
-        int(world.storage.get("ore", 0))
-    ]
-
-    if world.phase == "day":
-        hud.phase_label.text = "ДО НОЧИ · %d сек" % int(ceil(world.phase_time))
-    else:
-        var remaining: int = world.spawn_left + world.enemies.size()
-        hud.phase_label.text = "НОЧЬ %d · ВРАГОВ %d" % [world.wave, remaining]
-
-    if hud.status_label.text.is_empty():
-        hud.status_label.text = "Стик слева — движение. Оружие атакует автоматически."
 
 func _find_world(node: Node) -> GameWorld:
     if node == null:
