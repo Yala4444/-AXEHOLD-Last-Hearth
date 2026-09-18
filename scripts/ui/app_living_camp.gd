@@ -406,6 +406,70 @@ func _show_forge() -> void:
     intro_label.add_theme_font_size_override("font_size", 9)
     intro_label.add_theme_color_override("font_color", Color("bbb8aa"))
 
+    _section("Чертежи укреплений", "Монеты развивают лагерь, а осколки Хранителей открывают качественно новые возможности внутри экспедиции.")
+
+    for build_type: String in ["wall", "forge", "turret", "shrine"]:
+        var project: Dictionary = BuildingRules.project_spec(build_type)
+        var owned: bool = GameState.has_building_project(build_type)
+        var mastery_need: int = int(project.get("min_mastery", 0))
+        var available: bool = GameState.total_mastery() >= mastery_need
+
+        var project_panel := _panel(body)
+        var project_box := VBoxContainer.new()
+        project_panel.add_child(project_box)
+        project_box.add_theme_constant_override("separation", 5)
+
+        var project_top := HBoxContainer.new()
+        project_box.add_child(project_top)
+
+        var project_title := Label.new()
+        project_top.add_child(project_title)
+        project_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        project_title.text = str(project.get("name", "ЧЕРТЁЖ"))
+        project_title.add_theme_font_size_override("font_size", 12)
+        project_title.add_theme_color_override("font_color", Color("efe0c1"))
+
+        var project_state := Label.new()
+        project_top.add_child(project_state)
+        project_state.add_theme_font_size_override("font_size", 8)
+        if owned:
+            project_state.text = "ИЗУЧЕНО"
+            project_state.add_theme_color_override("font_color", Color("8fd5b0"))
+        elif available:
+            project_state.text = "ДОСТУПНО"
+            project_state.add_theme_color_override("font_color", Color("d6bd83"))
+        else:
+            project_state.text = "МАСТ. %d" % mastery_need
+            project_state.add_theme_color_override("font_color", Color("777f81"))
+
+        var project_desc := Label.new()
+        project_box.add_child(project_desc)
+        project_desc.text = str(project.get("desc", ""))
+        project_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        project_desc.add_theme_font_size_override("font_size", 9)
+        project_desc.add_theme_color_override("font_color", Color("aeb7b9"))
+
+        var branches: Array[Dictionary] = BuildingRules.branches(build_type)
+        var branch_names := PackedStringArray()
+        for branch_spec: Dictionary in branches:
+            branch_names.append(str(branch_spec.get("name", "ВЕТКА")))
+        var branch_label := Label.new()
+        project_box.add_child(branch_label)
+        branch_label.text = "В экспедиции: " + branch_names.join(" / ")
+        branch_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        branch_label.add_theme_font_size_override("font_size", 8)
+        branch_label.add_theme_color_override("font_color", Color("8fa0a2"))
+
+        if not owned:
+            var coin_cost: int = int(project.get("coins", 0))
+            var shard_cost: int = int(project.get("shards", 0))
+            var can_pay: bool = int(GameState.data.get("coins", 0)) >= coin_cost and int(GameState.data.get("shards", 0)) >= shard_cost and available
+            var buy_project := _button(project_box, "%d МОН. · %d ОСК." % [coin_cost, shard_cost], false)
+            buy_project.disabled = not can_pay
+            buy_project.pressed.connect(_buy_building_project.bind(build_type))
+
+    _section("Подготовка Странника", "Обычные улучшения остаются полезными, но теперь конкурируют с чертежами за монеты.")
+
     var specs: Array[Dictionary] = [
         {"id": "damage", "title": "Закалённые лезвия", "desc": "+10% базового урона"},
         {"id": "hp", "title": "Крепкое сердце", "desc": "+10 максимального HP"},
@@ -432,6 +496,12 @@ func _show_forge() -> void:
         var buy := _button(row, "%d МОН." % GameState.upgrade_cost(kind), false)
         buy.custom_minimum_size = Vector2(112, 48)
         buy.pressed.connect(_buy_upgrade.bind(kind))
+
+func _buy_building_project(build_type: String) -> void:
+    if GameState.buy_building_project(build_type):
+        Feedback.play("level", 12)
+        _refresh_currency()
+    _show_forge()
 
 func _camp_relic_count() -> int:
     var count: int = 0
