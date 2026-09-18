@@ -1070,7 +1070,8 @@ func _finish_run(won: bool) -> void:
         "shards": earned_shards,
         "kills": kills,
         "parts_unused": unused_parts,
-        "parts_bonus": unused_parts * 8
+        "parts_bonus": unused_parts * 8,
+        "contract": run_variation.contract_result() if run_variation != null else {}
     })
 
 func _refresh_hud() -> void:
