@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.6.0-alpha.1 — Quest & Encounter Expansion
+- Replaced the static daily-task layer with a rotating three-slot Quest Board backed by QuestDirector.
+- Added an 18-task daily pool spanning resources, combat, exploration, risk, buildings, nights, contracts and biome clears.
+- Claimed daily quests now rotate into new tasks until the daily reward cap is reached; completed daily cards no longer remain as permanent clutter.
+- Split Quest Board from Trophy Hall; the camp now has a physical Quest Board hotspot and home-screen shortcut.
+- Added the first resident quest chain: Scout Mira can be rescued in the field, joins the camp permanently and offers a three-step trust chain.
+- Expanded Activity Director into a mixed encounter composer rather than fixed caravan/chest/nest spam.
+- Added eight encounter types: Rare Ore Vein, Broken Tower, Wind Shrine, Wanderer Grave, Signal Fire, Infected Cache, Memory Rift and Wounded Scout.
+- New encounters feed back into Threat, run upgrades, permanent lore, resident unlocks and resident quests.
+- Added persistent quest rotation state, resident trust/progress and lore-fragment save data.
+- Added dedicated v1.6 regression coverage for daily rotation, replacement-after-claim, Mira progression and encounter population.
+- Bumped Android/iOS metadata to 1.6.0-alpha.1 / build 20.
+
 ## 1.5.0-alpha.1 — Expedition & Run Diversity 2.0
 - Added per-run optional contracts that reward alternate routes, exploration and non-standard defensive builds.
 - Added Threat of Darkness: cursed caches and altar bargains raise future pressure, while destroyed nests and relit Hearths reduce it.

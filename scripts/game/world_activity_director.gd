@@ -20,12 +20,48 @@ func setup(world_ref: GameWorld, generator_ref: WorldGenerator) -> void:
 
 func _spawn_initial_activities() -> void:
     var occupied: Array = []
-    for _i in range(2):
-        _spawn("caravan", 420.0, 1020.0, occupied)
-    for _i in range(3):
-        _spawn("chest", 360.0, 1220.0, occupied)
-    for _i in range(3):
+    var selected: Dictionary = {}
+
+    # Every run receives a readable mix: strategic pressure, a clean reward,
+    # a risk/reward choice and at least one story/utility hook.
+    for _i: int in range(2):
         _spawn("nest", 560.0, 1320.0, occupied)
+    selected["nest"] = true
+
+    var positive: Array[String] = ["caravan", "rare_ore", "wind_shrine"]
+    var risk: Array[String] = ["chest", "wanderer_grave", "infected_cache"]
+    var story: Array[String] = ["wounded_scout", "memory_rift", "signal_fire"]
+    var utility: Array[String] = ["broken_tower", "rare_ore", "signal_fire", "caravan"]
+
+    var picks: Array[String] = [
+        _pick_unique(positive, selected),
+        _pick_unique(risk, selected),
+        _pick_unique(story, selected),
+        _pick_unique(utility, selected)
+    ]
+    for kind: String in picks:
+        if kind.is_empty():
+            continue
+        _spawn(kind, 390.0, 1280.0, occupied)
+
+    var bonus_pool: Array[String] = [
+        "caravan", "chest", "rare_ore", "broken_tower", "wind_shrine",
+        "wanderer_grave", "signal_fire", "infected_cache", "memory_rift", "wounded_scout"
+    ]
+    var bonus: String = _pick_unique(bonus_pool, selected)
+    if not bonus.is_empty():
+        _spawn(bonus, 520.0, 1340.0, occupied)
+
+func _pick_unique(pool: Array[String], selected: Dictionary) -> String:
+    var candidates: Array[String] = []
+    for kind: String in pool:
+        if not selected.has(kind):
+            candidates.append(kind)
+    if candidates.is_empty():
+        return ""
+    var picked: String = candidates[randi() % candidates.size()]
+    selected[picked] = true
+    return picked
 
 func _spawn(kind: String, min_radius: float, max_radius: float, occupied: Array) -> WorldActivity:
     var point: Vector2 = generator.activity_point(min_radius, max_radius, occupied)
@@ -100,6 +136,34 @@ func _process(delta: float) -> void:
                 activity.decay_progress(delta)
             continue
 
+        if activity.activity_type == "broken_tower":
+            activity.set_focus(distance <= 58.0)
+            if distance <= 45.0 and world.phase == "day":
+                var carried_stone: int = int(world.player.inventory.get("stone", 0))
+                if carried_stone >= 4:
+                    if activity.interact(delta):
+                        _grant_activity_reward(activity)
+                else:
+                    activity.decay_progress(delta)
+                    world.hud.set_status("Для ремонта сломанной башни нужно 4 камня в рюкзаке.")
+            else:
+                activity.decay_progress(delta)
+            continue
+
+        if activity.activity_type == "signal_fire":
+            activity.set_focus(distance <= 58.0)
+            if distance <= 45.0 and world.phase == "day":
+                var carried_signal_wood: int = int(world.player.inventory.get("wood", 0))
+                if carried_signal_wood >= 3:
+                    if activity.interact(delta):
+                        _grant_activity_reward(activity)
+                else:
+                    activity.decay_progress(delta)
+                    world.hud.set_status("Сигнальному костру нужно 3 дерева.")
+            else:
+                activity.decay_progress(delta)
+            continue
+
         if distance <= 45.0 and world.phase == "day":
             activity.set_focus(true)
             if activity.interact(delta):
@@ -125,6 +189,22 @@ func _hint_for(activity: WorldActivity) -> String:
             return "Древний алтарь предлагает силу за цену."
         "old_hearth":
             return "Погасший Очаг. Принеси 4 дерева и верни ему огонь."
+        "rare_ore":
+            return "Редкая жила. Добыча ценная, но шум повышает Угрозу."
+        "broken_tower":
+            return "Сломанная башня. Принеси 4 камня и восстанови механизм."
+        "wind_shrine":
+            return "Святилище ветра. Активируй его для ускорения Странника."
+        "wanderer_grave":
+            return "Могила Странника. Реликт внутри может привлечь Тьму."
+        "signal_fire":
+            return "Сигнальный костёр. Принеси 3 дерева и зажги ориентир."
+        "infected_cache":
+            return "Заражённый склад. Богатый лут, но очистка поднимает Угрозу."
+        "memory_rift":
+            return "Разлом памяти. Задержись рядом, чтобы услышать прошлое."
+        "wounded_scout":
+            return "Раненая разведчица. Помоги ей подняться и вернуться к Очагу."
     return ""
 
 func _show_altar(activity: WorldActivity) -> void:
@@ -170,11 +250,14 @@ func _on_hud_action(action: String) -> void:
 
 func _on_activity_resolved(activity: WorldActivity) -> void:
     activities_resolved += 1
+    QuestDirector.record("activity_resolved", 1, {"type":activity.activity_type, "biome":world.biome_index})
     if activity.activity_type == "nest":
         nests_destroyed += 1
+        QuestDirector.record("nest_destroyed", 1, {"biome":world.biome_index})
         _grant_nest_reward(activity)
     elif activity.activity_type == "old_hearth":
         hearths_relit += 1
+        QuestDirector.record("hearth_relit", 1, {"biome":world.biome_index})
     Analytics.event("world_activity_resolved", {
         "type": activity.activity_type,
         "wave": world.wave,
@@ -197,8 +280,85 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
             world.run_variation.reduce_threat(2.2, "old_hearth_relit")
         world.hud.show_banner("СТАРЫЙ ОЧАГ ЗАЖЖЁН", Color("f0bd71"))
         world.hud.set_status("Тьма отступила. +7 мон. · герой исцелён.")
+    elif activity.activity_type == "rare_ore":
+        _give_resource("ore", 6, activity.global_position)
+        world.run_coins += 8
+        world.player.gain_xp(7)
+        if world.run_variation != null:
+            world.run_variation.add_threat(0.8, "rare_ore_noise")
+        world.hud.show_banner("РЕДКАЯ ЖИЛА ИСЧЕРПАНА", Color("c49ad8"))
+        world.hud.set_status("+6 руды · шум привлёк внимание Тьмы.")
+    elif activity.activity_type == "broken_tower":
+        world.player.inventory["stone"] = maxi(0, int(world.player.inventory.get("stone", 0)) - 4)
+        world.player.queue_redraw()
+        world.turret_global_damage_mult *= 1.12
+        world.turret_global_fire_mult *= 0.92
+        world.run_coins += 5
+        world.hud.show_banner("СТАРАЯ БАШНЯ ВОССТАНОВЛЕНА", Color("c3c9bd"))
+        world.hud.set_status("Механизм передал чертежи: твоя Башня сильнее в этом забеге.")
+    elif activity.activity_type == "wind_shrine":
+        world.player.move_speed *= 1.08
+        world.run_coins += 5
+        if world.run_variation != null:
+            world.run_variation.reduce_threat(0.5, "wind_shrine")
+        world.hud.show_banner("ВЕТЕР ПОМНИТ ДОРОГУ", Color("a9d5d6"))
+        world.hud.set_status("+8% скорость до конца экспедиции.")
+    elif activity.activity_type == "wanderer_grave":
+        world.run_coins += 14
+        world.player.gain_xp(10)
+        world.player.shield_hits = mini(5, world.player.shield_hits + 1)
+        if world.run_variation != null:
+            world.run_variation.add_threat(1.3, "wanderer_grave")
+        world.hud.show_banner("РЕЛИКТ СТРАННИКА", Color("b9b2a7"))
+        world.hud.set_status("+14 мон. · защита +1 · Тьма заметила добычу.")
+    elif activity.activity_type == "signal_fire":
+        world.player.inventory["wood"] = maxi(0, int(world.player.inventory.get("wood", 0)) - 3)
+        world.player.queue_redraw()
+        world.run_coins += 7
+        if world.run_variation != null:
+            world.run_variation.reduce_threat(1.1, "signal_fire")
+        QuestDirector.record("signal_fire", 1, {"biome":world.biome_index})
+        world.hud.show_banner("СИГНАЛЬНЫЙ ОГОНЬ ГОРИТ", Color("efbd78"))
+        world.hud.set_status("Маршрут отмечен. Угроза Тьмы снизилась.")
+    elif activity.activity_type == "infected_cache":
+        _give_resource("stone", 4, activity.global_position)
+        _give_resource("ore", 3, activity.global_position)
+        world.run_coins += 11
+        if world.run_variation != null:
+            world.run_variation.add_threat(1.5, "infected_cache")
+        world.hud.show_banner("СКЛАД ОЧИЩЕН", Color("a7bd79"))
+        world.hud.set_status("Ресурсы спасены, но заражение усилило следующую ночь.")
+    elif activity.activity_type == "memory_rift":
+        world.run_coins += 6
+        GameState.data["lore_fragments"] = int(GameState.data.get("lore_fragments", 0)) + 1
+        var notices: Array = GameState.data.get("meta_notices", [])
+        notices.append("Разлом памяти: найден новый фрагмент прошлого.")
+        GameState.data["meta_notices"] = notices
+        GameState.save()
+        world.hud.show_banner("ЭХО ПРОШЛОГО", Color("aebbe0"))
+        world.hud.set_status("В памяти мелькнул другой Очаг. Фрагмент сохранён в лагере.")
+    elif activity.activity_type == "wounded_scout":
+        var residents: Dictionary = GameState.data.get("residents", {})
+        var mira: Dictionary = residents.get("mira", {"unlocked":false,"trust":0,"quest_step":0,"quest_progress":0})
+        if not bool(mira.get("unlocked", false)):
+            mira["unlocked"] = true
+            mira["quest_progress"] = 0
+            residents["mira"] = mira
+            GameState.data["residents"] = residents
+            var resident_notices: Array = GameState.data.get("meta_notices", [])
+            resident_notices.append("В лагерь вернулась разведчица Мира. На Доске появились её поручения.")
+            GameState.data["meta_notices"] = resident_notices
+            GameState.save()
+            QuestDirector.record("resident_rescued", 1, {"resident":"mira","biome":world.biome_index})
+            world.hud.show_banner("РАЗВЕДЧИЦА СПАСЕНА", Color("b9d0b8"))
+            world.hud.set_status("Мира вернётся в лагерь после экспедиции.")
+        else:
+            world.run_coins += 12
+            world.hud.show_banner("РАЗВЕДЧИЦА В БЕЗОПАСНОСТИ", Color("b9d0b8"))
+            world.hud.set_status("+12 мон. за помощь разведотряду.")
     elif activity.activity_type == "chest":
         if activity.cursed:
+            QuestDirector.record("cursed_cache", 1, {"biome":world.biome_index})
             _give_resource("stone", 2, activity.global_position)
             _give_resource("ore", 4, activity.global_position)
             world.run_coins += 16

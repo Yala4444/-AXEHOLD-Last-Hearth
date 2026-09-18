@@ -34,6 +34,10 @@ func _show_home() -> void:
     whisper.add_theme_font_size_override("font_size", 10)
     whisper.add_theme_color_override("font_color", Color("c5cec9"))
 
+    var quest_button := _button(body, "ДОСКА ЗАДАНИЙ · %d АКТИВНЫХ" % QuestDirector.active_quests().size(), false)
+    quest_button.custom_minimum_size = Vector2(0, 40)
+    quest_button.pressed.connect(_show_quests)
+
     var departure := _panel(body)
     var departure_box := VBoxContainer.new()
     departure.add_child(departure_box)
@@ -216,9 +220,8 @@ func _show_map() -> void:
     play.pressed.connect(_start_game)
 
 func _show_goals() -> void:
-    GameState.ensure_daily_state()
     _clear_body()
-    _section("Трофеи и следы", "Победы над Хранителями возвращают не только силу, но и фрагменты истории мира.")
+    _section("Трофеи и следы", "Реликвии хранят историю Хранителей. Достижения отмечают постоянные вехи лагеря.")
 
     var hall := TrophyHallView.new()
     body.add_child(hall)
@@ -230,40 +233,166 @@ func _show_goals() -> void:
         var clue_panel := _panel(body)
         var clue := Label.new()
         clue_panel.add_child(clue)
-        clue.text = "%s
-%s" % [WeaponRules.relic_name(i).to_upper(), LoreRules.relic_clue(i)]
+        clue.text = "%s\n%s" % [WeaponRules.relic_name(i).to_upper(), LoreRules.relic_clue(i)]
         clue.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         clue.add_theme_font_size_override("font_size", 9)
         clue.add_theme_color_override("font_color", Color("c9c2ad"))
 
-    _section("Доска задач", "Короткие цели дают дополнительное направление, но не заменяют экспедицию.")
-    var mission_names: Dictionary = {"trees": "Лесоруб", "kills": "Защитник", "builds": "Строитель"}
-    var missions: Dictionary = GameState.data["missions"]
-    for kind: String in ["trees", "kills", "builds"]:
-        var mission: Dictionary = missions[kind]
-        var panel := _panel(body)
-        var row := HBoxContainer.new()
-        panel.add_child(row)
+    var quests := _button(body, "ОТКРЫТЬ ДОСКУ ЗАДАНИЙ", false)
+    quests.pressed.connect(_show_quests)
 
-        var text := Label.new()
-        row.add_child(text)
-        text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        text.text = "%s
-%d / %d" % [str(mission_names[kind]), int(mission["value"]), int(mission["goal"])]
-        text.add_theme_font_size_override("font_size", 12)
-
-        var claim_text: String = "ПОЛУЧЕНО" if bool(mission["claimed"]) else "+%d МОН." % int(mission["reward"])
-        var claim := _button(row, claim_text, false)
-        claim.custom_minimum_size = Vector2(118, 44)
-        claim.disabled = bool(mission["claimed"]) or int(mission["value"]) < int(mission["goal"])
-        claim.pressed.connect(_claim_mission.bind(kind))
-
-    _section("Достижения", "Постоянные цели отмечают крупные вехи развития лагеря.")
+    _section("Достижения", "Постоянные цели не исчезают при ежедневном обновлении.")
     var biome_wins: Array = GameState.data["biome_wins"]
     var stats: Dictionary = GameState.data["stats"]
-    _trophy("Первый Хранитель", "Победи босса Забытых лесов", int(biome_wins[0]) > 0, "boss", 1, true)
+    _trophy("Первый Хранитель", "Победи босса Забытого леса", int(biome_wins[0]) > 0, "boss", 1, true)
     _trophy("Архитектор", "Построй 8 сооружений суммарно", int(stats["builds"]) >= 8, "builder", 75, false)
     _trophy("Охотник", "Уничтожь 75 врагов", int(stats["kills"]) >= 75, "hunter", 90, false)
+
+func _show_quests() -> void:
+    QuestDirector.ensure_daily_quests()
+    _clear_body()
+    _section("Доска заданий", "Три активных поручения меняются. После получения награды доска подбирает следующую цель.")
+
+    var summary := _panel(body)
+    var summary_box := VBoxContainer.new()
+    summary.add_child(summary_box)
+    summary_box.add_theme_constant_override("separation", 3)
+
+    var day_label := Label.new()
+    summary_box.add_child(day_label)
+    day_label.text = "СЕГОДНЯ · МОЖНО ПОЛУЧИТЬ ЕЩЁ %d НАГР." % QuestDirector.claims_left_today()
+    day_label.add_theme_font_size_override("font_size", 9)
+    day_label.add_theme_color_override("font_color", Color("d0ac68"))
+
+    var archive := Label.new()
+    summary_box.add_child(archive)
+    archive.text = "Выполнено поручений за всё время: %d" % QuestDirector.archive_count()
+    archive.add_theme_font_size_override("font_size", 8)
+    archive.add_theme_color_override("font_color", Color("9fa9aa"))
+
+    var quests: Array[Dictionary] = QuestDirector.active_quests()
+    if quests.is_empty():
+        var empty := Label.new()
+        body.add_child(empty)
+        empty.text = "Все награды на сегодня получены. Новые поручения появятся завтра."
+        empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        empty.add_theme_color_override("font_color", Color("aeb8b9"))
+    else:
+        for quest: Dictionary in quests:
+            _daily_quest_card(quest)
+
+    _section("Поручения жителей", "Спасённые жители будут давать собственные цепочки и новые возможности лагеря.")
+    var residents: Dictionary = GameState.data.get("residents", {})
+    var mira: Dictionary = residents.get("mira", {})
+    if bool(mira.get("unlocked", false)):
+        var resident_panel := _panel(body)
+        var resident_box := VBoxContainer.new()
+        resident_panel.add_child(resident_box)
+        resident_box.add_theme_constant_override("separation", 5)
+
+        var resident_title := Label.new()
+        resident_box.add_child(resident_title)
+        resident_title.text = "РАЗВЕДЧИЦА МИРА · ДОВЕРИЕ %d/3" % int(mira.get("trust", 0))
+        resident_title.add_theme_font_size_override("font_size", 11)
+        resident_title.add_theme_color_override("font_color", Color("e6c98c"))
+
+        var resident_quest: Dictionary = QuestDirector.resident_quest_state("mira")
+        var resident_desc := Label.new()
+        resident_box.add_child(resident_desc)
+        resident_desc.text = str(resident_quest.get("desc", "Мира отмечает дальние события."))
+        resident_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        resident_desc.add_theme_font_size_override("font_size", 9)
+        resident_desc.add_theme_color_override("font_color", Color("aeb8b9"))
+
+        if not bool(resident_quest.get("complete", false)):
+            var rq_goal: int = maxi(1, int(resident_quest.get("goal", 1)))
+            var rq_progress: int = mini(rq_goal, int(resident_quest.get("progress", 0)))
+            var resident_progress := Label.new()
+            resident_box.add_child(resident_progress)
+            resident_progress.text = "%s · %d/%d" % [str(resident_quest.get("title", "ПОРУЧЕНИЕ")), rq_progress, rq_goal]
+            resident_progress.add_theme_font_size_override("font_size", 9)
+            resident_progress.add_theme_color_override("font_color", Color("c9d2cf"))
+            if bool(resident_quest.get("ready", false)):
+                var resident_claim := _button(resident_box, "ЗАБРАТЬ НАГРАДУ МИРЫ", false)
+                resident_claim.pressed.connect(_claim_resident_quest.bind("mira"))
+        else:
+            var completed := Label.new()
+            resident_box.add_child(completed)
+            completed.text = "Текущая цепочка Миры завершена."
+            completed.add_theme_font_size_override("font_size", 9)
+            completed.add_theme_color_override("font_color", Color("8fd5b0"))
+    else:
+        var locked := Label.new()
+        body.add_child(locked)
+        locked.text = "В мире ещё есть выжившие. Исследуй дальние области и ищи сигналы."
+        locked.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        locked.add_theme_font_size_override("font_size", 9)
+        locked.add_theme_color_override("font_color", Color("7f898a"))
+
+    var trophies := _button(body, "К РЕЛИКВИЯМ И ДОСТИЖЕНИЯМ", false)
+    trophies.pressed.connect(_show_goals)
+
+func _daily_quest_card(quest: Dictionary) -> void:
+    var panel := _panel(body)
+    var box := VBoxContainer.new()
+    panel.add_child(box)
+    box.add_theme_constant_override("separation", 5)
+
+    var top := HBoxContainer.new()
+    box.add_child(top)
+
+    var title := Label.new()
+    top.add_child(title)
+    title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    title.text = str(quest.get("title", "ЗАДАНИЕ"))
+    title.add_theme_font_size_override("font_size", 12)
+    title.add_theme_color_override("font_color", Color("efe5d0"))
+
+    var category := Label.new()
+    top.add_child(category)
+    category.text = str(quest.get("category", "")).to_upper()
+    category.add_theme_font_size_override("font_size", 7)
+    category.add_theme_color_override("font_color", Color("9a8761"))
+
+    var desc := Label.new()
+    box.add_child(desc)
+    desc.text = str(quest.get("desc", ""))
+    desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    desc.add_theme_font_size_override("font_size", 9)
+    desc.add_theme_color_override("font_color", Color("aeb7b9"))
+
+    var goal: int = maxi(1, int(quest.get("goal", 1)))
+    var progress: int = mini(goal, int(quest.get("progress", 0)))
+
+    var progress_row := HBoxContainer.new()
+    box.add_child(progress_row)
+
+    var progress_text := Label.new()
+    progress_row.add_child(progress_text)
+    progress_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    progress_text.text = "%d / %d" % [progress, goal]
+    progress_text.add_theme_font_size_override("font_size", 10)
+    progress_text.add_theme_color_override("font_color", Color("c9d2cf"))
+
+    var reward_type: String = str(quest.get("reward_type", "coins"))
+    var reward_text: String = "%d ОСК." % int(quest.get("reward", 0)) if reward_type == "shards" else "%d МОН." % int(quest.get("reward", 0))
+    var claim := _button(progress_row, "ЗАБРАТЬ · " + reward_text if bool(quest.get("ready", false)) else reward_text, false)
+    claim.custom_minimum_size = Vector2(126, 40)
+    claim.disabled = not bool(quest.get("ready", false))
+    claim.pressed.connect(_claim_daily_quest.bind(str(quest.get("id", ""))))
+
+func _claim_resident_quest(resident_id: String) -> void:
+    var result: Dictionary = QuestDirector.claim_resident(resident_id)
+    if bool(result.get("ok", false)):
+        _refresh_currency()
+    _show_quests()
+
+func _claim_daily_quest(quest_id: String) -> void:
+    var result: Dictionary = QuestDirector.claim(quest_id)
+    if bool(result.get("ok", false)):
+        _refresh_currency()
+        Feedback.play("victory", 8)
+    _show_quests()
 
 func _show_forge() -> void:
     _clear_body()
@@ -320,6 +449,8 @@ func _on_camp_action(action: String) -> void:
             _show_arsenal()
         "goals":
             _show_goals()
+        "quests":
+            _show_quests()
         "map":
             _show_map()
 

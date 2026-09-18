@@ -36,12 +36,16 @@ func _run() -> void:
     if game.world_generator == null or game.activity_director == null:
         _fail("WorldGenerator or WorldActivityDirector missing")
     else:
-        var counts: Dictionary = {"caravan":0, "chest":0, "nest":0, "altar":0}
+        var counts: Dictionary = {}
         for activity: WorldActivity in game.activity_director.activities:
             if is_instance_valid(activity):
                 counts[activity.activity_type] = int(counts.get(activity.activity_type, 0)) + 1
-        if int(counts["caravan"]) < 2 or int(counts["chest"]) < 3 or int(counts["nest"]) < 3:
+        if game.activity_director.activities.size() < 7:
             _fail("Core exploration activities were not populated")
+        if int(counts.get("nest", 0)) < 2:
+            _fail("Strategic Dark Nests were not guaranteed")
+        if counts.size() < 4:
+            _fail("Activity Director 2.0 did not create a mixed encounter set")
 
         var threat_before: int = game.activity_director.night_extra_enemies()
         for activity: WorldActivity in game.activity_director.activities:

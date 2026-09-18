@@ -1,7 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://axehold_save.json"
-const SAVE_VERSION := 4
+const SAVE_VERSION := 5
 
 var data: Dictionary = {}
 
@@ -27,6 +27,7 @@ func defaults() -> Dictionary:
         "weapons_owned": ["axes"],
         "selected_weapon": "axes",
         "meta_notices": [],
+        "lore_fragments": 0,
         "skins_owned": [true, false, false, false],
         "selected_skin": 0,
         "daily_date": "",
@@ -38,7 +39,12 @@ func defaults() -> Dictionary:
             "kills": {"value": 0, "goal": 18, "reward": 45, "claimed": false},
             "builds": {"value": 0, "goal": 2, "reward": 35, "claimed": false}
         },
-        "trophies_claimed": []
+        "trophies_claimed": [],
+        "quest_state": {"date":"", "active":[], "used_ids":[], "claimed_today":0, "archive":0},
+        "residents": {
+            "mira": {"unlocked": false, "trust": 0, "quest_step": 0, "quest_progress": 0},
+            "thorn": {"unlocked": false, "trust": 0, "quest_step": 0, "quest_progress": 0}
+        }
     }
 
 func _load_save() -> void:
@@ -63,6 +69,13 @@ func _migrate_save() -> void:
         data["coach_complete"] = false
     if version < 4:
         _retrofit_meta_progression()
+    if version < 5:
+        data["quest_state"] = {"date":"", "active":[], "used_ids":[], "claimed_today":0, "archive":0}
+        if not data.has("residents"):
+            data["residents"] = {
+                "mira": {"unlocked": false, "trust": 0, "quest_step": 0},
+                "thorn": {"unlocked": false, "trust": 0, "quest_step": 0}
+            }
     data["save_version"] = SAVE_VERSION
     save()
 
