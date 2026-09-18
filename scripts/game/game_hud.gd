@@ -1,6 +1,10 @@
 class_name GameHud
 extends CanvasLayer
 
+const WOOD_ICON: Texture2D = preload("res://assets/ui/res_wood.svg")
+const STONE_ICON: Texture2D = preload("res://assets/ui/res_stone.svg")
+const ORE_ICON: Texture2D = preload("res://assets/ui/res_ore.svg")
+
 signal action_requested(action: String)
 
 var root: Control
@@ -13,6 +17,9 @@ var xp_bar: ProgressBar
 var level_label: Label
 var backpack_label: Label
 var storage_label: Label
+var storage_wood_label: Label
+var storage_stone_label: Label
+var storage_ore_label: Label
 var objective_label: Label
 var status_label: Label
 var status_panel: PanelContainer
@@ -97,7 +104,25 @@ func _build() -> void:
 
     var storage_panel := _panel(root, Color(0.075, 0.072, 0.050, 0.88), Color("67573d"))
     storage_panel.name = "StoragePanel"
-    storage_label = _make_label(storage_panel, "СКЛАД   Д 0   К 0   Р 0", 8, Color("efe2c7"), HORIZONTAL_ALIGNMENT_CENTER)
+
+    var storage_row := HBoxContainer.new()
+    storage_panel.add_child(storage_row)
+    storage_row.alignment = BoxContainer.ALIGNMENT_CENTER
+    storage_row.add_theme_constant_override("separation", 5)
+
+    var storage_title := Label.new()
+    storage_row.add_child(storage_title)
+    storage_title.text = "СКЛАД"
+    storage_title.add_theme_font_size_override("font_size", 7)
+    storage_title.add_theme_color_override("font_color", Color("b9ab8b"))
+
+    storage_wood_label = _resource_chip(storage_row, WOOD_ICON, "0")
+    storage_stone_label = _resource_chip(storage_row, STONE_ICON, "0")
+    storage_ore_label = _resource_chip(storage_row, ORE_ICON, "0")
+
+    storage_label = Label.new()
+    root.add_child(storage_label)
+    storage_label.visible = false
 
     # Kept for analytics/regression compatibility; backpack information is now rendered above the hero.
     backpack_label = Label.new()
@@ -207,8 +232,6 @@ func _layout() -> void:
 
     storage_panel.position = Vector2(margin, 45)
     storage_panel.size = Vector2(width - margin * 2.0, 27)
-    storage_label.position = Vector2(8, 3)
-    storage_label.size = Vector2(width - margin * 2.0 - 16, 21)
 
     build_panel.position = Vector2((width - 206.0) * 0.5, 80)
     build_panel.size = Vector2(206, 70)
@@ -254,9 +277,13 @@ func update_stats(hero_hp: float, base_hp: float, bag: int, capacity: int, wave:
         bag, capacity,
         int(inventory.get("wood", 0)), int(inventory.get("stone", 0)), int(inventory.get("ore", 0))
     ]
-    storage_label.text = "СКЛАД   Д %d   К %d   Р %d" % [
-        int(storage.get("wood", 0)), int(storage.get("stone", 0)), int(storage.get("ore", 0))
-    ]
+    var wood_count: int = int(storage.get("wood", 0))
+    var stone_count: int = int(storage.get("stone", 0))
+    var ore_count: int = int(storage.get("ore", 0))
+    storage_label.text = "СКЛАД Д%d К%d Р%d" % [wood_count, stone_count, ore_count]
+    storage_wood_label.text = str(wood_count)
+    storage_stone_label.text = str(stone_count)
+    storage_ore_label.text = str(ore_count)
 
 func set_build_context(title: String, effect: String, cost: Dictionary, storage: Dictionary, ready: bool, progress: float = 0.0) -> void:
     build_panel.visible = true
@@ -385,6 +412,26 @@ func _make_label(parent: Control, text: String, font_size: int, color: Color, al
     label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     label.add_theme_font_size_override("font_size", font_size)
     label.add_theme_color_override("font_color", color)
+    return label
+
+func _resource_chip(parent: Control, texture: Texture2D, value: String) -> Label:
+    var group := HBoxContainer.new()
+    parent.add_child(group)
+    group.add_theme_constant_override("separation", 2)
+
+    var icon := TextureRect.new()
+    group.add_child(icon)
+    icon.texture = texture
+    icon.custom_minimum_size = Vector2(13, 13)
+    icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+    icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+    var label := Label.new()
+    group.add_child(label)
+    label.text = value
+    label.add_theme_font_size_override("font_size", 8)
+    label.add_theme_color_override("font_color", Color("f1e7d3"))
     return label
 
 func _panel(parent: Control, color: Color, border_color: Color) -> PanelContainer:
