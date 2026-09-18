@@ -304,8 +304,15 @@ func _draw() -> void:
     var bob: float = round(sin(motion_time * (10.0 if moving else 2.2)) * (1.0 if moving else 0.35))
     var stride: int = int(round(sin(motion_time * 11.0) * 2.0)) if moving else 0
     var body_offset := Vector2(0, bob)
+    var action_ratio: float = weapon_action_ratio()
+    if weapon_action_time > 0.0:
+        if weapon_style == "spear" or weapon_style == "twin_blades":
+            body_offset += weapon_action_direction.normalized() * (3.0 + action_ratio * 2.0)
+        elif weapon_style == "hammer":
+            body_offset += Vector2(0, 2.0 + (1.0 - action_ratio) * 2.0)
 
-    draw_rect(Rect2(-13, 15, 27, 5), Color(0.04, 0.06, 0.05, 0.24))
+    var shadow_scale: float = 1.0 + (0.08 if weapon_action_time > 0.0 else 0.0)
+    draw_rect(Rect2(-13 * shadow_scale, 15, 27 * shadow_scale, 5), Color(0.04, 0.06, 0.05, 0.24))
 
     var radius: float = orbit_radius + axes * 4.0
     if weapon_style == "axes" or weapon_style == "twin_blades":
@@ -322,6 +329,8 @@ func _draw() -> void:
 
     # Cape is a crisp pixel silhouette behind the hero.
     var cape_shift: float = -facing_x * (3.0 if moving else 1.0)
+    if weapon_action_time > 0.0:
+        cape_shift -= facing_x * 2.0 * action_ratio
     var cape := PackedVector2Array([
         body_offset + Vector2(-8 + cape_shift, -3),
         body_offset + Vector2(-9 + cape_shift, 14),
@@ -452,6 +461,7 @@ func _draw_axe(pos: Vector2, weapon_angle: float) -> void:
     draw_line(handle_a, handle_b, Color("68482f"), 4.0)
     draw_line(pos + Vector2(-7, -9).rotated(weapon_angle), pos + Vector2(7, -9).rotated(weapon_angle), Color("b8bec1").lightened(perk_flash * 0.22), 6.0)
     draw_circle(pos, 2.2, Color(0.96, 0.97, 0.98, 0.55))
+    draw_arc(pos, 9.0, weapon_angle - 0.9, weapon_angle + 0.3, 8, Color(0.82, 0.90, 0.95, 0.18), 1.5)
 
 func _draw_spear(pos: Vector2, weapon_angle: float) -> void:
     var shaft_a: Vector2 = pos + Vector2(0, 13).rotated(weapon_angle)
@@ -462,6 +472,7 @@ func _draw_spear(pos: Vector2, weapon_angle: float) -> void:
     var right: Vector2 = pos + Vector2(5, -14).rotated(weapon_angle)
     draw_colored_polygon(PackedVector2Array([tip, left, right]), Color("d5e2e5").lightened(perk_flash * 0.18))
     draw_circle(pos + Vector2(0, 10).rotated(weapon_angle), 2.0, Color("8fb06d"))
+    draw_circle(tip, 3.2, Color(0.64, 0.88, 0.61, 0.20 + weapon_action_ratio() * 0.28))
 
 func _draw_hammer(pos: Vector2, weapon_angle: float) -> void:
     var handle_a: Vector2 = pos + Vector2(0, 12).rotated(weapon_angle)
@@ -476,6 +487,8 @@ func _draw_hammer(pos: Vector2, weapon_angle: float) -> void:
     var p4: Vector2 = head_center - side * 10.0 + up * 5.0
     draw_colored_polygon(PackedVector2Array([p1, p2, p3, p4]), Color("9fb4c2").lightened(perk_flash * 0.16))
     draw_line(p1, p2, Color("d8eef5"), 1.5)
+    if weapon_action_time > 0.0:
+        draw_circle(head_center, 13.0 + (1.0 - weapon_action_ratio()) * 4.0, Color(0.57, 0.83, 0.95, weapon_action_ratio() * 0.16))
 
 func _draw_twin_blade(pos: Vector2, weapon_angle: float) -> void:
     var inner: Vector2 = pos + Vector2(0, 8).rotated(weapon_angle)
@@ -485,6 +498,7 @@ func _draw_twin_blade(pos: Vector2, weapon_angle: float) -> void:
     var wing: Vector2 = pos + Vector2(5, -10).rotated(weapon_angle)
     draw_colored_polygon(PackedVector2Array([outer, tip, wing]), Color("e1a07c").lightened(perk_flash * 0.20))
     draw_circle(inner, 2.0, Color("f1c26f"))
+    draw_arc(pos, 10.0, weapon_angle - 0.7, weapon_angle + 0.5, 8, Color(0.96, 0.46, 0.28, 0.22), 1.5)
 
 func _draw_shadow_ellipse(center_pos: Vector2, radii: Vector2, color: Color) -> void:
     var points: PackedVector2Array = PackedVector2Array()
