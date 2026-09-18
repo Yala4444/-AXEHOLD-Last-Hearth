@@ -418,6 +418,7 @@ func add_mechanism_parts(amount: int, source: Vector2 = Vector2.ZERO) -> void:
     if amount <= 0:
         return
     storage["parts"] = int(storage.get("parts", 0)) + amount
+    QuestDirector.record("mechanism_part", amount, {"biome":biome_index,"wave":wave})
     hud.show_banner("+%d ДЕТАЛЬ" % amount if amount == 1 else "+%d ДЕТАЛИ" % amount, Color("c7d0cf"))
     hud.set_status("Редкая деталь хранится отдельно и нужна для построек II.")
     if core_fx != null and source != Vector2.ZERO:
@@ -576,6 +577,7 @@ func _start_night() -> void:
     Analytics.event("wave_start", {"wave": wave, "biome": biome_index})
 
 func _start_day() -> void:
+    QuestDirector.record("night_survive", 1, {"biome":biome_index,"wave":wave})
     phase = "day"
     if backdrop != null:
         backdrop.set_night(false)

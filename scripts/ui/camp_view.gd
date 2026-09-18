@@ -32,7 +32,11 @@ func refresh() -> void:
     wins = int(GameState.data.get("wins", 0))
 
     title_label.text = GameState.camp_title().to_upper()
-    meta_label.text = "Мастерство %d · Реликвии %d/3 · Победы %d" % [mastery, _relic_count(), wins]
+    meta_label.text = "Глава %s · Мастерство %d · Реликвии %d/3" % [
+        "II" if GameState.chapter_one_complete() else "I",
+        mastery,
+        _relic_count()
+    ]
     var profile: Dictionary = WeaponRules.profile(selected_weapon)
     weapon_label.text = "%s %s" % [str(profile.get("icon", "⚔️")), str(profile.get("name", "Оружие"))]
 
@@ -52,6 +56,7 @@ func progress_signature() -> Dictionary:
         "watchtower": mastery >= 5,
         "stronghold": mastery >= 9,
         "residents": _resident_count(),
+        "chapter": GameState.current_chapter(),
         "weapon": selected_weapon
     }
 
@@ -86,6 +91,7 @@ func _build_overlay() -> void:
     _make_action_button("arsenal", "АРСЕНАЛ")
     _make_action_button("goals", "ТРОФЕИ")
     _make_action_button("quests", "ЗАДАНИЯ")
+    _make_action_button("chronicle", "ХРОНИКА")
     _make_action_button("map", "КАРТА")
 
 func _make_action_button(action: String, text: String) -> void:
@@ -127,6 +133,11 @@ func _layout_overlay() -> void:
     weapon_label.position = Vector2(width * 0.5 - 88.0, height - 54.0)
     weapon_label.size = Vector2(176, 18)
     weapon_label.add_theme_font_size_override("font_size", 8)
+
+    var chronicle: Button = action_buttons.get("chronicle") as Button
+    if chronicle != null:
+        chronicle.position = Vector2(width * 0.50 - 38.0, 56.0)
+        chronicle.size = Vector2(76, 22)
 
     var forge: Button = action_buttons.get("forge") as Button
     if forge != null:
@@ -420,14 +431,49 @@ func _draw_wanderer(pos: Vector2) -> void:
 
 func _draw_residents(width: float) -> void:
     var height: float = maxf(size.y, 455.0)
-    var positions: Array[Vector2] = [
-        Vector2(width * 0.34, height - 104.0), Vector2(width * 0.66, height - 102.0),
+    var named_positions: Dictionary = {
+        "mira":Vector2(width * 0.34, height - 104.0),
+        "thorn":Vector2(width * 0.66, height - 102.0)
+    }
+    var residents: Dictionary = GameState.data.get("residents", {})
+    var named_count: int = 0
+
+    for resident_id: String in ResidentRules.ids():
+        var resident: Dictionary = residents.get(resident_id, {})
+        if not bool(resident.get("unlocked", false)):
+            continue
+        named_count += 1
+        var named_pos: Vector2 = named_positions.get(resident_id, Vector2(width * 0.5, height - 100.0))
+        _draw_named_resident(named_pos, resident_id)
+
+    var ambient_positions: Array[Vector2] = [
         Vector2(width * 0.12, height - 84.0), Vector2(width * 0.84, height - 82.0),
         Vector2(width * 0.40, height - 65.0), Vector2(width * 0.61, height - 64.0)
     ]
-    var count: int = mini(_resident_count(), positions.size())
-    for i: int in range(count):
-        _draw_resident(positions[i], i)
+    var ambient_count: int = maxi(0, mini(_resident_count() - named_count, ambient_positions.size()))
+    for i: int in range(ambient_count):
+        _draw_resident(ambient_positions[i], i + named_count)
+
+func _draw_named_resident(pos: Vector2, resident_id: String) -> void:
+    var phase_offset: float = 0.0 if resident_id == "mira" else 1.7
+    var bob: float = sin(elapsed * 2.2 + phase_offset) * 1.0
+    pos.y += bob
+
+    if resident_id == "mira":
+        draw_circle(pos + Vector2(0, -12), 4.5, Color("d5a47f"))
+        draw_line(pos + Vector2(0, -7), pos + Vector2(0, 8), Color("5f8068"), 8.0)
+        draw_line(pos + Vector2(-2, 6), pos + Vector2(-6, 14), Color("313b38"), 3.0)
+        draw_line(pos + Vector2(2, 6), pos + Vector2(6, 14), Color("313b38"), 3.0)
+        draw_line(pos + Vector2(-6, -5), pos + Vector2(7, -8), Color("a98d61"), 2.0)
+        draw_rect(Rect2(pos + Vector2(5, -11), Vector2(4, 6)), Color("c18d58"))
+    else:
+        draw_circle(pos + Vector2(0, -12), 4.7, Color("c89b76"))
+        draw_line(pos + Vector2(0, -7), pos + Vector2(0, 8), Color("8a654e"), 8.0)
+        draw_line(pos + Vector2(-2, 6), pos + Vector2(-6, 14), Color("363536"), 3.0)
+        draw_line(pos + Vector2(2, 6), pos + Vector2(6, 14), Color("363536"), 3.0)
+        draw_line(pos + Vector2(5, -4), pos + Vector2(13, 8), Color("6b4933"), 3.0)
+        draw_rect(Rect2(pos + Vector2(10, -1), Vector2(8, 5)), Color("9ca3a0"))
+
 
 func _draw_resident(pos: Vector2, index: int) -> void:
     var bob: float = sin(elapsed * 2.2 + float(index) * 1.7) * 1.0

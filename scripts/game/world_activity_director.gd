@@ -33,11 +33,29 @@ func _spawn_initial_activities() -> void:
     var story: Array[String] = ["wounded_scout", "memory_rift", "signal_fire"]
     var utility: Array[String] = ["broken_tower", "rare_ore", "signal_fire", "caravan"]
 
+    var residents: Dictionary = GameState.data.get("residents", {})
+    var mira: Dictionary = residents.get("mira", {})
+    var thorn: Dictionary = residents.get("thorn", {})
+
+    var story_pick: String = ""
+    if not bool(mira.get("unlocked", false)):
+        story_pick = "wounded_scout"
+        selected[story_pick] = true
+    else:
+        story_pick = _pick_unique(story, selected)
+
+    var utility_pick: String = ""
+    if not bool(thorn.get("unlocked", false)):
+        utility_pick = "broken_tower"
+        selected[utility_pick] = true
+    else:
+        utility_pick = _pick_unique(utility, selected)
+
     var picks: Array[String] = [
         _pick_unique(positive, selected),
         _pick_unique(risk, selected),
-        _pick_unique(story, selected),
-        _pick_unique(utility, selected)
+        story_pick,
+        utility_pick
     ]
     for kind: String in picks:
         if kind.is_empty():
@@ -296,8 +314,24 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         world.turret_global_damage_mult *= 1.12
         world.turret_global_fire_mult *= 0.92
         world.run_coins += 5
-        world.hud.show_banner("СТАРАЯ БАШНЯ ВОССТАНОВЛЕНА", Color("c3c9bd"))
-        world.hud.set_status("Механизм передал чертежи: твоя Башня сильнее в этом забеге.")
+
+        var residents: Dictionary = GameState.data.get("residents", {})
+        var thorn: Dictionary = residents.get("thorn", {"unlocked":false,"trust":0,"quest_step":0,"quest_progress":0})
+        var thorn_was_locked: bool = not bool(thorn.get("unlocked", false))
+        if thorn_was_locked:
+            thorn["unlocked"] = true
+            thorn["quest_progress"] = 0
+            residents["thorn"] = thorn
+            GameState.data["residents"] = residents
+            var resident_notices: Array = GameState.data.get("meta_notices", [])
+            resident_notices.append("Восстановленная башня передала старый сигнал. Инженер Торн нашёл дорогу к Последнему Очагу.")
+            GameState.data["meta_notices"] = resident_notices
+            GameState.save()
+            QuestDirector.record("resident_rescued", 1, {"resident":"thorn","biome":world.biome_index})
+
+        QuestDirector.record("tower_repaired", 1, {"biome":world.biome_index})
+        world.hud.show_banner("СИГНАЛ ДОШЁЛ ДО ТОРНА" if thorn_was_locked else "СТАРАЯ БАШНЯ ВОССТАНОВЛЕНА", Color("c3c9bd"))
+        world.hud.set_status("Торн вернётся к Очагу. Башня усилена в этом забеге." if thorn_was_locked else "Механизм передал чертежи: твоя Башня сильнее в этом забеге.")
     elif activity.activity_type == "wind_shrine":
         world.player.move_speed *= 1.08
         world.run_coins += 5
@@ -334,6 +368,7 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         world.hud.set_status("Ресурсы спасены, но заражение усилило следующую ночь.")
     elif activity.activity_type == "memory_rift":
         world.run_coins += 6
+        QuestDirector.record("memory_rift", 1, {"biome":world.biome_index})
         GameState.data["lore_fragments"] = int(GameState.data.get("lore_fragments", 0)) + 1
         var notices: Array = GameState.data.get("meta_notices", [])
         notices.append("Разлом памяти: найден новый фрагмент прошлого.")

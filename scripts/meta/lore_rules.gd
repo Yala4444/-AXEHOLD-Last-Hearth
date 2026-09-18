@@ -3,6 +3,11 @@ extends RefCounted
 
 const CHAPTER_TITLE := "ГЛАВА I · ПОГАСАНИЕ"
 const CHAPTER_PROMISE := "Последний Очаг ещё горит. Остальные давно молчат."
+const CHAPTER_TWO_TITLE := "ГЛАВА II · ДОРОГА К ОГНЯМ"
+const CHAPTER_TWO_PROMISE := "Хранители были ключами. Теперь нужно найти Очаги, которые они когда-то защищали."
+
+const CHAPTER_ONE_FINALE := "Три реликвии складываются в один знак — карту старой сети Очагов. На обратной стороне выжжено предупреждение: «Один огонь не удержит ночь». Странник больше не должен ждать у последнего костра. Нужно идти туда, где свет погас первым."
+const CHAPTER_TWO_OBJECTIVE := "Подготовить дальнюю экспедицию и найти первый внешний Очаг за пределами известных трёх регионов."
 
 const BIOME_TAGLINES: Array[String] = [
     "Там, где дорога исчезла под корнями.",
@@ -17,7 +22,7 @@ const BIOME_LORE: Array[String] = [
 ]
 
 const RELIC_CLUES: Array[String] = [
-    "Реликвия хранит знак старого Очагa. Хранитель когда-то защищал его, а не уничтожал.",
+    "Реликвия хранит знак старого Очага. Хранитель когда-то защищал его, а не уничтожал.",
     "Внутри льда виден тот же знак. Похоже, все Хранители служили одной сети Очагов.",
     "На реликвии выжжены слова: «Один огонь не удержит ночь». Последний Очаг нельзя защищать вечно."
 ]
@@ -41,3 +46,21 @@ static func camp_whisper(relic_count: int) -> String:
             return "Две реликвии откликаются друг на друга. Старые Очаги были связаны."
         _:
             return "Один огонь не удержит ночь. Теперь Странник знает, что нужно искать дальше."
+
+static func chapter_title(chapter_one_complete: bool) -> String:
+    return CHAPTER_TWO_TITLE if chapter_one_complete else CHAPTER_TITLE
+
+static func chapter_promise(chapter_one_complete: bool) -> String:
+    return CHAPTER_TWO_PROMISE if chapter_one_complete else CHAPTER_PROMISE
+
+static func chronicle_relic_progress(relics: Array) -> Array[Dictionary]:
+    var result: Array[Dictionary] = []
+    for i: int in range(3):
+        var found: bool = i < relics.size() and bool(relics[i])
+        result.append({
+            "index":i,
+            "found":found,
+            "name":WeaponRules.relic_name(i),
+            "clue":relic_clue(i) if found else "След реликвии ещё скрыт во Тьме."
+        })
+    return result

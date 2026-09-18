@@ -23,16 +23,22 @@ func _show_home() -> void:
 
     var chapter := Label.new()
     story_box.add_child(chapter)
-    chapter.text = LoreRules.CHAPTER_TITLE
+    var chapter_one_complete: bool = GameState.chapter_one_complete()
+    chapter.text = LoreRules.chapter_title(chapter_one_complete)
     chapter.add_theme_font_size_override("font_size", 9)
     chapter.add_theme_color_override("font_color", Color("d0ac68"))
 
     var whisper := Label.new()
     story_box.add_child(whisper)
-    whisper.text = LoreRules.camp_whisper(relic_count)
+    whisper.text = LoreRules.chapter_promise(true) if chapter_one_complete else LoreRules.camp_whisper(relic_count)
     whisper.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     whisper.add_theme_font_size_override("font_size", 10)
     whisper.add_theme_color_override("font_color", Color("c5cec9"))
+
+    var chronicle_text: String = "ХРОНИКА · ГЛАВА II" if chapter_one_complete else ("ХРОНИКА · ФИНАЛ ГЛАВЫ I" if GameState.chapter_one_ready() else "ОТКРЫТЬ ХРОНИКУ")
+    var chronicle_button := _button(body, chronicle_text, false)
+    chronicle_button.custom_minimum_size = Vector2(0, 38)
+    chronicle_button.pressed.connect(_show_chronicle)
 
     var quest_button := _button(body, "ДОСКА ЗАДАНИЙ · %d АКТИВНЫХ" % QuestDirector.active_quests().size(), false)
     quest_button.custom_minimum_size = Vector2(0, 40)
@@ -232,7 +238,7 @@ func _show_arsenal() -> void:
 
 func _show_map() -> void:
     _clear_body()
-    _section("Карта Тьмы", "Чем дальше от Последнего Очагa, тем меньше мир похож на то, что было раньше.")
+    _section("Карта Тьмы", "Чем дальше от Последнего Очага, тем меньше мир похож на то, что было раньше.")
 
     var map_view := WorldMapView.new()
     body.add_child(map_view)
@@ -267,6 +273,150 @@ func _show_map() -> void:
 
     var play := _button(body, "В ЭКСПЕДИЦИЮ: " + str(biome_data.get("name", "Регион")).to_upper(), true)
     play.pressed.connect(_start_game)
+
+func _show_chronicle() -> void:
+    GameState.mark_chronicle_seen()
+    _clear_body()
+
+    var chapter_complete: bool = GameState.chapter_one_complete()
+    _section(
+        "Хроника Последнего Очага",
+        "История открывается не диалоговыми окнами, а тем, что Странник действительно принёс домой."
+    )
+
+    var overview := _panel(body)
+    var overview_box := VBoxContainer.new()
+    overview.add_child(overview_box)
+    overview_box.add_theme_constant_override("separation", 4)
+
+    var chapter_label := Label.new()
+    overview_box.add_child(chapter_label)
+    chapter_label.text = LoreRules.chapter_title(chapter_complete)
+    chapter_label.add_theme_font_size_override("font_size", 14)
+    chapter_label.add_theme_color_override("font_color", Color("e5c17c"))
+
+    var promise := Label.new()
+    overview_box.add_child(promise)
+    promise.text = LoreRules.chapter_promise(chapter_complete)
+    promise.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    promise.add_theme_font_size_override("font_size", 10)
+    promise.add_theme_color_override("font_color", Color("c3cecb"))
+
+    var meta := Label.new()
+    overview_box.add_child(meta)
+    meta.text = "Реликвии %d/3 · Фрагменты памяти %d · Жители %d/%d" % [
+        GameState.relic_count(),
+        int(GameState.data.get("lore_fragments", 0)),
+        GameState.unlocked_resident_count(),
+        ResidentRules.ids().size()
+    ]
+    meta.add_theme_font_size_override("font_size", 8)
+    meta.add_theme_color_override("font_color", Color("8f9a9c"))
+
+    _section("Следы Хранителей", "Каждая реликвия — не трофей, а часть карты старой сети.")
+
+    var relics: Array = GameState.data.get("boss_relics", [false, false, false])
+    for item: Dictionary in LoreRules.chronicle_relic_progress(relics):
+        var card := _panel(body)
+        var box := VBoxContainer.new()
+        card.add_child(box)
+        box.add_theme_constant_override("separation", 3)
+
+        var found: bool = bool(item.get("found", false))
+        var title := Label.new()
+        box.add_child(title)
+        title.text = ("%s · НАЙДЕНА" if found else "НЕИЗВЕСТНАЯ РЕЛИКВИЯ") % str(item.get("name", "Реликвия"))
+        title.add_theme_font_size_override("font_size", 10)
+        title.add_theme_color_override("font_color", Color("e0c27f") if found else Color("6f797b"))
+
+        var clue := Label.new()
+        box.add_child(clue)
+        clue.text = str(item.get("clue", ""))
+        clue.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        clue.add_theme_font_size_override("font_size", 9)
+        clue.add_theme_color_override("font_color", Color("b8c1bf") if found else Color("697274"))
+
+    if GameState.chapter_one_ready() and not chapter_complete:
+        _section("Три части одного знака", "Теперь реликвии можно соединить на столе Хроники.")
+
+        var finale := _panel(body)
+        var finale_box := VBoxContainer.new()
+        finale.add_child(finale_box)
+        finale_box.add_theme_constant_override("separation", 7)
+
+        var finale_text := Label.new()
+        finale_box.add_child(finale_text)
+        finale_text.text = LoreRules.CHAPTER_ONE_FINALE
+        finale_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        finale_text.add_theme_font_size_override("font_size", 10)
+        finale_text.add_theme_color_override("font_color", Color("d7d1c2"))
+
+        var finish_chapter := _button(finale_box, "ЗАВЕРШИТЬ ГЛАВУ I · +2 ОСК.", true)
+        finish_chapter.custom_minimum_size = Vector2(0, 48)
+        finish_chapter.pressed.connect(_claim_chapter_one)
+    elif chapter_complete:
+        _section(LoreRules.CHAPTER_TWO_TITLE, "Глава открыта как направление развития, а не как обещание уже готового региона.")
+
+        var next_panel := _panel(body)
+        var next_box := VBoxContainer.new()
+        next_panel.add_child(next_box)
+        next_box.add_theme_constant_override("separation", 5)
+
+        var next_story := Label.new()
+        next_box.add_child(next_story)
+        next_story.text = LoreRules.CHAPTER_TWO_PROMISE
+        next_story.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        next_story.add_theme_font_size_override("font_size", 10)
+        next_story.add_theme_color_override("font_color", Color("cad6d2"))
+
+        var next_objective := Label.new()
+        next_box.add_child(next_objective)
+        next_objective.text = "СЛЕДУЮЩАЯ ЦЕЛЬ
+" + LoreRules.CHAPTER_TWO_OBJECTIVE
+        next_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        next_objective.add_theme_font_size_override("font_size", 9)
+        next_objective.add_theme_color_override("font_color", Color("d9b66d"))
+
+    _section("Люди у Огня", "Спасённые жители превращают лагерь из меню между забегами в место, которое помнит твои решения.")
+
+    var residents: Dictionary = GameState.data.get("residents", {})
+    for resident_id: String in ResidentRules.ids():
+        var resident: Dictionary = residents.get(resident_id, {})
+        var unlocked: bool = bool(resident.get("unlocked", false))
+        var resident_panel := _panel(body)
+        var resident_box := VBoxContainer.new()
+        resident_panel.add_child(resident_box)
+        resident_box.add_theme_constant_override("separation", 3)
+
+        var resident_title := Label.new()
+        resident_box.add_child(resident_title)
+        resident_title.text = "%s · %s" % [ResidentRules.role_for(resident_id), ResidentRules.name_for(resident_id).to_upper()] if unlocked else "НЕИЗВЕСТНЫЙ ВЫЖИВШИЙ"
+        resident_title.add_theme_font_size_override("font_size", 10)
+        resident_title.add_theme_color_override("font_color", Color("d9bf84") if unlocked else Color("6e7778"))
+
+        var resident_desc := Label.new()
+        resident_box.add_child(resident_desc)
+        resident_desc.text = ResidentRules.description_for(resident_id) if unlocked else ("Помоги раненой разведчице в мире." if resident_id == "mira" else "Восстанови старую сломанную башню и дождись ответа на сигнал.")
+        resident_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        resident_desc.add_theme_font_size_override("font_size", 9)
+        resident_desc.add_theme_color_override("font_color", Color("aab5b3") if unlocked else Color("687173"))
+
+        if unlocked:
+            var trust := Label.new()
+            resident_box.add_child(trust)
+            trust.text = "Доверие %d/%d · поручение %d/%d" % [
+                int(resident.get("trust", 0)),
+                ResidentRules.max_trust(resident_id),
+                mini(ResidentRules.chain_size(resident_id), int(resident.get("quest_step", 0)) + 1),
+                ResidentRules.chain_size(resident_id)
+            ]
+            trust.add_theme_font_size_override("font_size", 8)
+            trust.add_theme_color_override("font_color", Color("899796"))
+
+    var quest_button := _button(body, "К ПОРУЧЕНИЯМ ЖИТЕЛЕЙ", false)
+    quest_button.pressed.connect(_show_quests)
+    var map_button := _button(body, "К КАРТЕ", false)
+    map_button.pressed.connect(_show_map)
 
 func _show_goals() -> void:
     _clear_body()
@@ -330,56 +480,89 @@ func _show_quests() -> void:
         for quest: Dictionary in quests:
             _daily_quest_card(quest)
 
-    _section("Поручения жителей", "Спасённые жители будут давать собственные цепочки и новые возможности лагеря.")
+    _section("Поручения жителей", "У каждого спасённого жителя своя цепочка. Доверие растёт только за реальные действия в экспедициях.")
     var residents: Dictionary = GameState.data.get("residents", {})
-    var mira: Dictionary = residents.get("mira", {})
-    if bool(mira.get("unlocked", false)):
-        var resident_panel := _panel(body)
-        var resident_box := VBoxContainer.new()
-        resident_panel.add_child(resident_box)
-        resident_box.add_theme_constant_override("separation", 5)
+    var unlocked_residents: int = 0
+    for resident_id: String in ResidentRules.ids():
+        var resident: Dictionary = residents.get(resident_id, {})
+        if bool(resident.get("unlocked", false)):
+            unlocked_residents += 1
+            _resident_quest_card(resident_id, resident)
 
-        var resident_title := Label.new()
-        resident_box.add_child(resident_title)
-        resident_title.text = "РАЗВЕДЧИЦА МИРА · ДОВЕРИЕ %d/3" % int(mira.get("trust", 0))
-        resident_title.add_theme_font_size_override("font_size", 11)
-        resident_title.add_theme_color_override("font_color", Color("e6c98c"))
-
-        var resident_quest: Dictionary = QuestDirector.resident_quest_state("mira")
-        var resident_desc := Label.new()
-        resident_box.add_child(resident_desc)
-        resident_desc.text = str(resident_quest.get("desc", "Мира отмечает дальние события."))
-        resident_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        resident_desc.add_theme_font_size_override("font_size", 9)
-        resident_desc.add_theme_color_override("font_color", Color("aeb8b9"))
-
-        if not bool(resident_quest.get("complete", false)):
-            var rq_goal: int = maxi(1, int(resident_quest.get("goal", 1)))
-            var rq_progress: int = mini(rq_goal, int(resident_quest.get("progress", 0)))
-            var resident_progress := Label.new()
-            resident_box.add_child(resident_progress)
-            resident_progress.text = "%s · %d/%d" % [str(resident_quest.get("title", "ПОРУЧЕНИЕ")), rq_progress, rq_goal]
-            resident_progress.add_theme_font_size_override("font_size", 9)
-            resident_progress.add_theme_color_override("font_color", Color("c9d2cf"))
-            if bool(resident_quest.get("ready", false)):
-                var resident_claim := _button(resident_box, "ЗАБРАТЬ НАГРАДУ МИРЫ", false)
-                resident_claim.pressed.connect(_claim_resident_quest.bind("mira"))
-        else:
-            var completed := Label.new()
-            resident_box.add_child(completed)
-            completed.text = "Текущая цепочка Миры завершена."
-            completed.add_theme_font_size_override("font_size", 9)
-            completed.add_theme_color_override("font_color", Color("8fd5b0"))
-    else:
+    if unlocked_residents < ResidentRules.ids().size():
         var locked := Label.new()
         body.add_child(locked)
-        locked.text = "В мире ещё есть выжившие. Исследуй дальние области и ищи сигналы."
+        locked.text = "Ещё не все места у Огня заняты. Мира находится через спасение разведчицы, Торн — через восстановление старой башни."
         locked.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         locked.add_theme_font_size_override("font_size", 9)
         locked.add_theme_color_override("font_color", Color("7f898a"))
 
     var trophies := _button(body, "К РЕЛИКВИЯМ И ДОСТИЖЕНИЯМ", false)
     trophies.pressed.connect(_show_goals)
+
+func _resident_quest_card(resident_id: String, resident: Dictionary) -> void:
+    var resident_panel := _panel(body)
+    var resident_box := VBoxContainer.new()
+    resident_panel.add_child(resident_box)
+    resident_box.add_theme_constant_override("separation", 5)
+
+    var resident_title := Label.new()
+    resident_box.add_child(resident_title)
+    resident_title.text = "%s %s · ДОВЕРИЕ %d/%d" % [
+        ResidentRules.role_for(resident_id),
+        ResidentRules.name_for(resident_id).to_upper(),
+        int(resident.get("trust", 0)),
+        ResidentRules.max_trust(resident_id)
+    ]
+    resident_title.add_theme_font_size_override("font_size", 11)
+    resident_title.add_theme_color_override("font_color", Color("e6c98c"))
+
+    var role_desc := Label.new()
+    resident_box.add_child(role_desc)
+    role_desc.text = ResidentRules.description_for(resident_id)
+    role_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    role_desc.add_theme_font_size_override("font_size", 8)
+    role_desc.add_theme_color_override("font_color", Color("889597"))
+
+    var resident_quest: Dictionary = QuestDirector.resident_quest_state(resident_id)
+    if resident_quest.is_empty():
+        return
+
+    var resident_desc := Label.new()
+    resident_box.add_child(resident_desc)
+    resident_desc.text = str(resident_quest.get("desc", ""))
+    resident_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    resident_desc.add_theme_font_size_override("font_size", 9)
+    resident_desc.add_theme_color_override("font_color", Color("aeb8b9"))
+
+    if not bool(resident_quest.get("complete", false)):
+        var rq_goal: int = maxi(1, int(resident_quest.get("goal", 1)))
+        var rq_progress: int = mini(rq_goal, int(resident_quest.get("progress", 0)))
+
+        var row := HBoxContainer.new()
+        resident_box.add_child(row)
+        row.add_theme_constant_override("separation", 6)
+
+        var resident_progress := Label.new()
+        row.add_child(resident_progress)
+        resident_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        resident_progress.text = "%s · %d/%d" % [str(resident_quest.get("title", "ПОРУЧЕНИЕ")), rq_progress, rq_goal]
+        resident_progress.add_theme_font_size_override("font_size", 9)
+        resident_progress.add_theme_color_override("font_color", Color("c9d2cf"))
+
+        var reward_type: String = str(resident_quest.get("reward_type", "coins"))
+        var reward_text: String = "%d ОСК." % int(resident_quest.get("reward", 0)) if reward_type == "shards" else "%d МОН." % int(resident_quest.get("reward", 0))
+        var claim := _button(row, "ЗАБРАТЬ · " + reward_text if bool(resident_quest.get("ready", false)) else reward_text, false)
+        claim.custom_minimum_size = Vector2(124, 40)
+        claim.disabled = not bool(resident_quest.get("ready", false))
+        claim.pressed.connect(_claim_resident_quest.bind(resident_id))
+    else:
+        var completed := Label.new()
+        resident_box.add_child(completed)
+        completed.text = "Цепочка завершена. %s остаётся постоянным жителем лагеря." % ResidentRules.name_for(resident_id)
+        completed.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        completed.add_theme_font_size_override("font_size", 9)
+        completed.add_theme_color_override("font_color", Color("8fd5b0"))
 
 func _daily_quest_card(quest: Dictionary) -> void:
     var panel := _panel(body)
@@ -443,6 +626,13 @@ func _claim_daily_quest(quest_id: String) -> void:
         Feedback.play("victory", 8)
     _show_quests()
 
+func _claim_chapter_one() -> void:
+    var result: Dictionary = GameState.claim_chapter_one()
+    if bool(result.get("ok", false)):
+        _refresh_currency()
+        Feedback.play("victory", 18)
+    _show_chronicle()
+
 func _show_forge() -> void:
     _clear_body()
     _section("Кузница лагеря", "Постоянные улучшения помогают Страннику, но не заменяют решения внутри забега.")
@@ -450,7 +640,7 @@ func _show_forge() -> void:
     var intro := _panel(body)
     var intro_label := Label.new()
     intro.add_child(intro_label)
-    intro_label.text = "Огонь кузницы питается от Последнего Очагa. Чем сильнее лагерь, тем дальше Странник может уйти во Тьму."
+    intro_label.text = "Огонь кузницы питается от Последнего Очага. Чем сильнее лагерь, тем дальше Странник может уйти во Тьму."
     intro_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     intro_label.add_theme_font_size_override("font_size", 9)
     intro_label.add_theme_color_override("font_color", Color("bbb8aa"))
@@ -570,6 +760,8 @@ func _on_camp_action(action: String) -> void:
             _show_goals()
         "quests":
             _show_quests()
+        "chronicle":
+            _show_chronicle()
         "map":
             _show_map()
 

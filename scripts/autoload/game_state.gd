@@ -1,7 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://axehold_save.json"
-const SAVE_VERSION := 7
+const SAVE_VERSION := 8
 
 var data: Dictionary = {}
 
@@ -34,6 +34,12 @@ func defaults() -> Dictionary:
         },
         "meta_notices": [],
         "lore_fragments": 0,
+        "story_state": {
+            "chapter": 1,
+            "chapter1_ready_notified": false,
+            "chapter1_seen": false,
+            "chapter1_claimed": false
+        },
         "skins_owned": [true, false, false, false],
         "selected_skin": 0,
         "daily_date": "",
@@ -92,6 +98,22 @@ func _migrate_save() -> void:
             "hammer":{"runs":0,"wins":0,"kills":0},
             "twin_blades":{"runs":0,"wins":0,"kills":0}
         }
+    if version < 8:
+        data["story_state"] = {
+            "chapter": 1,
+            "chapter1_ready_notified": false,
+            "chapter1_seen": false,
+            "chapter1_claimed": false
+        }
+        var residents: Dictionary = data.get("residents", {})
+        for resident_id: String in ["mira", "thorn"]:
+            var resident: Dictionary = residents.get(resident_id, {})
+            resident["unlocked"] = bool(resident.get("unlocked", false))
+            resident["trust"] = int(resident.get("trust", 0))
+            resident["quest_step"] = int(resident.get("quest_step", 0))
+            resident["quest_progress"] = int(resident.get("quest_progress", 0))
+            residents[resident_id] = resident
+        data["residents"] = residents
     data["save_version"] = SAVE_VERSION
     save()
 
@@ -111,6 +133,18 @@ func _retrofit_meta_progression() -> void:
     data["biome_mastery"] = mastery
     data["boss_relics"] = relics
     data["weapons_owned"] = owned
+
+    var relic_total: int = 0
+    for relic_value: Variant in relics:
+        if bool(relic_value):
+            relic_total += 1
+    if relic_total >= 3:
+        var story: Dictionary = data.get("story_state", {})
+        if not bool(story.get("chapter1_ready_notified", false)):
+            story["chapter1_ready_notified"] = true
+            data["story_state"] = story
+            _push_meta_notice("Три реликвии отозвались одновременно. В Хронике открылся финал Главы I.")
+            Analytics.event("chapter_ready", {"chapter":1})
     var selected: String = str(data.get("selected_weapon", "axes"))
     data["selected_weapon"] = selected if owned.has(selected) else "axes"
     data["meta_notices"] = []
@@ -299,6 +333,58 @@ func total_mastery() -> int:
 
 func camp_title() -> String:
     return WeaponRules.camp_title(total_mastery())
+
+func relic_count() -> int:
+    var count: int = 0
+    var relics: Array = data.get("boss_relics", [false, false, false])
+    for value: Variant in relics:
+        if bool(value):
+            count += 1
+    return count
+
+func chapter_one_ready() -> bool:
+    return relic_count() >= 3
+
+func chapter_one_complete() -> bool:
+    var story: Dictionary = data.get("story_state", {})
+    return bool(story.get("chapter1_claimed", false))
+
+func mark_chronicle_seen() -> void:
+    var story: Dictionary = data.get("story_state", {})
+    story["chapter1_seen"] = true
+    data["story_state"] = story
+    save()
+
+func claim_chapter_one() -> Dictionary:
+    if not chapter_one_ready():
+        return {"ok":false,"reason":"relics"}
+    var story: Dictionary = data.get("story_state", {})
+    if bool(story.get("chapter1_claimed", false)):
+        return {"ok":false,"reason":"claimed"}
+
+    story["chapter"] = 2
+    story["chapter1_seen"] = true
+    story["chapter1_claimed"] = true
+    story["chapter1_ready_notified"] = true
+    data["story_state"] = story
+    data["shards"] = int(data.get("shards", 0)) + 2
+    _push_meta_notice("Глава I завершена. Карта старой сети Очагов раскрыта.")
+    save()
+    Analytics.event("chapter_completed", {"chapter":1,"reward_shards":2})
+    return {"ok":true,"reward_shards":2}
+
+func current_chapter() -> int:
+    var story: Dictionary = data.get("story_state", {})
+    return 2 if bool(story.get("chapter1_claimed", false)) else 1
+
+func unlocked_resident_count() -> int:
+    var count: int = 0
+    var residents: Dictionary = data.get("residents", {})
+    for resident_variant: Variant in residents.values():
+        var resident: Dictionary = resident_variant as Dictionary
+        if bool(resident.get("unlocked", false)):
+            count += 1
+    return count
 
 func consume_meta_notices() -> Array[String]:
     var result: Array[String] = []
