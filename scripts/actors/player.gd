@@ -38,6 +38,19 @@ var movement_bounds: Rect2 = Rect2()
 var has_movement_bounds: bool = false
 var home_target: Vector2 = Vector2.ZERO
 var home_hint_active: bool = false
+var weapon_action_time: float = 0.0
+var weapon_action_duration: float = 0.24
+var weapon_action_direction: Vector2 = Vector2.RIGHT
+var weapon_combo_visual: int = 0
+
+# Weapon-exclusive perk state. These are reset at the beginning of each run.
+var axes_dps_bonus: float = 1.0
+var spear_pierce_bonus: int = 0
+var spear_damage_bonus: float = 1.0
+var hammer_radius_bonus: float = 0.0
+var hammer_damage_bonus: float = 1.0
+var blades_combo_cap_bonus: int = 0
+var blades_combo_step_bonus: float = 0.0
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -61,6 +74,8 @@ func apply_weapon_profile(id: String) -> void:
     var profile: Dictionary = WeaponRules.profile(weapon_id)
     weapon_style = str(profile.get("style", weapon_id))
     damage = base_meta_damage * float(profile.get("damage_mult", 1.0))
+    weapon_action_time = 0.0
+    weapon_combo_visual = 0
     move_speed = base_meta_speed * float(profile.get("speed_mult", 1.0))
     orbit_radius = float(profile.get("orbit_radius", 44.0))
     axes = int(profile.get("axes", 1))
@@ -76,6 +91,7 @@ func _physics_process(delta: float) -> void:
     damage_flash = maxf(0.0, damage_flash - delta * 4.8)
     block_flash = maxf(0.0, block_flash - delta * 3.6)
     perk_flash = maxf(0.0, perk_flash - delta * 2.0)
+    weapon_action_time = maxf(0.0, weapon_action_time - delta)
 
     var movement: Vector2 = Vector2.ZERO
     var analog_strength: float = 1.0
@@ -113,6 +129,25 @@ func _physics_process(delta: float) -> void:
         rotation_speed *= 0.88
     angle += delta * rotation_speed
     queue_redraw()
+
+func trigger_weapon_action(direction: Vector2, duration: float = 0.24) -> void:
+    if direction.length_squared() > 0.001:
+        weapon_action_direction = direction.normalized()
+        facing_x = signf(weapon_action_direction.x) if absf(weapon_action_direction.x) > 0.05 else facing_x
+    weapon_action_duration = maxf(0.05, duration)
+    weapon_action_time = weapon_action_duration
+    queue_redraw()
+
+func set_weapon_combo_visual(value: int) -> void:
+    if weapon_combo_visual == value:
+        return
+    weapon_combo_visual = maxi(0, value)
+    queue_redraw()
+
+func weapon_action_ratio() -> float:
+    if weapon_action_duration <= 0.0:
+        return 0.0
+    return clampf(weapon_action_time / weapon_action_duration, 0.0, 1.0)
 
 func set_target(pos: Vector2) -> void:
     if direct_control:
@@ -206,6 +241,23 @@ func apply_perk(id: String) -> void:
             crit_chance = minf(0.50, crit_chance + 0.12)
         "shield":
             shield_hits += 3
+        "axes_whirl":
+            axes_dps_bonus *= 1.18
+        "axes_edge":
+            orbit_radius += 8.0
+            crit_chance = minf(0.65, crit_chance + 0.05)
+        "spear_pierce":
+            spear_pierce_bonus += 1
+        "spear_impale":
+            spear_damage_bonus *= 1.22
+        "hammer_crater":
+            hammer_radius_bonus += 14.0
+        "hammer_force":
+            hammer_damage_bonus *= 1.22
+        "blades_chain":
+            blades_combo_cap_bonus += 2
+        "blades_fury":
+            blades_combo_step_bonus += 0.03
     perk_flash = 1.0
     queue_redraw()
 
@@ -218,9 +270,17 @@ func _draw() -> void:
     draw_rect(Rect2(-13, 15, 27, 5), Color(0.04, 0.06, 0.05, 0.24))
 
     var radius: float = orbit_radius + axes * 4.0
-    for i: int in range(axes):
-        var weapon_angle: float = angle + float(i) * TAU / float(maxi(1, axes))
-        draw_arc(Vector2.ZERO, radius, weapon_angle - 0.34, weapon_angle - 0.08, 7, Color(0.82, 0.90, 0.95, 0.13), 4.0)
+    if weapon_style == "axes" or weapon_style == "twin_blades":
+        for i: int in range(axes):
+            var weapon_angle: float = angle + float(i) * TAU / float(maxi(1, axes))
+            var trail_color: Color = Color(0.95, 0.58, 0.36, 0.17) if weapon_style == "twin_blades" else Color(0.82, 0.90, 0.95, 0.13)
+            draw_arc(Vector2.ZERO, radius, weapon_angle - 0.34, weapon_angle - 0.08, 7, trail_color, 4.0)
+    elif weapon_style == "spear" and weapon_action_time > 0.0:
+        var spear_dir: Vector2 = weapon_action_direction.normalized()
+        draw_line(spear_dir * 16.0, spear_dir * 112.0, Color(0.58, 0.82, 0.61, 0.18 + weapon_action_ratio() * 0.22), 5.0)
+    elif weapon_style == "hammer" and weapon_action_time > 0.0:
+        var slam_radius: float = 42.0 + (1.0 - weapon_action_ratio()) * 20.0
+        draw_arc(Vector2.ZERO, slam_radius, 0.0, TAU, 30, Color(0.62, 0.83, 0.94, weapon_action_ratio() * 0.42), 3.0)
 
     # Cape is a crisp pixel silhouette behind the hero.
     var cape_shift: float = -facing_x * (3.0 if moving else 1.0)
@@ -266,10 +326,30 @@ func _draw() -> void:
 
     draw_rect(Rect2(body_offset + Vector2(-8 * facing_x - 1, -4), Vector2(3, 3)), Color("dfb45a"))
 
-    for i: int in range(axes):
-        var weapon_angle: float = angle + float(i) * TAU / float(maxi(1, axes))
-        var pos: Vector2 = Vector2(cos(weapon_angle), sin(weapon_angle)) * radius
-        _draw_weapon(pos, weapon_angle)
+    if weapon_style == "spear":
+        var spear_dir: Vector2 = weapon_action_direction if weapon_action_time > 0.0 else Vector2(facing_x, 0.0)
+        if spear_dir.length_squared() < 0.01:
+            spear_dir = Vector2.RIGHT
+        spear_dir = spear_dir.normalized()
+        var spear_pos: Vector2 = spear_dir * (54.0 + weapon_action_ratio() * 12.0)
+        _draw_weapon(spear_pos, spear_dir.angle() + PI * 0.5)
+    elif weapon_style == "hammer":
+        var hammer_angle: float = angle * 0.72
+        if weapon_action_time > 0.0:
+            hammer_angle = weapon_action_direction.angle()
+        var hammer_pos: Vector2 = Vector2(cos(hammer_angle), sin(hammer_angle)) * radius
+        _draw_weapon(hammer_pos, hammer_angle)
+    else:
+        for i: int in range(axes):
+            var weapon_angle: float = angle + float(i) * TAU / float(maxi(1, axes))
+            var pos: Vector2 = Vector2(cos(weapon_angle), sin(weapon_angle)) * radius
+            _draw_weapon(pos, weapon_angle)
+
+    if weapon_style == "twin_blades" and weapon_combo_visual > 0:
+        var combo_color := Color("f0a36f")
+        draw_arc(Vector2.ZERO, 30.0, -2.65, -2.65 + TAU * minf(1.0, float(weapon_combo_visual) / 8.0), 28, combo_color, 2.0)
+        var combo_font: Font = ThemeDB.fallback_font
+        draw_string(combo_font, Vector2(-12, -48), "x%d" % weapon_combo_visual, HORIZONTAL_ALIGNMENT_CENTER, 24, 7, combo_color)
 
     if shield_hits > 0 or block_flash > 0.0:
         var shield_alpha: float = 0.46 + block_flash * 0.30
