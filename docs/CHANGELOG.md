@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.11.0-alpha.1 — Living Camp & Expedition Contracts
+- Added a persistent daily three-offer Expedition Contract Board.
+- Contracts can now be selected before leaving the Last Hearth instead of always being random.
+- Board contracts grant persistent Camp Renown in addition to their existing run coin reward.
+- Daily contract Renown can only be claimed once per offer.
+- Added contract risk labels and per-contract Renown values.
+- Added five visible camp growth levels driven by Renown while preserving legacy mastery progression.
+- The living camp now gains extra tents, lanterns, palisade, watchtower, banners and stronghold detail as it grows.
+- Added a physical Contracts hotspot to the camp.
+- Resident quest claims now contribute Camp Renown.
+- Mira Trust now grants modest movement speed and earlier night-modifier scouting.
+- Thorn Trust now grants starting Mechanism Parts and a max-trust Tower bonus.
+- Expedition results now show contract completion and Renown earned.
+- Added save migration/backfill for Camp Renown and contract state.
+- Added dedicated v1.11 regression coverage for contract offers, selection, duplicate prevention, Renown thresholds, resident bonuses and UI integration.
+- Bumped Android/iOS metadata to 1.11.0-alpha.1 / build 25.
+
 ## 1.10.0-alpha.1 — Production Feel
 - Expanded biome landmark language with abandoned roads, ruins, shrines, carts, fissures, industrial wreckage and other larger environmental set pieces.
 - Added gradual backdrop day/night interpolation instead of an immediate palette snap.
