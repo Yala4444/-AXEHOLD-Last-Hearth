@@ -140,13 +140,23 @@ jobs:
             exit 1
           fi
 
-      - name: V1.3 world + hub regression smoke-test
+      - name: V1.4 world + hub regression smoke-test
         shell: bash
         run: |
           set -o pipefail
           godot --headless --path . res://scenes/ci_world_hub_smoke.tscn 2>&1 | tee /tmp/godot-v13.log
           if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v13.log; then
             echo "GDScript parse errors detected during v1.3 world/hub test"
+            exit 1
+          fi
+
+      - name: V1.4 identity + game-feel regression smoke-test
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_identity_smoke.tscn 2>&1 | tee /tmp/godot-v14-identity.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v14-identity.log; then
+            echo "GDScript parse errors detected during v1.4 identity test"
             exit 1
           fi
 

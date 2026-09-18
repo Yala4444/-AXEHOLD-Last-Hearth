@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.0-alpha.1 — Identity & Game Feel
+- Established Chapter I around The Extinguishing: the Last Hearth is the final known flame and Guardian relics now reveal that the Guardians once protected the old Hearth network.
+- Added LoreRules with biome taglines, environmental lore, relic clues and camp progression whispers.
+- Expanded the living camp into a taller, denser hub with stronger Hearth lighting, a visible Wanderer, improved framing, progression structures and better use of the mobile screen.
+- Rebuilt the biome selector as a vertical route map from the Last Hearth through Forgotten Forest, Frost Hollow and Ashlands instead of a stack of menu cards.
+- Rebuilt the arsenal around an animated weapon preview, role copy and readable combat meters so each weapon reads as a playstyle rather than a stat row.
+- Added a dedicated relic hall with physical pedestals, mastery state and story clues; daily tasks and permanent achievements now remain visually separate from trophies.
+- Deepened all three biome palettes for stronger identity and reduced Frost Hollow washout so the hero, activities and resources remain readable on phone displays.
+- Increased the Last Hearth world-space glow so it works as a visual home beacon, especially during night returns.
+- Bumped Android/iOS metadata to 1.4.0-alpha.1 / build 17.
+- Added a v1.4 identity regression covering lore, route map, weapon preview, trophy hall, camp composition and Frost readability.
+
 ## 1.3.0-alpha.1 — World & Hub Expansion
 - Expanded expedition maps by roughly another quarter in linear size while keeping camera limits safely inside the rendered world.
 - Fixed the post-night black-region failure by padding the static backdrop beyond camera bounds, insetting camera limits by half the viewport, and making night atmosphere explicitly reversible.

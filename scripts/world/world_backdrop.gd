@@ -72,8 +72,8 @@ func _draw_forest_detail() -> void:
             draw_rect(Rect2(p.x + 4, p.y + 2, 2, 5), Color(tuft, tuft.a * 0.72))
 
 func _draw_frost_detail() -> void:
-    var snow: Color = Color(0.86, 0.94, 0.95, 0.12 if not night else 0.07)
-    var crack: Color = Color(0.42, 0.66, 0.72, 0.16 if not night else 0.10)
+    var snow: Color = Color(0.86, 0.94, 0.95, 0.075 if not night else 0.055)
+    var crack: Color = Color(0.31, 0.52, 0.58, 0.24 if not night else 0.13)
     for i: int in range(300):
         var p := _detail_point(i, 151, 97)
         if p.distance_to(base_position) < 112.0:
@@ -84,7 +84,7 @@ func _draw_frost_detail() -> void:
             draw_line(p, p + Vector2(8, 5), crack, 1.0)
             draw_line(p + Vector2(8, 5), p + Vector2(13, 2), crack, 1.0)
         else:
-            draw_rect(Rect2(p.x, p.y, 3, 5), Color(0.55, 0.72, 0.73, 0.12))
+            draw_rect(Rect2(p.x, p.y, 3, 5), Color(0.40, 0.61, 0.63, 0.15))
 
 func _draw_ash_detail() -> void:
     var ash: Color = Color(0.18, 0.10, 0.09, 0.13 if not night else 0.09)
@@ -110,7 +110,7 @@ func _detail_point(index: int, ax: int, ay: int) -> Vector2:
 func _draw_clearing() -> void:
     var clearing: Color
     if biome_index == 1:
-        clearing = Color(0.74, 0.86, 0.82, 0.20) if not night else Color(0.33, 0.45, 0.48, 0.18)
+        clearing = Color(0.63, 0.76, 0.74, 0.14) if not night else Color(0.28, 0.39, 0.42, 0.18)
     elif biome_index == 2:
         clearing = Color(0.55, 0.38, 0.28, 0.18) if not night else Color(0.30, 0.19, 0.18, 0.20)
     else:
