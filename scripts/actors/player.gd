@@ -51,6 +51,8 @@ var hammer_radius_bonus: float = 0.0
 var hammer_damage_bonus: float = 1.0
 var blades_combo_cap_bonus: int = 0
 var blades_combo_step_bonus: float = 0.0
+var blades_combo_timeout_bonus: float = 0.0
+var weapon_cooldown_mult: float = 1.0
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -80,8 +82,44 @@ func apply_weapon_profile(id: String) -> void:
     orbit_radius = float(profile.get("orbit_radius", 44.0))
     axes = int(profile.get("axes", 1))
     crit_chance = clampf(base_meta_crit + float(profile.get("crit_bonus", 0.0)), 0.0, 0.65)
+
+    # Reset run-only weapon perks before applying persistent mastery.
+    axes_dps_bonus = 1.0
+    spear_pierce_bonus = 0
+    spear_damage_bonus = 1.0
+    hammer_radius_bonus = 0.0
+    hammer_damage_bonus = 1.0
+    blades_combo_cap_bonus = 0
+    blades_combo_step_bonus = 0.0
+    blades_combo_timeout_bonus = 0.0
+    weapon_cooldown_mult = 1.0
+    _apply_weapon_mastery(GameState.weapon_mastery_level(weapon_id))
+
     perk_flash = 1.0
     queue_redraw()
+
+func _apply_weapon_mastery(level_value: int) -> void:
+    match weapon_id:
+        "axes":
+            if level_value >= 2:
+                orbit_radius += 4.0
+            if level_value >= 4:
+                axes_dps_bonus *= 1.08
+        "spear":
+            if level_value >= 2:
+                spear_pierce_bonus += 1
+            if level_value >= 4:
+                weapon_cooldown_mult *= 0.92
+        "hammer":
+            if level_value >= 2:
+                hammer_radius_bonus += 6.0
+            if level_value >= 4:
+                hammer_damage_bonus *= 1.08
+        "twin_blades":
+            if level_value >= 2:
+                blades_combo_cap_bonus += 1
+            if level_value >= 4:
+                blades_combo_timeout_bonus += 0.12
 
 func weapon_name() -> String:
     return str(WeaponRules.profile(weapon_id).get("name", "Топоры Странника"))
