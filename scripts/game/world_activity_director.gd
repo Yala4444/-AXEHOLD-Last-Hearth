@@ -94,7 +94,7 @@ func _hint_for(activity: WorldActivity) -> String:
         "caravan":
             return "Обыщи разбитый караван — здесь могли остаться припасы."
         "chest":
-            return "Тайник. Задержись рядом, чтобы открыть."
+            return "Проклятый тайник: награда выше, но Тьма ответит." if activity.cursed else "Тайник. Задержись рядом, чтобы открыть."
         "nest":
             return "Гнездо усилит ночь, если оставить его в живых."
         "altar":
@@ -124,12 +124,16 @@ func _on_hud_action(action: String) -> void:
     if action == "activity:altar_power":
         world.player.hp = maxf(1.0, world.player.hp - world.player.max_hp * 0.20)
         world.player.damage *= 1.25
+        if world.run_variation != null:
+            world.run_variation.add_threat(1.0, "altar_power")
         world.hud.show_banner("ОГОНЬ ПРИНЯЛ КЛЯТВУ", Color("f1b36d"))
         altar_pending.finish()
     elif action == "activity:altar_speed":
         world.player.max_hp = maxf(50.0, world.player.max_hp * 0.90)
         world.player.hp = minf(world.player.hp, world.player.max_hp)
         world.player.move_speed *= 1.15
+        if world.run_variation != null:
+            world.run_variation.add_threat(0.6, "altar_speed")
         world.hud.show_banner("ПУТЬ ОТКРЫТ", Color("c8dfb6"))
         altar_pending.finish()
     else:
@@ -157,16 +161,29 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         world.run_coins += 5
         world.hud.show_banner("КАРАВАН ОБЫСКАН", Color("e4c078"))
     elif activity.activity_type == "chest":
-        _give_resource("stone", 3, activity.global_position)
-        _give_resource("ore", 2, activity.global_position)
-        world.run_coins += 9
-        world.player.gain_xp(6)
-        world.player.shield_hits = mini(5, world.player.shield_hits + 1)
-        world.hud.show_banner("ТАЙНИК ОТКРЫТ", Color("d6bb78"))
+        if activity.cursed:
+            _give_resource("stone", 2, activity.global_position)
+            _give_resource("ore", 4, activity.global_position)
+            world.run_coins += 16
+            world.player.gain_xp(9)
+            world.player.shield_hits = mini(5, world.player.shield_hits + 1)
+            if world.run_variation != null:
+                world.run_variation.add_threat(2.2, "cursed_cache")
+            world.hud.show_banner("ТЬМА ОТВЕТИЛА", Color("d99abb"))
+            world.hud.set_status("Ценная добыча получена, но следующая ночь станет опаснее.")
+        else:
+            _give_resource("stone", 3, activity.global_position)
+            _give_resource("ore", 2, activity.global_position)
+            world.run_coins += 9
+            world.player.gain_xp(6)
+            world.player.shield_hits = mini(5, world.player.shield_hits + 1)
+            world.hud.show_banner("ТАЙНИК ОТКРЫТ", Color("d6bb78"))
     Feedback.play("level", 6)
 
 func _grant_nest_reward(activity: WorldActivity) -> void:
     world.run_coins += 8
+    if world.run_variation != null:
+        world.run_variation.reduce_threat(1.25, "nest_destroyed")
     world.player.gain_xp(8)
     _give_resource("ore", 2, activity.global_position)
     world.hud.show_banner("ГНЕЗДО УНИЧТОЖЕНО", Color("d7d094"))
