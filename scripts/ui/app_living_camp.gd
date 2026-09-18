@@ -727,117 +727,161 @@ func _show_quests() -> void:
     trophies.pressed.connect(_show_goals)
 
 func _resident_quest_card(resident_id: String, resident: Dictionary) -> void:
-    var resident_panel := _panel(body)
-    var resident_box := VBoxContainer.new()
-    resident_panel.add_child(resident_box)
-    resident_box.add_theme_constant_override("separation", 5)
+    var panel := _panel(body)
+    var box := VBoxContainer.new()
+    panel.add_child(box)
+    box.add_theme_constant_override("separation", 4)
+
+    var top := HBoxContainer.new()
+    box.add_child(top)
+    top.add_theme_constant_override("separation", 6)
+
+    var resident_icon := UiIcon.new()
+    top.add_child(resident_icon)
+    resident_icon.configure("camp", VisualSystem.GREEN if resident_id == "mira" else VisualSystem.GOLD, 0.66)
 
     var resident_title := Label.new()
-    resident_box.add_child(resident_title)
-    resident_title.text = "%s %s · ДОВЕРИЕ %d/%d" % [
-        ResidentRules.role_for(resident_id),
-        ResidentRules.name_for(resident_id).to_upper(),
-        int(resident.get("trust", 0)),
-        ResidentRules.max_trust(resident_id)
-    ]
-    resident_title.add_theme_font_size_override("font_size", 11)
-    resident_title.add_theme_color_override("font_color", Color("e6c98c"))
+    top.add_child(resident_title)
+    resident_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    resident_title.text = "%s · %s" % [ResidentRules.name_for(resident_id).to_upper(), ResidentRules.role_for(resident_id)]
+    resident_title.add_theme_font_size_override("font_size", 10)
+    resident_title.add_theme_color_override("font_color", VisualSystem.TEXT)
 
-    var role_desc := Label.new()
-    resident_box.add_child(role_desc)
-    role_desc.text = ResidentRules.description_for(resident_id)
-    role_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    role_desc.add_theme_font_size_override("font_size", 8)
-    role_desc.add_theme_color_override("font_color", Color("889597"))
+    var trust := Label.new()
+    top.add_child(trust)
+    trust.text = "%d/%d" % [int(resident.get("trust",0)), ResidentRules.max_trust(resident_id)]
+    trust.add_theme_font_size_override("font_size", 8)
+    trust.add_theme_color_override("font_color", VisualSystem.GOLD_BRIGHT)
 
     var resident_quest: Dictionary = QuestDirector.resident_quest_state(resident_id)
     if resident_quest.is_empty():
         return
 
-    var resident_desc := Label.new()
-    resident_box.add_child(resident_desc)
-    resident_desc.text = str(resident_quest.get("desc", ""))
-    resident_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    resident_desc.add_theme_font_size_override("font_size", 9)
-    resident_desc.add_theme_color_override("font_color", Color("aeb8b9"))
-
-    if not bool(resident_quest.get("complete", false)):
-        var rq_goal: int = maxi(1, int(resident_quest.get("goal", 1)))
-        var rq_progress: int = mini(rq_goal, int(resident_quest.get("progress", 0)))
-
-        var row := HBoxContainer.new()
-        resident_box.add_child(row)
-        row.add_theme_constant_override("separation", 6)
-
-        var resident_progress := Label.new()
-        row.add_child(resident_progress)
-        resident_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        resident_progress.text = "%s · %d/%d" % [str(resident_quest.get("title", "ПОРУЧЕНИЕ")), rq_progress, rq_goal]
-        resident_progress.add_theme_font_size_override("font_size", 9)
-        resident_progress.add_theme_color_override("font_color", Color("c9d2cf"))
-
-        var reward_type: String = str(resident_quest.get("reward_type", "coins"))
-        var reward_text: String = "%d ОСК." % int(resident_quest.get("reward", 0)) if reward_type == "shards" else "%d МОН." % int(resident_quest.get("reward", 0))
-        var claim := _button(row, "ЗАБРАТЬ · " + reward_text if bool(resident_quest.get("ready", false)) else reward_text, false)
-        claim.custom_minimum_size = Vector2(124, 40)
-        claim.disabled = not bool(resident_quest.get("ready", false))
-        claim.pressed.connect(_claim_resident_quest.bind(resident_id))
-    else:
+    if bool(resident_quest.get("complete", false)):
         var completed := Label.new()
-        resident_box.add_child(completed)
-        completed.text = "Цепочка завершена. %s остаётся постоянным жителем лагеря." % ResidentRules.name_for(resident_id)
+        box.add_child(completed)
+        completed.text = "Цепочка завершена · постоянный житель Последнего Очага"
         completed.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        completed.add_theme_font_size_override("font_size", 9)
-        completed.add_theme_color_override("font_color", Color("8fd5b0"))
+        completed.add_theme_font_size_override("font_size", 8)
+        completed.add_theme_color_override("font_color", VisualSystem.GREEN)
+        return
+
+    var title := Label.new()
+    box.add_child(title)
+    title.text = str(resident_quest.get("title","ПОРУЧЕНИЕ"))
+    title.add_theme_font_size_override("font_size", 9)
+    title.add_theme_color_override("font_color", Color("d4bc86"))
+
+    var desc := Label.new()
+    box.add_child(desc)
+    desc.text = str(resident_quest.get("desc",""))
+    desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    desc.add_theme_font_size_override("font_size", 8)
+    desc.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
+
+    var goal: int = maxi(1,int(resident_quest.get("goal",1)))
+    var progress: int = mini(goal,int(resident_quest.get("progress",0)))
+    var bar := ProgressBar.new()
+    box.add_child(bar)
+    bar.custom_minimum_size = Vector2(0,5)
+    bar.show_percentage = false
+    bar.max_value = goal
+    bar.value = progress
+    _style_compact_progress(bar, VisualSystem.GREEN if resident_id == "mira" else VisualSystem.GOLD)
+
+    var bottom := HBoxContainer.new()
+    box.add_child(bottom)
+    var progress_text := Label.new()
+    bottom.add_child(progress_text)
+    progress_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    progress_text.text = "%d / %d" % [progress,goal]
+    progress_text.add_theme_font_size_override("font_size", 8)
+    progress_text.add_theme_color_override("font_color", VisualSystem.TEXT_MUTED)
+
+    var reward_type: String = str(resident_quest.get("reward_type","coins"))
+    var reward_text: String = "%d ОСК." % int(resident_quest.get("reward",0)) if reward_type=="shards" else "%d МОН." % int(resident_quest.get("reward",0))
+    var claim := _button(bottom, "ЗАБРАТЬ · "+reward_text if bool(resident_quest.get("ready",false)) else reward_text, false)
+    claim.custom_minimum_size = Vector2(108,34)
+    claim.disabled = not bool(resident_quest.get("ready",false))
+    claim.pressed.connect(_claim_resident_quest.bind(resident_id))
 
 func _daily_quest_card(quest: Dictionary) -> void:
     var panel := _panel(body)
     var box := VBoxContainer.new()
     panel.add_child(box)
-    box.add_theme_constant_override("separation", 5)
+    box.add_theme_constant_override("separation", 4)
 
     var top := HBoxContainer.new()
     box.add_child(top)
+    top.add_theme_constant_override("separation", 6)
+
+    var icon := UiIcon.new()
+    top.add_child(icon)
+    icon.configure("quest", VisualSystem.GOLD, 0.66)
 
     var title := Label.new()
     top.add_child(title)
     title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    title.text = str(quest.get("title", "ЗАДАНИЕ"))
-    title.add_theme_font_size_override("font_size", 12)
-    title.add_theme_color_override("font_color", Color("efe5d0"))
+    title.text = str(quest.get("title","ЗАДАНИЕ"))
+    title.add_theme_font_size_override("font_size", 10)
+    title.add_theme_color_override("font_color", VisualSystem.TEXT)
 
     var category := Label.new()
     top.add_child(category)
-    category.text = str(quest.get("category", "")).to_upper()
+    category.text = str(quest.get("category","")).to_upper()
     category.add_theme_font_size_override("font_size", 7)
-    category.add_theme_color_override("font_color", Color("9a8761"))
+    category.add_theme_color_override("font_color", Color("9f8b63"))
 
     var desc := Label.new()
     box.add_child(desc)
-    desc.text = str(quest.get("desc", ""))
+    desc.text = str(quest.get("desc",""))
     desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    desc.add_theme_font_size_override("font_size", 9)
-    desc.add_theme_color_override("font_color", Color("aeb7b9"))
+    desc.add_theme_font_size_override("font_size", 8)
+    desc.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
 
-    var goal: int = maxi(1, int(quest.get("goal", 1)))
-    var progress: int = mini(goal, int(quest.get("progress", 0)))
+    var goal: int = maxi(1,int(quest.get("goal",1)))
+    var progress: int = mini(goal,int(quest.get("progress",0)))
 
-    var progress_row := HBoxContainer.new()
-    box.add_child(progress_row)
+    var bar := ProgressBar.new()
+    box.add_child(bar)
+    bar.custom_minimum_size = Vector2(0,5)
+    bar.show_percentage = false
+    bar.max_value = goal
+    bar.value = progress
+    _style_compact_progress(bar, VisualSystem.GOLD)
+
+    var bottom := HBoxContainer.new()
+    box.add_child(bottom)
 
     var progress_text := Label.new()
-    progress_row.add_child(progress_text)
+    bottom.add_child(progress_text)
     progress_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    progress_text.text = "%d / %d" % [progress, goal]
-    progress_text.add_theme_font_size_override("font_size", 10)
-    progress_text.add_theme_color_override("font_color", Color("c9d2cf"))
+    progress_text.text = "%d / %d" % [progress,goal]
+    progress_text.add_theme_font_size_override("font_size", 8)
+    progress_text.add_theme_color_override("font_color", VisualSystem.TEXT_MUTED)
 
-    var reward_type: String = str(quest.get("reward_type", "coins"))
-    var reward_text: String = "%d ОСК." % int(quest.get("reward", 0)) if reward_type == "shards" else "%d МОН." % int(quest.get("reward", 0))
-    var claim := _button(progress_row, "ЗАБРАТЬ · " + reward_text if bool(quest.get("ready", false)) else reward_text, false)
-    claim.custom_minimum_size = Vector2(126, 40)
-    claim.disabled = not bool(quest.get("ready", false))
-    claim.pressed.connect(_claim_daily_quest.bind(str(quest.get("id", ""))))
+    var reward_type: String = str(quest.get("reward_type","coins"))
+    var reward_text: String = "%d ОСК." % int(quest.get("reward",0)) if reward_type=="shards" else "%d МОН." % int(quest.get("reward",0))
+    var claim := _button(bottom, "ЗАБРАТЬ · "+reward_text if bool(quest.get("ready",false)) else reward_text, false)
+    claim.custom_minimum_size = Vector2(108,34)
+    claim.disabled = not bool(quest.get("ready",false))
+    claim.pressed.connect(_claim_daily_quest.bind(str(quest.get("id",""))))
+
+func _style_compact_progress(bar: ProgressBar, accent: Color) -> void:
+    var track := StyleBoxFlat.new()
+    track.bg_color = Color("20292c")
+    track.corner_radius_top_left = 2
+    track.corner_radius_top_right = 2
+    track.corner_radius_bottom_left = 2
+    track.corner_radius_bottom_right = 2
+    var fill := StyleBoxFlat.new()
+    fill.bg_color = accent
+    fill.corner_radius_top_left = 2
+    fill.corner_radius_top_right = 2
+    fill.corner_radius_bottom_left = 2
+    fill.corner_radius_bottom_right = 2
+    bar.add_theme_stylebox_override("background", track)
+    bar.add_theme_stylebox_override("fill", fill)
 
 func _claim_resident_quest(resident_id: String) -> void:
     var result: Dictionary = QuestDirector.claim_resident(resident_id)
