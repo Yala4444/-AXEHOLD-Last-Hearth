@@ -276,7 +276,7 @@ func _harvest(delta: float) -> void:
                 var resource_name: String = "дерево" if kind == "wood" else ("камень" if kind == "stone" else "руда")
                 hud.set_status("+%d %s в рюкзак" % [actual, resource_name])
                 if core_fx != null:
-                    core_fx.harvest(kind, spot.global_position, actual)
+                    core_fx.harvest(kind, spot.global_position, actual, player.global_position)
             removed.append(spot)
 
     for spot: ResourceSpot in removed:
@@ -294,7 +294,7 @@ func _deposit_and_build(delta: float) -> void:
         hud.set_status("Д +%d  К +%d  Р +%d" % [int(inv["wood"]), int(inv["stone"]), int(inv["ore"])])
         Feedback.play("level", 5)
         if core_fx != null:
-            core_fx.deposit(inv, base_position)
+            core_fx.deposit(inv, player.global_position, base_position + Vector2(39, 20))
 
     var nearest: BuildPad = null
     var nearest_distance: float = INF
