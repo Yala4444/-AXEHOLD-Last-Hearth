@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.9.0-alpha.1 — Living World & Chapter I Finale
+- Completing all three Guardian relics now closes Chapter I and unlocks a persistent Frontier Signal beyond the Ashlands.
+- Added a fourth World Map destination, Distant Hearth, as a post-Chapter-I route rather than a shallow extra biome.
+- Added four timed Frontier Assignments with guaranteed world content, deadlines and physical return-to-Hearth delivery.
+- Added assignment types for Signal Fires, Dark Nest purge, Mechanism Part salvage and relighting an old Hearth.
+- Added the second resident, mechanic Thorn, as a post-Chapter-I outer-world rescue encounter.
+- Added Thorn's three-step trust chain tied to Mechanism Parts and Level-II construction.
+- Added one-slot Resident Support for the next expedition: Mira's route boost or Thorn's starting Mechanism Part.
+- Added Chapter I finale and Frontier Signal text to the Trophy Hall story archive.
+- Added save migration for story state, Frontier progress, assignments and support.
+- Added wave-aware mission event tracking so timed work fails cleanly after the second-night deadline.
+- Bumped Android/iOS metadata to 1.9.0-alpha.1 / build 23.
+
 ## 1.8.0-alpha.1 — Weapon Identity
 - Replaced the shared radial combat model with four independent weapon resolvers.
 - Wanderer Axes retain continuous circular zone control.
