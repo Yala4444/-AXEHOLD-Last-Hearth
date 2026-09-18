@@ -8,7 +8,7 @@ signal level_up_requested(level: int)
 var target_position: Vector2 = Vector2.ZERO
 var move_input: Vector2 = Vector2.ZERO
 var direct_control: bool = false
-var move_speed: float = 126.0
+var move_speed: float = 138.0
 var max_hp: float = 100.0
 var hp: float = 100.0
 var damage: float = 25.0
@@ -32,8 +32,12 @@ var facing_x: float = 1.0
 var weapon_id: String = "axes"
 var weapon_style: String = "axes"
 var base_meta_damage: float = 25.0
-var base_meta_speed: float = 126.0
+var base_meta_speed: float = 138.0
 var base_meta_crit: float = 0.05
+var movement_bounds: Rect2 = Rect2()
+var has_movement_bounds: bool = false
+var home_target: Vector2 = Vector2.ZERO
+var home_hint_active: bool = false
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -43,7 +47,7 @@ func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     max_hp = 100.0 + hp_level * 10.0
     hp = max_hp
     base_meta_damage = 25.0 * pow(1.10, damage_level)
-    base_meta_speed = 126.0 * pow(1.04, speed_level)
+    base_meta_speed = 138.0 * pow(1.04, speed_level)
     base_meta_crit = 0.05
     capacity = 24 + bag_level * 5
     skin_body = Color(str(skin.get("body", "466bc8")))
@@ -90,6 +94,11 @@ func _physics_process(delta: float) -> void:
             facing_x = signf(direction.x)
         velocity = direction * move_speed * analog_strength
         move_and_slide()
+        if has_movement_bounds:
+            global_position = Vector2(
+                clampf(global_position.x, movement_bounds.position.x, movement_bounds.end.x),
+                clampf(global_position.y, movement_bounds.position.y, movement_bounds.end.y)
+            )
         if direct_control:
             target_position = global_position
     else:
@@ -110,6 +119,19 @@ func set_target(pos: Vector2) -> void:
         return
     target_position = pos
 
+func set_world_bounds(rect: Rect2) -> void:
+    movement_bounds = rect
+    has_movement_bounds = rect.size.x > 0.0 and rect.size.y > 0.0
+
+func set_home_target(pos: Vector2) -> void:
+    home_target = pos
+
+func set_home_hint(value: bool) -> void:
+    if home_hint_active == value:
+        return
+    home_hint_active = value
+    queue_redraw()
+
 func set_move_input(value: Vector2) -> void:
     move_input = value.limit_length(1.0)
     direct_control = true
@@ -128,11 +150,13 @@ func add_resource(kind: String, amount: int) -> int:
     var available: int = maxi(0, capacity - inventory_total())
     var actual: int = mini(amount, available)
     inventory[kind] = int(inventory.get(kind, 0)) + actual
+    queue_redraw()
     return actual
 
 func clear_inventory() -> Dictionary:
     var result: Dictionary = inventory.duplicate(true)
     inventory = {"wood": 0, "stone": 0, "ore": 0}
+    queue_redraw()
     return result
 
 func take_damage(amount: float) -> void:
@@ -254,6 +278,44 @@ func _draw() -> void:
     if perk_flash > 0.0:
         var grow: float = (1.0 - perk_flash) * 12.0
         draw_rect(Rect2(-25 - grow, -25 - grow, 50 + grow * 2.0, 50 + grow * 2.0), Color(1.0, 0.85, 0.42, perk_flash * 0.55), false, 2.0)
+
+    _draw_inventory_gauge()
+
+func _draw_inventory_gauge() -> void:
+    var ratio: float = clampf(float(inventory_total()) / float(maxi(1, capacity)), 0.0, 1.0)
+    var pulse: float = (sin(motion_time * 7.0) + 1.0) * 0.5
+    var track := Rect2(-20, -35, 40, 5)
+    draw_rect(track, Color(0.035, 0.05, 0.05, 0.78))
+    draw_rect(track, Color(0.72, 0.79, 0.72, 0.26), false, 1.0)
+
+    var fill_color: Color = Color("72a978")
+    if ratio >= 0.82:
+        fill_color = Color("d6ad55")
+    if ratio >= 0.98:
+        fill_color = Color("ce6257").lightened(pulse * 0.10)
+
+    if ratio > 0.0:
+        draw_rect(Rect2(-19, -34, 38.0 * ratio, 3), fill_color)
+
+    if ratio >= 0.65:
+        var font: Font = ThemeDB.fallback_font
+        var text: String = "%d/%d" % [inventory_total(), capacity]
+        draw_string(font, Vector2(-20, -39), text, HORIZONTAL_ALIGNMENT_CENTER, 40, 7, Color("f2ecdc"))
+
+    if ratio >= 0.98:
+        var font_full: Font = ThemeDB.fallback_font
+        draw_string(font_full, Vector2(-20, -43), "ПОЛОН", HORIZONTAL_ALIGNMENT_CENTER, 40, 6, Color("f4c0a0"))
+
+    if home_hint_active and global_position.distance_to(home_target) > 70.0:
+        var dir: Vector2 = global_position.direction_to(home_target)
+        if dir.length_squared() > 0.01:
+            var anchor := Vector2(0, -49)
+            var side := Vector2(-dir.y, dir.x)
+            draw_colored_polygon(PackedVector2Array([
+                anchor + dir * 8.0,
+                anchor - dir * 4.0 + side * 4.5,
+                anchor - dir * 4.0 - side * 4.5
+            ]), Color("f1cb73"))
 
 func _draw_weapon(pos: Vector2, weapon_angle: float) -> void:
     match weapon_style:

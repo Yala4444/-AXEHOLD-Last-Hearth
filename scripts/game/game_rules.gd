@@ -53,22 +53,22 @@ const SKINS := [
 const BUILD_SPECS := [
     {
         "id":"wall","name":"ПАЛИСАД","offset":Vector2(-118,92),
-        "cost":{"wood":12,"stone":0,"ore":0},
+        "cost":{"wood":14,"stone":0,"ore":0},
         "effect":"Замедляет врагов у Очага и снижает урон базе на 65%."
     },
     {
         "id":"forge","name":"КУЗНИЦА","offset":Vector2(118,92),
-        "cost":{"wood":12,"stone":5,"ore":0},
+        "cost":{"wood":14,"stone":6,"ore":0},
         "effect":"+30% урона оружия и +6 к радиусу атаки."
     },
     {
         "id":"turret","name":"БАШНЯ","offset":Vector2(0,-136),
-        "cost":{"wood":15,"stone":8,"ore":2},
+        "cost":{"wood":18,"stone":10,"ore":3},
         "effect":"Автоматически стреляет по ближайшему врагу всю ночь."
     },
     {
         "id":"shrine","name":"СВЯТИЛИЩЕ","offset":Vector2(118,-88),
-        "cost":{"wood":10,"stone":8,"ore":3},
+        "cost":{"wood":12,"stone":9,"ore":4},
         "effect":"Лечит героя и постепенно восстанавливает прочность Очага."
     }
 ]
@@ -103,13 +103,13 @@ static func build_effect(id: String) -> String:
 static func day_duration(wave: int) -> float:
     match wave:
         0:
-            return 46.0
+            return 58.0
         1:
-            return 40.0
+            return 52.0
         2:
-            return 34.0
+            return 46.0
         _:
-            return 30.0
+            return 42.0
 
 static func wave_count(wave: int, difficulty: float) -> int:
     var base_count: int = 8

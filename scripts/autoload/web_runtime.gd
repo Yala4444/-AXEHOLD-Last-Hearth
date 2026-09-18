@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-const BUILD_LABEL := "v1.1 visual alpha"
+const BUILD_LABEL := "v1.2 production alpha"
 
 var version_label: Label
 var scan_timer: float = 0.0
@@ -36,10 +36,6 @@ func _process(delta: float) -> void:
             mobile_controls.call("unbind_world", last_bound_world)
             last_bound_world = null
 
-        # Only WebRuntime may force the joystick on Web builds. On native/headless
-        # platforms it must not overwrite touch detection or regression-test state.
-        if OS.has_feature("web"):
-            mobile_controls.call("force_visible_for_test", has_world)
 
     if version_label != null:
         version_label.visible = OS.has_feature("web")
