@@ -1,9 +1,6 @@
 class_name GameHud
 extends CanvasLayer
 
-const WOOD_ICON: Texture2D = preload("res://assets/ui/res_wood.svg")
-const STONE_ICON: Texture2D = preload("res://assets/ui/res_stone.svg")
-const ORE_ICON: Texture2D = preload("res://assets/ui/res_ore.svg")
 
 signal action_requested(action: String)
 
@@ -116,9 +113,9 @@ func _build() -> void:
     storage_title.add_theme_font_size_override("font_size", 7)
     storage_title.add_theme_color_override("font_color", Color("b9ab8b"))
 
-    storage_wood_label = _resource_chip(storage_row, WOOD_ICON, "0")
-    storage_stone_label = _resource_chip(storage_row, STONE_ICON, "0")
-    storage_ore_label = _resource_chip(storage_row, ORE_ICON, "0")
+    storage_wood_label = _resource_chip(storage_row, "wood", "0")
+    storage_stone_label = _resource_chip(storage_row, "stone", "0")
+    storage_ore_label = _resource_chip(storage_row, "ore", "0")
 
     storage_label = Label.new()
     root.add_child(storage_label)
@@ -414,18 +411,14 @@ func _make_label(parent: Control, text: String, font_size: int, color: Color, al
     label.add_theme_color_override("font_color", color)
     return label
 
-func _resource_chip(parent: Control, texture: Texture2D, value: String) -> Label:
+func _resource_chip(parent: Control, kind: String, value: String) -> Label:
     var group := HBoxContainer.new()
     parent.add_child(group)
     group.add_theme_constant_override("separation", 2)
 
-    var icon := TextureRect.new()
+    var icon := ResourceIcon.new()
     group.add_child(icon)
-    icon.texture = texture
-    icon.custom_minimum_size = Vector2(13, 13)
-    icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-    icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-    icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    icon.configure(kind)
 
     var label := Label.new()
     group.add_child(label)
