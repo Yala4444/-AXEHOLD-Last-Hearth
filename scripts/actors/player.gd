@@ -284,27 +284,27 @@ func _draw() -> void:
 func _draw_inventory_gauge() -> void:
     var ratio: float = clampf(float(inventory_total()) / float(maxi(1, capacity)), 0.0, 1.0)
     var pulse: float = (sin(motion_time * 7.0) + 1.0) * 0.5
-    var track := Rect2(-20, -35, 40, 5)
+    var track := Rect2(-24, -36, 48, 6)
     draw_rect(track, Color(0.035, 0.05, 0.05, 0.78))
     draw_rect(track, Color(0.72, 0.79, 0.72, 0.26), false, 1.0)
 
     var fill_color: Color = Color("72a978")
-    if ratio >= 0.82:
+    if ratio >= 0.80:
         fill_color = Color("d6ad55")
     if ratio >= 0.98:
         fill_color = Color("ce6257").lightened(pulse * 0.10)
 
     if ratio > 0.0:
-        draw_rect(Rect2(-19, -34, 38.0 * ratio, 3), fill_color)
+        draw_rect(Rect2(-23, -35, 46.0 * ratio, 4), fill_color)
 
-    if ratio >= 0.65:
+    if ratio >= 0.60:
         var font: Font = ThemeDB.fallback_font
         var text: String = "%d/%d" % [inventory_total(), capacity]
-        draw_string(font, Vector2(-20, -39), text, HORIZONTAL_ALIGNMENT_CENTER, 40, 7, Color("f2ecdc"))
+        draw_string(font, Vector2(-24, -40), text, HORIZONTAL_ALIGNMENT_CENTER, 48, 7, Color("f2ecdc"))
 
     if ratio >= 0.98:
         var font_full: Font = ThemeDB.fallback_font
-        draw_string(font_full, Vector2(-20, -43), "ПОЛОН", HORIZONTAL_ALIGNMENT_CENTER, 40, 6, Color("f4c0a0"))
+        draw_string(font_full, Vector2(-24, -45), "ПОЛОН", HORIZONTAL_ALIGNMENT_CENTER, 48, 6, Color("f4c0a0"))
 
     if home_hint_active and global_position.distance_to(home_target) > 70.0:
         var dir: Vector2 = global_position.direction_to(home_target)

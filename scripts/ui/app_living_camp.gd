@@ -9,72 +9,64 @@ func _show_home() -> void:
     body.add_child(camp)
     camp.action_requested.connect(_on_camp_action)
 
-    _add_meta_notice_panel()
-
     selected_biome = clampi(selected_biome, 0, GameRules.BIOMES.size() - 1)
     var biome_data: Dictionary = GameRules.biome(selected_biome)
     var weapon_id: String = str(GameState.data.get("selected_weapon", "axes"))
     var weapon: Dictionary = WeaponRules.profile(weapon_id)
 
     var departure := _panel(body)
+    departure.custom_minimum_size = Vector2(0, 126)
     var departure_box := VBoxContainer.new()
     departure.add_child(departure_box)
-    departure_box.add_theme_constant_override("separation", 7)
+    departure_box.add_theme_constant_override("separation", 5)
 
-    var caption := Label.new()
-    departure_box.add_child(caption)
-    caption.text = "СЛЕДУЮЩАЯ ЭКСПЕДИЦИЯ"
-    caption.add_theme_font_size_override("font_size", 10)
-    caption.add_theme_color_override("font_color", Color("d4b77c"))
+    var eyebrow := Label.new()
+    departure_box.add_child(eyebrow)
+    eyebrow.text = "СЛЕДУЮЩИЙ ВЫХОД"
+    eyebrow.add_theme_font_size_override("font_size", 8)
+    eyebrow.add_theme_color_override("font_color", Color("c6a566"))
 
     var route := Label.new()
     departure_box.add_child(route)
-    route.text = "%s  ·  %s %s" % [
+    route.text = "%s   •   %s" % [
         str(biome_data.get("name", "Забытый лес")),
-        str(weapon.get("icon", "⚔️")),
         str(weapon.get("name", "Топоры Странника"))
     ]
-    route.add_theme_font_size_override("font_size", 15)
+    route.add_theme_font_size_override("font_size", 14)
+    route.add_theme_color_override("font_color", Color("f0e7d2"))
     route.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
-    var route_hint := Label.new()
-    departure_box.add_child(route_hint)
-    route_hint.text = "Коснись объектов лагеря, чтобы подготовиться, или отправляйся сразу."
-    route_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    route_hint.add_theme_font_size_override("font_size", 10)
-    route_hint.add_theme_color_override("font_color", Color(0.68, 0.72, 0.75))
+    var progress := Label.new()
+    departure_box.add_child(progress)
+    progress.text = "Мастерство %d   •   Реликвии %d/3   •   Победы %d" % [
+        GameState.total_mastery(),
+        _camp_relic_count(),
+        int(GameState.data.get("wins", 0))
+    ]
+    progress.add_theme_font_size_override("font_size", 8)
+    progress.add_theme_color_override("font_color", Color(0.63, 0.69, 0.70))
 
-    var play := _button(departure_box, "▶  В ЭКСПЕДИЦИЮ", true)
+    var play := _button(departure_box, "В ЭКСПЕДИЦИЮ", true)
+    play.custom_minimum_size = Vector2(0, 45)
     play.pressed.connect(_start_game)
 
-    var stats := GridContainer.new()
-    body.add_child(stats)
-    stats.columns = 2
-    stats.add_theme_constant_override("h_separation", 8)
-    stats.add_theme_constant_override("v_separation", 8)
-    _stat(stats, "Лучший забег", "%d ночей" % int(GameState.data.get("best_wave", 0)))
-    _stat(stats, "Сила героя", str(_hero_power()))
+    var notices: Array = GameState.data.get("meta_notices", [])
+    if not notices.is_empty():
+        var notice := Label.new()
+        body.add_child(notice)
+        notice.text = "НОВОЕ В ЛАГЕРЕ: " + str(notices[0])
+        notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        notice.add_theme_font_size_override("font_size", 8)
+        notice.add_theme_color_override("font_color", Color("e1bf76"))
 
-    var supply := _panel(body)
-    var supply_box := VBoxContainer.new()
-    supply.add_child(supply_box)
-    supply_box.add_theme_constant_override("separation", 6)
-
-    var supply_text := Label.new()
-    supply_box.add_child(supply_text)
-    supply_text.text = "📦 Караван припасов\nОдин бонус на текущий день"
-
-    var supply_row := HBoxContainer.new()
-    supply_box.add_child(supply_row)
-    supply_row.add_theme_constant_override("separation", 6)
-
-    var free := _button(supply_row, "+25 🪙", false)
-    free.disabled = bool(GameState.data.get("supply_claimed", false))
-    free.pressed.connect(_claim_supply.bind(false))
-
-    var ad := _button(supply_row, "▶ +60 🪙", false)
-    ad.disabled = bool(GameState.data.get("supply_claimed", false))
-    ad.pressed.connect(_claim_supply.bind(true))
+func _camp_relic_count() -> int:
+    var count: int = 0
+    var relics: Array = GameState.data.get("boss_relics", [false, false, false])
+    for value: Variant in relics:
+        if bool(value):
+            count += 1
+    return count
 
 func _add_meta_notice_panel() -> void:
     var notices: Array = GameState.data.get("meta_notices", [])

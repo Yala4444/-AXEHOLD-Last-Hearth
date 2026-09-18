@@ -24,7 +24,7 @@ func _build_shell() -> void:
 
     var header_panel := PanelContainer.new()
     main.add_child(header_panel)
-    header_panel.custom_minimum_size = Vector2(0, 56)
+    header_panel.custom_minimum_size = Vector2(0, 50)
     header_panel.add_theme_stylebox_override("panel", _pixel_style(Color("111a21"), Color("394750"), 2, 2, 10))
 
     var header := HBoxContainer.new()
@@ -44,7 +44,7 @@ func _build_shell() -> void:
 
     var subtitle := Label.new()
     title_box.add_child(subtitle)
-    subtitle.text = "LAST HEARTH  •  V1 ALPHA"
+    subtitle.text = "LAST HEARTH  •  V1.3"
     subtitle.add_theme_font_size_override("font_size", 8)
     subtitle.add_theme_color_override("font_color", Color("c5a66b"))
 
@@ -72,13 +72,12 @@ func _build_shell() -> void:
 
     nav = HBoxContainer.new()
     main.add_child(nav)
-    nav.custom_minimum_size = Vector2(0, 56)
+    nav.custom_minimum_size = Vector2(0, 52)
     nav.add_theme_constant_override("separation", 4)
     _mobile_nav_button("ЛАГЕРЬ", _show_home)
+    _mobile_nav_button("АРСЕНАЛ", _show_arsenal)
     _mobile_nav_button("КАРТА", _show_map)
-    _mobile_nav_button("КУЗНЯ", _show_forge)
-    _mobile_nav_button("ЦЕЛИ", _show_goals)
-    _mobile_nav_button("ОБЛИК", _show_collection)
+    _mobile_nav_button("ТРОФЕИ", _show_goals)
 
 func _panel(parent: Control) -> PanelContainer:
     var panel := PanelContainer.new()
@@ -150,7 +149,7 @@ func _mobile_nav_button(text: String, callback: Callable) -> void:
     nav.add_child(button)
     button.text = text
     button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    button.custom_minimum_size = Vector2(0, 50)
+    button.custom_minimum_size = Vector2(0, 46)
     button.add_theme_font_size_override("font_size", 7)
     button.add_theme_stylebox_override("normal", _pixel_style(Color("141d23"), Color("303d45"), 1, 2, 4))
     button.add_theme_stylebox_override("pressed", _pixel_style(Color("293840"), Color("bd9858"), 1, 2, 4))

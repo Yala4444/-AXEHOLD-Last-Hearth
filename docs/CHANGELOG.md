@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.3.0-alpha.1 — World & Hub Expansion
+- Expanded expedition maps by roughly another quarter in linear size while keeping camera limits safely inside the rendered world.
+- Fixed the post-night black-region failure by padding the static backdrop beyond camera bounds, insetting camera limits by half the viewport, and making night atmosphere explicitly reversible.
+- Added WorldGenerator with resource clusters instead of uniformly scattered harvesting nodes.
+- Added biome-aware landmarks so players encounter ruins, stumps, signs, fire pits, ice formations, dead trees and bones while travelling.
+- Added WorldActivityDirector and four physical exploration activities: wrecked caravans, caches, enemy nests and ancient altars.
+- Linked daytime nest decisions to night difficulty: every surviving nest adds attackers, while destroying one grants loot and permanently reduces that night's threat.
+- Moved old random daytime altar/chest popups out of ExpeditionDirector; risk/reward choices now live as discoverable world objects.
+- Made tree, stone and ore visuals materially different between Forest, Frost Hollow and Ashlands.
+- Deepened biome ground identity with frost cracks/snow, ash patches/embers and forest floor detail.
+- Increased daylight windows moderately to support the larger map and new activity interactions without turning travel into downtime.
+- Strengthened the hero-local backpack bar: wider gauge, earlier count display, amber near-full state and persistent full warning/return cue.
+- Shortened building copy to compact mobile-friendly effect summaries.
+- Rebuilt the home screen around a one-screen living-camp composition and a single prominent В ЭКСПЕДИЦИЮ action.
+- Simplified persistent camp navigation to Camp / Arsenal / Map / Trophies and moved Forge, Arsenal, Trophies and Map interactions onto camp hotspots.
+- Added a dedicated v1.3 regression covering world scale, activity population, nest consequences, resource risk bands, camera safety, night-to-dawn cleanup and compact hub layout.
+
+
 ## 1.2.0-alpha.1 — Production Core
 - Replaced the fixed bottom-left joystick with a floating dynamic one-thumb stick that appears under the touch point, drifts with the thumb under large deflection and fades on release.
 - Expanded each expedition into a multi-screen world and added a smooth player-follow camera with subtle movement look-ahead.

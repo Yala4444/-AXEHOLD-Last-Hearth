@@ -51,6 +51,8 @@ var world_size: Vector2 = Vector2(1170, 2532)
 var world_rect: Rect2 = Rect2(Vector2.ZERO, world_size)
 var camera: Camera2D
 var backdrop: WorldBackdrop
+var world_generator: WorldGenerator
+var activity_director: WorldActivityDirector
 
 func configure(index: int) -> void:
     biome_index = index
@@ -68,8 +70,8 @@ func _start_run() -> void:
     biome = GameRules.biome(biome_index)
     var viewport_size: Vector2 = get_viewport_rect().size
     world_size = Vector2(
-        maxf(1080.0, viewport_size.x * 3.0),
-        maxf(2100.0, viewport_size.y * 3.0)
+        maxf(1380.0, viewport_size.x * 3.75),
+        maxf(2860.0, viewport_size.y * 3.75)
     )
     world_rect = Rect2(Vector2.ZERO, world_size)
     base_position = world_size * 0.5
@@ -77,6 +79,14 @@ func _start_run() -> void:
     backdrop = WorldBackdrop.new()
     add_child(backdrop)
     backdrop.setup(world_size, base_position, biome, biome_index)
+
+    world_generator = WorldGenerator.new()
+    add_child(world_generator)
+    world_generator.setup(self)
+
+    activity_director = WorldActivityDirector.new()
+    add_child(activity_director)
+    activity_director.setup(self, world_generator)
 
     phase_max = GameRules.day_duration(0)
     phase_time = phase_max
@@ -122,11 +132,13 @@ func _setup_camera() -> void:
     camera.position = Vector2.ZERO
     camera.position_smoothing_enabled = true
     camera.position_smoothing_speed = 6.2
-    camera.limit_left = int(world_rect.position.x)
-    camera.limit_top = int(world_rect.position.y)
-    camera.limit_right = int(world_rect.end.x)
-    camera.limit_bottom = int(world_rect.end.y)
-    camera.limit_smoothed = true
+    var viewport_size: Vector2 = get_viewport_rect().size
+    var half_view: Vector2 = viewport_size * 0.5
+    camera.limit_left = int(world_rect.position.x + half_view.x)
+    camera.limit_top = int(world_rect.position.y + half_view.y)
+    camera.limit_right = int(world_rect.end.x - half_view.x)
+    camera.limit_bottom = int(world_rect.end.y - half_view.y)
+    camera.limit_smoothed = false
     camera.make_current()
 
 func _update_camera_lookahead(delta: float) -> void:
@@ -205,37 +217,22 @@ func _spawn_resource(kind: String) -> void:
     var spot: ResourceSpot = ResourceScene.instantiate() as ResourceSpot
     add_child(spot)
     spot.global_position = _resource_spawn_position(kind)
-    spot.configure(kind, randi() % 3)
+    spot.configure(kind, randi() % 3, biome_index)
     resources.append(spot)
 
 func _resource_spawn_position(kind: String) -> Vector2:
-    var min_radius: float = 145.0
-    var max_radius: float = 500.0
-    match kind:
-        "rock":
-            min_radius = 260.0
-            max_radius = 690.0
-        "ore":
-            min_radius = 470.0 if biome_index != 2 else 390.0
-            max_radius = 900.0
-
-    var safe_rect: Rect2 = world_rect.grow(-42.0)
-    for _i in range(80):
-        var angle: float = randf_range(0.0, TAU)
-        var radius: float = randf_range(min_radius, max_radius)
-        var point: Vector2 = base_position + Vector2(cos(angle), sin(angle)) * radius
-        point.x = clampf(point.x, safe_rect.position.x, safe_rect.end.x)
-        point.y = clampf(point.y, safe_rect.position.y, safe_rect.end.y)
-        if point.distance_to(base_position) < 135.0:
-            continue
-        var too_close: bool = false
-        for pad: BuildPad in pads:
-            if is_instance_valid(pad) and point.distance_to(pad.global_position) < 58.0:
-                too_close = true
-                break
-        if not too_close:
-            return point
-    return base_position + Vector2(min_radius, 0)
+    if world_generator != null:
+        for _attempt in range(24):
+            var point: Vector2 = world_generator.resource_point(kind)
+            var blocked: bool = point.distance_to(base_position) < 145.0
+            if not blocked:
+                for pad: BuildPad in pads:
+                    if is_instance_valid(pad) and point.distance_to(pad.global_position) < 58.0:
+                        blocked = true
+                        break
+            if not blocked:
+                return point
+    return base_position + Vector2(190, 0)
 
 func _maintain_resources() -> void:
     var counts: Dictionary = {"tree": 0, "rock": 0, "ore": 0}
@@ -380,6 +377,11 @@ func _start_night() -> void:
         backdrop.set_night(true)
     wave += 1
     spawn_left = GameRules.wave_count(wave, float(biome["difficulty"]))
+    if activity_director != null:
+        var nest_extra: int = activity_director.night_extra_enemies()
+        spawn_left += nest_extra
+        if nest_extra > 0:
+            hud.set_status("%d активных гнёзд усиливают эту ночь." % activity_director.unresolved_nests())
     spawn_timer = 0.1
     boss_spawned = false
     hud.hide_build_context()

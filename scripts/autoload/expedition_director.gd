@@ -32,9 +32,7 @@ func _process(delta: float) -> void:
     if world.player == null or world.hud == null:
         return
 
-    if world.phase == "day":
-        _maybe_show_day_event()
-    elif world.phase == "night" and not world.hud.modal_open():
+    if world.phase == "night" and not world.hud.modal_open():
         signature_cooldown -= delta
         if signature_cooldown <= 0.0:
             if trigger_signature_now():
