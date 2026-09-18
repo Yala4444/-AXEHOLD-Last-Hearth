@@ -13,6 +13,7 @@ func _run_tests() -> void:
     _test_mobile_autoloads()
     _test_analog_player_input()
     await _test_joystick_moves_live_player()
+    await _test_touch_scroll_container()
     _test_ui_sanitizer()
 
     if failures.is_empty():
@@ -107,6 +108,31 @@ func _test_joystick_moves_live_player() -> void:
     controls.call("force_visible_for_test", false)
     controls.call("unbind_world", world)
     world.queue_free()
+    await get_tree().process_frame
+
+func _test_touch_scroll_container() -> void:
+    var scroll := MobileScrollContainer.new()
+    add_child(scroll)
+    scroll.position = Vector2(0, 0)
+    scroll.size = Vector2(300, 260)
+
+    var content := Control.new()
+    content.custom_minimum_size = Vector2(300, 1100)
+    scroll.add_child(content)
+
+    await get_tree().process_frame
+    await get_tree().process_frame
+
+    var before: int = scroll.scroll_vertical
+    scroll.simulate_drag_for_test(-140.0)
+    await get_tree().process_frame
+
+    if scroll.scroll_vertical <= before:
+        _fail("Touch-safe menu scroll did not move after an upward drag")
+    else:
+        print("[MOBILE] touch-safe web menu scrolling OK, offset=", scroll.scroll_vertical)
+
+    scroll.queue_free()
     await get_tree().process_frame
 
 func _test_ui_sanitizer() -> void:
