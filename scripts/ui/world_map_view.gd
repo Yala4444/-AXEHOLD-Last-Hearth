@@ -2,6 +2,7 @@ class_name WorldMapView
 extends Control
 
 signal biome_selected(index: int)
+signal frontier_requested
 
 var selected_biome: int = 0
 var elapsed: float = 0.0
@@ -29,7 +30,7 @@ func _process(delta: float) -> void:
     queue_redraw()
 
 func _build_buttons() -> void:
-    for i: int in range(3):
+    for i: int in range(4):
         var button := Button.new()
         add_child(button)
         node_buttons.append(button)
@@ -45,16 +46,29 @@ func _refresh_buttons() -> void:
     var relics: Array = GameState.data.get("boss_relics", [false, false, false])
     for i: int in range(node_buttons.size()):
         var button: Button = node_buttons[i]
+
+        if i == 3:
+            var frontier_open: bool = GameState.chapter_one_complete()
+            button.text = "ДАЛЬНИЙ ОЧАГ\nСИГНАЛ ОБНАРУЖЕН" if frontier_open else "ЗА ПЕПЛОМ\nЗАВЕРШИ ГЛАВУ I"
+            button.disabled = not frontier_open
+            var frontier_fill: Color = Color("28283a") if frontier_open else Color(0.06, 0.075, 0.08, 0.72)
+            var frontier_border: Color = Color("9ea5d4") if frontier_open else Color(0.25, 0.28, 0.29, 0.46)
+            button.add_theme_stylebox_override("normal", _style(frontier_fill, frontier_border, 8))
+            button.add_theme_stylebox_override("hover", _style(frontier_fill.lightened(0.05), frontier_border.lightened(0.08), 8))
+            button.add_theme_stylebox_override("pressed", _style(frontier_fill.darkened(0.07), frontier_border, 8))
+            button.add_theme_stylebox_override("disabled", _style(frontier_fill, frontier_border, 8))
+            button.add_theme_color_override("font_color", Color("e2ddf5") if frontier_open else Color("737c7e"))
+            button.add_theme_color_override("font_disabled_color", Color("737c7e"))
+            continue
+
         var biome: Dictionary = GameRules.biome(i)
         var unlocked: bool = shards >= requirements[i]
         var level: int = int(mastery[i]) if i < mastery.size() else 0
         var relic_mark: String = "РЕЛИКВИЯ" if i < relics.size() and bool(relics[i]) else "ХРАНИТЕЛЬ"
         if not unlocked:
-            button.text = "%s
-НУЖНО %d ОСК." % [str(biome.get("name", "Регион")).to_upper(), requirements[i]]
+            button.text = "%s\nНУЖНО %d ОСК." % [str(biome.get("name", "Регион")).to_upper(), requirements[i]]
         else:
-            button.text = "%s
-МАСТЕРСТВО %d · %s" % [str(biome.get("name", "Регион")).to_upper(), level, relic_mark]
+            button.text = "%s\nМАСТЕРСТВО %d · %s" % [str(biome.get("name", "Регион")).to_upper(), level, relic_mark]
         button.disabled = not unlocked
         var selected: bool = selected_biome == i and unlocked
         var fill: Color = Color("2a352d") if selected else Color(0.07, 0.10, 0.11, 0.78)
@@ -73,19 +87,26 @@ func _layout_buttons() -> void:
     var w: float = maxf(size.x, 330.0)
     var h: float = maxf(size.y, 455.0)
     node_points = [
-        Vector2(w * 0.34, h * 0.72),
-        Vector2(w * 0.68, h * 0.46),
-        Vector2(w * 0.37, h * 0.21)
+        Vector2(w * 0.34, h * 0.76),
+        Vector2(w * 0.68, h * 0.54),
+        Vector2(w * 0.37, h * 0.32),
+        Vector2(w * 0.69, h * 0.11)
     ]
     for i: int in range(mini(node_buttons.size(), node_points.size())):
         var p: Vector2 = node_points[i]
         var button: Button = node_buttons[i]
-        button.position = p + Vector2(30, -29)
-        if i == 1:
+        if i == 0 or i == 2:
+            button.position = p + Vector2(30, -29)
+        else:
             button.position = p + Vector2(-176, -29)
         button.size = Vector2(146, 58)
 
 func _on_node_pressed(index: int) -> void:
+    if index == 3:
+        if GameState.chapter_one_complete():
+            frontier_requested.emit()
+        return
+
     var shards: int = int(GameState.data.get("shards", 0))
     if shards < requirements[index]:
         return
@@ -103,7 +124,7 @@ func _draw() -> void:
         draw_rect(Rect2(0, t * h, w, h / 11.0 + 1.0), Color("172229").lerp(Color("28362f"), t))
 
     _draw_distant_ridges(w, h)
-    if node_points.size() != 3:
+    if node_points.size() != 4:
         _layout_buttons()
 
     var path_color := Color(0.76, 0.64, 0.39, 0.34)
@@ -111,6 +132,8 @@ func _draw() -> void:
     draw_line(hearth, node_points[0], path_color, 3.0)
     draw_line(node_points[0], node_points[1], path_color, 3.0)
     draw_line(node_points[1], node_points[2], path_color, 3.0)
+    var frontier_path: Color = Color(0.64, 0.67, 0.90, 0.42) if GameState.chapter_one_complete() else Color(0.35, 0.38, 0.42, 0.20)
+    draw_line(node_points[2], node_points[3], frontier_path, 2.0)
     for i: int in range(20):
         var a: float = float(i) / 19.0
         var p: Vector2
@@ -126,6 +149,7 @@ func _draw() -> void:
     _draw_biome_node(node_points[0], 0)
     _draw_biome_node(node_points[1], 1)
     _draw_biome_node(node_points[2], 2)
+    _draw_frontier_node(node_points[3])
 
     var font: Font = ThemeDB.fallback_font
     draw_string(font, Vector2(w * 0.5 - 76, h - 14), "ПОСЛЕДНИЙ ОЧАГ", HORIZONTAL_ALIGNMENT_CENTER, 152, 9, Color("e4c985"))
@@ -180,6 +204,21 @@ func _draw_biome_node(pos: Vector2, index: int) -> void:
             draw_circle(pos + Vector2(0, -3), 13.0, Color("42684b"))
             draw_circle(pos + Vector2(-8, 1), 8.0, Color("507a55"))
             draw_circle(pos + Vector2(8, 1), 8.0, Color("507a55"))
+
+func _draw_frontier_node(pos: Vector2) -> void:
+    var unlocked: bool = GameState.chapter_one_complete()
+    var pulse: float = (sin(elapsed * 3.1) + 1.0) * 0.5
+    var glow: Color = Color("a8b2f0") if unlocked else Color("596067")
+    draw_circle(pos, 29.0 + (pulse * 3.0 if unlocked else 0.0), Color(glow, 0.07 if unlocked else 0.025))
+    draw_circle(pos, 22.0, Color("171923"))
+    draw_arc(pos, 22.0, 0.0, TAU, 30, Color(glow, 0.82 if unlocked else 0.42), 2.0)
+    if unlocked:
+        draw_circle(pos, 6.0 + pulse * 2.0, Color("f0c679"))
+        draw_circle(pos, 12.0 + pulse * 2.0, Color(0.66, 0.70, 0.94, 0.10))
+        draw_line(pos + Vector2(-13, 11), pos + Vector2(13, -11), Color(0.66, 0.70, 0.94, 0.36), 1.0)
+    else:
+        draw_line(pos + Vector2(-7, -7), pos + Vector2(7, 7), Color("62686c"), 3.0)
+        draw_line(pos + Vector2(7, -7), pos + Vector2(-7, 7), Color("62686c"), 3.0)
 
 func _style(fill: Color, border: Color, margin: int) -> StyleBoxFlat:
     var style := StyleBoxFlat.new()
