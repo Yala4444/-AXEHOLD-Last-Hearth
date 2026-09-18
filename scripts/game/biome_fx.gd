@@ -106,18 +106,18 @@ func _draw_forest_atmosphere(view_rect: Rect2) -> void:
 
 func _draw_frost_atmosphere(view_rect: Rect2) -> void:
     var night: bool = world.phase == "night"
-    draw_rect(view_rect, Color(0.45, 0.72, 0.92, 0.060 if night else 0.030))
+    draw_rect(view_rect, Color(0.30, 0.54, 0.66, 0.055 if night else 0.018))
 
     for i: int in range(26 if night else 18):
         var speed: float = 18.0 + float(i % 5) * 5.5
         var x: float = view_rect.position.x + fmod(float(i * 61) + ambience_time * speed, view_rect.size.x + 40.0) - 20.0
         var y: float = view_rect.position.y + fmod(float(i * 43) + ambience_time * (13.0 + float(i % 4) * 3.0), view_rect.size.y + 20.0)
         var length: float = 4.0 + float(i % 3) * 2.2
-        draw_line(Vector2(x, y), Vector2(x - length * 0.7, y + length), Color(0.86, 0.96, 1.0, 0.18 if night else 0.12), 1.2)
+        draw_line(Vector2(x, y), Vector2(x - length * 0.7, y + length), Color(0.86, 0.96, 1.0, 0.16 if night else 0.085), 1.2)
 
     for i: int in range(4):
         var fog_y: float = view_rect.position.y + 110.0 + float(i) * 145.0 + sin(ambience_time * 0.35 + float(i)) * 12.0
-        draw_rect(Rect2(Vector2(view_rect.position.x, fog_y), Vector2(view_rect.size.x, 24.0)), Color(0.82, 0.93, 0.97, 0.025 + float(i % 2) * 0.012))
+        draw_rect(Rect2(Vector2(view_rect.position.x, fog_y), Vector2(view_rect.size.x, 24.0)), Color(0.82, 0.93, 0.97, 0.014 + float(i % 2) * 0.008))
 
 func _draw_ash_atmosphere(view_rect: Rect2) -> void:
     var night: bool = world.phase == "night"
