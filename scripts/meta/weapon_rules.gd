@@ -139,7 +139,7 @@ static func identity_text(id: String) -> String:
 static func signature_text(id: String) -> String:
     return str(profile(id).get("signature", ""))
 
-static func mastery_bonus_text(id: String, level: int) -> String:
+static func weapon_mastery_bonus_text(id: String, level: int) -> String:
     if level <= 0:
         return "Сыграй экспедицию этим оружием, чтобы начать мастерство."
     var bonuses: Array[String] = []
