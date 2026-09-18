@@ -50,6 +50,9 @@ var deposit_pulse: float = 0.0
 var world_size: Vector2 = Vector2(1170, 2532)
 var world_rect: Rect2 = Rect2(Vector2.ZERO, world_size)
 var camera: Camera2D
+var camera_lookahead: Vector2 = Vector2.ZERO
+var camera_shake_strength: float = 0.0
+var camera_shake_time: float = 0.0
 var backdrop: WorldBackdrop
 var world_generator: WorldGenerator
 var activity_director: WorldActivityDirector
@@ -169,7 +172,22 @@ func _update_camera_lookahead(delta: float) -> void:
     var target_offset := Vector2.ZERO
     if player.velocity.length_squared() > 64.0:
         target_offset = player.velocity.normalized() * 24.0
-    camera.position = camera.position.lerp(target_offset, clampf(delta * 4.6, 0.0, 1.0))
+    camera_lookahead = camera_lookahead.lerp(target_offset, clampf(delta * 4.6, 0.0, 1.0))
+
+    camera_shake_time = maxf(0.0, camera_shake_time - delta)
+    camera_shake_strength = move_toward(camera_shake_strength, 0.0, delta * 18.0)
+    var shake := Vector2.ZERO
+    if camera_shake_time > 0.0 and camera_shake_strength > 0.05:
+        var ticks: float = float(Time.get_ticks_msec()) * 0.001
+        shake = Vector2(
+            sin(ticks * 53.0) + sin(ticks * 89.0) * 0.45,
+            cos(ticks * 61.0) + sin(ticks * 97.0) * 0.35
+        ) * camera_shake_strength
+    camera.position = camera_lookahead + shake
+
+func trigger_camera_shake(strength: float, duration: float = 0.14) -> void:
+    camera_shake_strength = maxf(camera_shake_strength, strength)
+    camera_shake_time = maxf(camera_shake_time, duration)
 
 func _process(delta: float) -> void:
     deposit_pulse = maxf(0.0, deposit_pulse - delta * 2.8)
@@ -566,6 +584,9 @@ func _start_night() -> void:
     boss_spawned = false
     hud.hide_build_context()
     hud.show_banner("НОЧЬ %d" % wave, Color("d9e7ff"))
+    if core_fx != null:
+        core_fx.hearth_flare(base_position, true)
+    trigger_camera_shake(2.6, 0.22)
     var active_count: int = 0
     for value: Variant in built.values():
         if bool(value):
@@ -589,6 +610,8 @@ func _start_day() -> void:
         hud.set_status("Оберег Святилища восстановил 1 защитный заряд.")
     run_coins += 5 + wave * 3
     hud.show_banner("РАССВЕТ • СНОВА ЗА РЕСУРСАМИ", Color("fff0b4"))
+    if core_fx != null:
+        core_fx.hearth_flare(base_position, false)
     hud.set_status("Укрепи слабое место лагеря до следующей ночи.")
 
 func _spawn_enemy(is_boss: bool = false, forced_kind: String = "") -> void:
@@ -598,7 +621,7 @@ func _spawn_enemy(is_boss: bool = false, forced_kind: String = "") -> void:
     var kind: String = "boss" if is_boss else (forced_kind if not forced_kind.is_empty() else GameRules.enemy_type_for_biome(biome_index))
     if run_variation != null:
         kind = run_variation.pick_enemy_kind(kind, is_boss)
-    enemy.configure(kind, float(biome["difficulty"]), wave, Color(str(biome["enemy"])), is_boss)
+    enemy.configure(kind, float(biome["difficulty"]), wave, Color(str(biome["enemy"])), is_boss, biome_index)
     if run_variation != null:
         run_variation.tune_enemy(enemy)
     if is_boss:
@@ -606,6 +629,9 @@ func _spawn_enemy(is_boss: bool = false, forced_kind: String = "") -> void:
         enemy.hp = enemy.max_hp
         boss_ref = enemy
         hud.show_banner(str(biome.get("boss_name", "ХРАНИТЕЛЬ")).to_upper(), Color("ffb66a"))
+        if core_fx != null:
+            core_fx.boss_arrival(enemy.global_position, biome_index)
+        trigger_camera_shake(6.0, 0.38)
     enemy.killed.connect(_on_enemy_killed)
     enemies.append(enemy)
 
@@ -835,6 +861,7 @@ func _weapon_hammer(enemy_snapshot: Array[AxEnemy]) -> void:
 
     if core_fx != null:
         core_fx.hammer_slam(player.global_position, radius)
+    trigger_camera_shake(3.2, 0.12)
     Feedback.play("hammer", 11)
 
 func _weapon_twin_blades(enemy_snapshot: Array[AxEnemy]) -> void:
@@ -963,6 +990,10 @@ func _on_enemy_killed(enemy: AxEnemy) -> void:
     if not enemies.has(enemy):
         return
     enemies.erase(enemy)
+    if core_fx != null:
+        core_fx.enemy_down(enemy.global_position, enemy.enemy_type, enemy.boss, biome_index)
+    if enemy.boss:
+        trigger_camera_shake(7.0, 0.34)
     kills += 1
     GameState.mission_add("kills")
     QuestDirector.record("kill_enemy", 1, {"enemy":enemy.enemy_type, "biome":biome_index})
@@ -1002,6 +1033,10 @@ func _on_player_died() -> void:
 
 func _on_player_damaged(_amount: float, blocked: bool) -> void:
     hud.damage_feedback(blocked)
+    if not blocked:
+        trigger_camera_shake(2.2, 0.10)
+        if core_fx != null:
+            core_fx.player_hit(player.global_position)
     hud.set_status("Щит поглотил удар." if blocked else "Герой получил урон.")
 
 func _finish_run(won: bool) -> void:
