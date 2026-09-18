@@ -243,9 +243,24 @@ func _draw() -> void:
         var s: float = clampf(1.0 - surge_windup / 0.22, 0.0, 1.0)
         draw_rect(Rect2(-15 - s * 3, -17 - s * 3, 30 + s * 6, 34 + s * 6), Color(0.72, 0.52, 0.92, 0.34 + s * 0.40), false, 2.0)
 
-    var body_color: Color = (Color("9c4d51") if boss else tint).lightened(hit_flash * 0.34)
-    var dark: Color = body_color.darkened(0.28)
-    var light: Color = body_color.lightened(0.16)
+    var body_color: Color = tint
+    if boss:
+        body_color = Color("a34e52")
+    else:
+        match enemy_type:
+            "runner":
+                body_color = Color("6c8d75").lerp(tint, 0.30)
+            "brute":
+                body_color = Color("7e5a48").lerp(tint, 0.26)
+            "stalker":
+                body_color = Color("76589a").lerp(tint, 0.22)
+            "guardian":
+                body_color = Color("66706f").lerp(tint, 0.18)
+            _:
+                body_color = Color("6e5d76").lerp(tint, 0.42)
+    body_color = body_color.lightened(hit_flash * 0.34)
+    var dark: Color = body_color.darkened(0.30)
+    var light: Color = body_color.lightened(0.18)
 
     if boss:
         _draw_pixel_boss(body_color, dark, light)
