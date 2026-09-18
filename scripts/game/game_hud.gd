@@ -270,10 +270,10 @@ func hide_build_context() -> void:
     build_panel.visible = false
 
 func set_status(text: String) -> void:
-    status_label.text = text
+    status_label.text = _safe(text)
 
 func show_banner(text: String, color: Color = Color("f4d79a")) -> void:
-    banner.text = text
+    banner.text = _safe(text)
     banner.add_theme_color_override("font_color", color)
     banner.modulate.a = 0.0
     banner.scale = Vector2(0.92, 0.92)
