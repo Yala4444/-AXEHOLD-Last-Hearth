@@ -220,6 +220,16 @@ jobs:
             exit 1
           fi
 
+      - name: V1.10 production feel regression
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_v110_production_feel_smoke.tscn 2>&1 | tee /tmp/godot-v110-feel.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v110-feel.log; then
+            echo "GDScript parse errors detected during v1.10 production feel test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |
