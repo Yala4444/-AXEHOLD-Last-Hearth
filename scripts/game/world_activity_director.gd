@@ -70,6 +70,16 @@ func _spawn_initial_activities() -> void:
     if not bonus.is_empty():
         _spawn(bonus, 520.0, 1340.0, occupied)
 
+    # Frontier Assignments must test routing and time pressure, not random luck.
+    var assignment: Dictionary = FrontierRules.assignment(GameState.frontier_assignment_id())
+    var guarantee: String = str(assignment.get("guarantee", ""))
+    if guarantee == "signal_fire":
+        _spawn("signal_fire", 520.0, 1120.0, occupied)
+        _spawn("signal_fire", 720.0, 1320.0, occupied)
+    elif guarantee == "rare_ore":
+        _spawn("rare_ore", 560.0, 1160.0, occupied)
+        _spawn("rare_ore", 760.0, 1340.0, occupied)
+
 func _pick_unique(pool: Array[String], selected: Dictionary) -> String:
     var candidates: Array[String] = []
     for kind: String in pool:
@@ -268,14 +278,14 @@ func _on_hud_action(action: String) -> void:
 
 func _on_activity_resolved(activity: WorldActivity) -> void:
     activities_resolved += 1
-    QuestDirector.record("activity_resolved", 1, {"type":activity.activity_type, "biome":world.biome_index})
+    QuestDirector.record("activity_resolved", 1, {"type":activity.activity_type, "biome":world.biome_index, "wave":world.wave})
     if activity.activity_type == "nest":
         nests_destroyed += 1
-        QuestDirector.record("nest_destroyed", 1, {"biome":world.biome_index})
+        QuestDirector.record("nest_destroyed", 1, {"biome":world.biome_index, "wave":world.wave})
         _grant_nest_reward(activity)
     elif activity.activity_type == "old_hearth":
         hearths_relit += 1
-        QuestDirector.record("hearth_relit", 1, {"biome":world.biome_index})
+        QuestDirector.record("hearth_relit", 1, {"biome":world.biome_index, "wave":world.wave})
     Analytics.event("world_activity_resolved", {
         "type": activity.activity_type,
         "wave": world.wave,
@@ -327,9 +337,9 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
             resident_notices.append("Восстановленная башня передала старый сигнал. Инженер Торн нашёл дорогу к Последнему Очагу.")
             GameState.data["meta_notices"] = resident_notices
             GameState.save()
-            QuestDirector.record("resident_rescued", 1, {"resident":"thorn","biome":world.biome_index})
+            QuestDirector.record("resident_rescued", 1, {"resident":"thorn","biome":world.biome_index,"wave":world.wave})
 
-        QuestDirector.record("tower_repaired", 1, {"biome":world.biome_index})
+        QuestDirector.record("tower_repaired", 1, {"biome":world.biome_index,"wave":world.wave})
         world.hud.show_banner("СИГНАЛ ДОШЁЛ ДО ТОРНА" if thorn_was_locked else "СТАРАЯ БАШНЯ ВОССТАНОВЛЕНА", Color("c3c9bd"))
         world.hud.set_status("Торн вернётся к Очагу. Башня усилена в этом забеге." if thorn_was_locked else "Механизм передал чертежи: твоя Башня сильнее в этом забеге.")
     elif activity.activity_type == "wind_shrine":
@@ -354,7 +364,7 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         world.run_coins += 7
         if world.run_variation != null:
             world.run_variation.reduce_threat(1.1, "signal_fire")
-        QuestDirector.record("signal_fire", 1, {"biome":world.biome_index})
+        QuestDirector.record("signal_fire", 1, {"biome":world.biome_index, "wave":world.wave})
         world.hud.show_banner("СИГНАЛЬНЫЙ ОГОНЬ ГОРИТ", Color("efbd78"))
         world.hud.set_status("Маршрут отмечен. Угроза Тьмы снизилась.")
     elif activity.activity_type == "infected_cache":
@@ -368,7 +378,7 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         world.hud.set_status("Ресурсы спасены, но заражение усилило следующую ночь.")
     elif activity.activity_type == "memory_rift":
         world.run_coins += 6
-        QuestDirector.record("memory_rift", 1, {"biome":world.biome_index})
+        QuestDirector.record("memory_rift", 1, {"biome":world.biome_index, "wave":world.wave})
         GameState.data["lore_fragments"] = int(GameState.data.get("lore_fragments", 0)) + 1
         var notices: Array = GameState.data.get("meta_notices", [])
         notices.append("Разлом памяти: найден новый фрагмент прошлого.")
@@ -388,7 +398,7 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
             resident_notices.append("В лагерь вернулась разведчица Мира. На Доске появились её поручения.")
             GameState.data["meta_notices"] = resident_notices
             GameState.save()
-            QuestDirector.record("resident_rescued", 1, {"resident":"mira","biome":world.biome_index})
+            QuestDirector.record("resident_rescued", 1, {"resident":"mira","biome":world.biome_index,"wave":world.wave})
             world.hud.show_banner("РАЗВЕДЧИЦА СПАСЕНА", Color("b9d0b8"))
             world.hud.set_status("Мира вернётся в лагерь после экспедиции.")
         else:
@@ -397,7 +407,7 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
             world.hud.set_status("+12 мон. за помощь разведотряду.")
     elif activity.activity_type == "chest":
         if activity.cursed:
-            QuestDirector.record("cursed_cache", 1, {"biome":world.biome_index})
+            QuestDirector.record("cursed_cache", 1, {"biome":world.biome_index,"wave":world.wave})
             _give_resource("stone", 2, activity.global_position)
             _give_resource("ore", 4, activity.global_position)
             world.run_coins += 16
