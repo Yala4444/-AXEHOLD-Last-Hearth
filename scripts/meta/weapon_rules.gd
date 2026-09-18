@@ -138,3 +138,57 @@ static func identity_text(id: String) -> String:
 
 static func signature_text(id: String) -> String:
     return str(profile(id).get("signature", ""))
+
+static func mastery_bonus_text(id: String, level: int) -> String:
+    if level <= 0:
+        return "Сыграй экспедицию этим оружием, чтобы начать мастерство."
+    var bonuses: Array[String] = []
+    match id:
+        "axes":
+            if level >= 2:
+                bonuses.append("+4 радиуса Вихря")
+            if level >= 4:
+                bonuses.append("+8% урона Вихря")
+        "spear":
+            if level >= 2:
+                bonuses.append("+1 пробиваемая цель")
+            if level >= 4:
+                bonuses.append("-8% перезарядка выпадов")
+        "hammer":
+            if level >= 2:
+                bonuses.append("+6 радиуса раскола")
+            if level >= 4:
+                bonuses.append("+8% урона раскола")
+        "twin_blades":
+            if level >= 2:
+                bonuses.append("+1 максимум комбо")
+            if level >= 4:
+                bonuses.append("+0.12 c удержание комбо")
+    if bonuses.is_empty():
+        return "Следующий бонус открывается на мастерстве II."
+    return " · ".join(PackedStringArray(bonuses))
+
+static func mastery_next_text(id: String, level: int) -> String:
+    if level >= 5:
+        return "Мастерство V достигнуто."
+    if level < 2:
+        match id:
+            "axes":
+                return "II: +4 радиуса Вихря"
+            "spear":
+                return "II: +1 пробиваемая цель"
+            "hammer":
+                return "II: +6 радиуса раскола"
+            "twin_blades":
+                return "II: +1 максимум комбо"
+    if level < 4:
+        match id:
+            "axes":
+                return "IV: +8% урона Вихря"
+            "spear":
+                return "IV: -8% перезарядка выпадов"
+            "hammer":
+                return "IV: +8% урона раскола"
+            "twin_blades":
+                return "IV: +0.12 c удержание комбо"
+    return "V: знак полного мастерства."
