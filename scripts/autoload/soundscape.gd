@@ -4,23 +4,33 @@ const SAMPLE_RATE: int = 22050
 const TRACK_SECONDS: float = 4.2
 
 var music_player: AudioStreamPlayer = null
+var alternate_player: AudioStreamPlayer = null
+var active_player: AudioStreamPlayer = null
 var world: GameWorld = null
 var scan_timer: float = 0.0
 var current_key: String = ""
 
 func _ready() -> void:
     music_player = AudioStreamPlayer.new()
+    alternate_player = AudioStreamPlayer.new()
     add_child(music_player)
+    add_child(alternate_player)
     music_player.volume_db = -25.0
-    music_player.finished.connect(_on_track_finished)
+    alternate_player.volume_db = -48.0
+    music_player.finished.connect(_on_track_finished.bind(music_player))
+    alternate_player.finished.connect(_on_track_finished.bind(alternate_player))
+    active_player = music_player
 
 func _process(delta: float) -> void:
     scan_timer -= delta
     if scan_timer > 0.0:
-        if music_player != null and _sound_enabled() and not current_key.is_empty() and not music_player.playing:
-            music_player.play()
-        elif music_player != null and not _sound_enabled() and music_player.playing:
-            music_player.stop()
+        if active_player != null and _sound_enabled() and not current_key.is_empty() and not active_player.playing:
+            active_player.play()
+        elif not _sound_enabled():
+            if music_player != null and music_player.playing:
+                music_player.stop()
+            if alternate_player != null and alternate_player.playing:
+                alternate_player.stop()
         return
 
     scan_timer = 0.40
@@ -32,25 +42,48 @@ func _process(delta: float) -> void:
             current_key = ""
             if music_player != null:
                 music_player.stop()
+            if alternate_player != null:
+                alternate_player.stop()
         return
 
-    var phase_key: String = "night" if world.phase == "night" else "day"
+    var boss_active: bool = world.boss_ref != null and is_instance_valid(world.boss_ref)
+    var phase_key: String = "boss" if boss_active else ("night" if world.phase == "night" else "day")
     var wanted: String = "%d:%s" % [world.biome_index, phase_key]
     if wanted != current_key:
         current_key = wanted
-        _switch_track(world.biome_index, world.phase == "night")
+        _switch_track(world.biome_index, world.phase == "night", boss_active)
 
-func _switch_track(biome_index: int, night: bool) -> void:
-    if music_player == null:
+func _switch_track(biome_index: int, night: bool, boss: bool = false) -> void:
+    if music_player == null or alternate_player == null:
         return
-    music_player.stop()
-    music_player.stream = _make_track(biome_index, night)
-    if _sound_enabled():
-        music_player.play()
 
-func _on_track_finished() -> void:
-    if music_player != null and not current_key.is_empty() and _sound_enabled():
-        music_player.play()
+    var outgoing: AudioStreamPlayer = active_player
+    var incoming: AudioStreamPlayer = alternate_player if active_player == music_player else music_player
+    incoming.stop()
+    incoming.stream = _make_track(biome_index, night, boss)
+    incoming.volume_db = -46.0
+    active_player = incoming
+
+    if _sound_enabled():
+        incoming.play()
+        var tween := create_tween()
+        tween.set_parallel(true)
+        tween.tween_property(incoming, "volume_db", -24.0 if boss else -25.0, 0.72)
+        if outgoing != null and outgoing.playing:
+            tween.tween_property(outgoing, "volume_db", -46.0, 0.72)
+        tween.chain().tween_callback(_finish_crossfade.bind(outgoing))
+    else:
+        if outgoing != null:
+            outgoing.stop()
+
+func _finish_crossfade(outgoing: AudioStreamPlayer) -> void:
+    if outgoing != null and outgoing != active_player:
+        outgoing.stop()
+        outgoing.volume_db = -46.0
+
+func _on_track_finished(player: AudioStreamPlayer) -> void:
+    if player == active_player and player != null and not current_key.is_empty() and _sound_enabled():
+        player.play()
 
 func _sound_enabled() -> bool:
     if not is_instance_valid(GameState):
@@ -69,10 +102,12 @@ func _find_world(node: Node) -> GameWorld:
             return found
     return null
 
-func _make_track(biome_index: int, night: bool) -> AudioStreamWAV:
+func _make_track(biome_index: int, night: bool, boss: bool = false) -> AudioStreamWAV:
     var chord: Array = []
     var pulse_frequency: float = 65.41
     var amplitude: float = 0.055 if night else 0.042
+    if boss:
+        amplitude = 0.068
 
     match biome_index:
         1:
@@ -84,6 +119,16 @@ func _make_track(biome_index: int, night: bool) -> AudioStreamWAV:
         _:
             chord = [130.81, 196.0, 261.63] if night else [164.81, 246.94, 329.63]
             pulse_frequency = 65.41
+
+    if boss:
+        pulse_frequency *= 0.75
+        match biome_index:
+            1:
+                chord = [110.0, 146.83, 220.0]
+            2:
+                chord = [82.41, 123.47, 164.81]
+            _:
+                chord = [98.0, 146.83, 196.0]
 
     var sample_count: int = maxi(1, int(TRACK_SECONDS * float(SAMPLE_RATE)))
     var bytes := PackedByteArray()
@@ -100,7 +145,10 @@ func _make_track(biome_index: int, night: bool) -> AudioStreamWAV:
             value += sin(TAU * frequency * seconds)
             value += sin(TAU * frequency * 2.002 * seconds) * 0.18
         value /= float(maxi(1, chord.size()))
-        value += sin(TAU * pulse_frequency * seconds) * (0.16 if night else 0.09)
+        var pulse_amount: float = 0.24 if boss else (0.16 if night else 0.09)
+        value += sin(TAU * pulse_frequency * seconds) * pulse_amount
+        if boss:
+            value += sin(TAU * (pulse_frequency * 0.5) * seconds) * 0.12
 
         if biome_index == 1:
             value += sin(TAU * 987.77 * seconds + sin(seconds * 1.7) * 0.6) * 0.035
