@@ -62,10 +62,56 @@ func _process(delta: float) -> void:
 
 func harvest(kind: String, pos: Vector2, amount: int, target: Vector2) -> void:
     var color: Color = _resource_color(kind)
-    for i: int in range(7):
-        var angle: float = TAU * float(i) / 7.0 + randf_range(-0.25, 0.25)
-        var speed: float = randf_range(32.0, 66.0)
-        _particle(pos, Vector2(cos(angle), sin(angle)) * speed + Vector2(0, -16), color, randf_range(0.28, 0.42), randf_range(1.8, 3.2), 72.0, 2.6)
+    var burst_count: int = 7
+    var gravity: float = 72.0
+    var drag: float = 2.6
+    var speed_min: float = 32.0
+    var speed_max: float = 66.0
+
+    match kind:
+        "wood":
+            burst_count = 9
+            gravity = 112.0
+            drag = 2.0
+            speed_min = 38.0
+            speed_max = 78.0
+        "stone":
+            burst_count = 8
+            gravity = 145.0
+            drag = 3.4
+            speed_min = 26.0
+            speed_max = 58.0
+        "ore":
+            burst_count = 11
+            gravity = 48.0
+            drag = 4.2
+            speed_min = 34.0
+            speed_max = 72.0
+
+    for i: int in range(burst_count):
+        var angle: float = TAU * float(i) / float(burst_count) + randf_range(-0.25, 0.25)
+        var speed: float = randf_range(speed_min, speed_max)
+        var particle_color: Color = color
+        if kind == "wood" and i % 3 == 0:
+            particle_color = Color("7a4d2f")
+        elif kind == "stone" and i % 3 == 0:
+            particle_color = Color("e0e7e4")
+        elif kind == "ore" and i % 2 == 0:
+            particle_color = Color("e1b4f2")
+        _particle(
+            pos,
+            Vector2(cos(angle), sin(angle)) * speed + Vector2(0, -16),
+            particle_color,
+            randf_range(0.28, 0.46),
+            randf_range(1.6, 3.4),
+            gravity,
+            drag
+        )
+
+    if kind == "stone":
+        _pulse(pos, 8.0, 24.0, Color(0.75, 0.82, 0.80, 0.24), 0.18)
+    elif kind == "ore":
+        _pulse(pos, 9.0, 30.0, Color(0.70, 0.43, 0.82, 0.32), 0.24)
 
     var token_count: int = clampi(int(ceil(float(amount) / 2.0)), 2, 5)
     for i: int in range(token_count):
@@ -144,6 +190,86 @@ func blade_flurry(pos: Vector2, direction: Vector2, combo: int) -> void:
         var sign_value: float = -1.0 if i % 2 == 0 else 1.0
         var start: Vector2 = pos + dir * randf_range(8.0, 20.0) + side * sign_value * randf_range(2.0, 10.0)
         _particle(start, dir * randf_range(36.0, 70.0) + side * sign_value * randf_range(18.0, 42.0), Color("f0a06f"), 0.18, 2.2, 0.0, 5.0)
+
+func boss_arrival(pos: Vector2, biome_index: int) -> void:
+    var color: Color = Color("93c975")
+    if biome_index == 1:
+        color = Color("9bdcf0")
+    elif biome_index == 2:
+        color = Color("f17845")
+
+    _pulse(pos, 18.0, 86.0, Color(color.r, color.g, color.b, 0.70), 0.72)
+    _pulse(pos, 8.0, 48.0, Color(1.0, 0.88, 0.64, 0.44), 0.44)
+    for i: int in range(26):
+        var angle: float = TAU * float(i) / 26.0
+        var dir := Vector2(cos(angle), sin(angle))
+        _particle(
+            pos + dir * randf_range(5.0, 18.0),
+            dir * randf_range(54.0, 112.0),
+            color.lightened(randf_range(0.0, 0.18)),
+            randf_range(0.42, 0.72),
+            randf_range(2.0, 4.4),
+            22.0,
+            2.2
+        )
+    _popup(pos + Vector2(0, -52), "ХРАНИТЕЛЬ", color.lightened(0.20), 1.05)
+
+func enemy_down(pos: Vector2, enemy_type: String, boss: bool, biome_index: int) -> void:
+    var color: Color = Color("9b7aa8")
+    if biome_index == 0:
+        color = Color("779a67")
+    elif biome_index == 1:
+        color = Color("86b7c3")
+    elif biome_index == 2:
+        color = Color("b96349")
+
+    var count: int = 30 if boss else (12 if enemy_type == "guardian" or enemy_type == "brute" else 7)
+    for i: int in range(count):
+        var angle: float = TAU * float(i) / float(maxi(1, count)) + randf_range(-0.22, 0.22)
+        var dir := Vector2(cos(angle), sin(angle))
+        _particle(
+            pos + Vector2(randf_range(-5.0, 5.0), randf_range(-5.0, 5.0)),
+            dir * randf_range(26.0, 96.0) + Vector2(0, randf_range(-22.0, 8.0)),
+            color.lightened(randf_range(0.0, 0.16)),
+            randf_range(0.24, 0.55) if not boss else randf_range(0.48, 0.82),
+            randf_range(1.5, 3.8) if not boss else randf_range(2.5, 5.0),
+            70.0,
+            2.8
+        )
+    if boss:
+        _pulse(pos, 20.0, 112.0, Color(color.r, color.g, color.b, 0.62), 0.86)
+        _pulse(pos, 12.0, 72.0, Color(1.0, 0.76, 0.34, 0.46), 0.58)
+        _popup(pos + Vector2(0, -48), "ХРАНИТЕЛЬ ПАЛ", Color("ffe1a0"), 1.2)
+
+func player_hit(pos: Vector2) -> void:
+    _pulse(pos, 12.0, 34.0, Color(0.94, 0.28, 0.22, 0.34), 0.20)
+    for i: int in range(8):
+        _particle(
+            pos,
+            Vector2(randf_range(-54.0, 54.0), randf_range(-58.0, 20.0)),
+            Color("e67862"),
+            randf_range(0.18, 0.30),
+            randf_range(1.5, 3.0),
+            96.0,
+            3.6
+        )
+
+func hearth_flare(pos: Vector2, night_start: bool) -> void:
+    var outer: float = 118.0 if night_start else 82.0
+    var life: float = 0.78 if night_start else 0.55
+    _pulse(pos, 24.0, outer, Color(1.0, 0.63, 0.20, 0.58 if night_start else 0.38), life)
+    for i: int in range(20 if night_start else 12):
+        var angle: float = randf_range(-2.8, -0.35)
+        var speed: float = randf_range(26.0, 64.0)
+        _particle(
+            pos + Vector2(randf_range(-18.0, 18.0), randf_range(-4.0, 8.0)),
+            Vector2(cos(angle), sin(angle)) * speed,
+            Color("ffbd57").lightened(randf_range(0.0, 0.18)),
+            randf_range(0.42, 0.76),
+            randf_range(1.6, 3.2),
+            -8.0,
+            1.8
+        )
 
 func _particle(pos: Vector2, vel: Vector2, color: Color, life: float, size: float, gravity: float, drag: float) -> void:
     particles.append({
