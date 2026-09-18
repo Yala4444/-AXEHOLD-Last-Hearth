@@ -752,7 +752,7 @@ func _weapon_spear(enemy_snapshot: Array[AxEnemy]) -> void:
         direction = Vector2(player.facing_x, 0.0)
     direction = direction.normalized()
 
-    weapon_attack_timer = WeaponRules.mechanic_value(player.weapon_id, "attack_cooldown", 0.66)
+    weapon_attack_timer = WeaponRules.mechanic_value(player.weapon_id, "attack_cooldown", 0.66) * player.weapon_cooldown_mult
     player.trigger_weapon_action(direction, 0.22)
 
     var width: float = WeaponRules.mechanic_value(player.weapon_id, "attack_width", 16.0)
@@ -787,7 +787,7 @@ func _weapon_spear(enemy_snapshot: Array[AxEnemy]) -> void:
 
     if core_fx != null:
         core_fx.spear_thrust(player.global_position + direction * 10.0, player.global_position + direction * attack_range)
-    Feedback.play("hit", 5)
+    Feedback.play("spear", 5)
 
 func _weapon_hammer(enemy_snapshot: Array[AxEnemy]) -> void:
     if weapon_attack_timer > 0.0:
@@ -806,7 +806,7 @@ func _weapon_hammer(enemy_snapshot: Array[AxEnemy]) -> void:
     if nearest == null:
         return
 
-    weapon_attack_timer = WeaponRules.mechanic_value(player.weapon_id, "attack_cooldown", 0.98)
+    weapon_attack_timer = WeaponRules.mechanic_value(player.weapon_id, "attack_cooldown", 0.98) * player.weapon_cooldown_mult
     var slam_direction: Vector2 = player.global_position.direction_to(nearest.global_position)
     player.trigger_weapon_action(slam_direction, 0.34)
 
@@ -833,7 +833,7 @@ func _weapon_hammer(enemy_snapshot: Array[AxEnemy]) -> void:
 
     if core_fx != null:
         core_fx.hammer_slam(player.global_position, radius)
-    Feedback.play("boss", 11)
+    Feedback.play("hammer", 11)
 
 func _weapon_twin_blades(enemy_snapshot: Array[AxEnemy]) -> void:
     if weapon_attack_timer > 0.0:
@@ -860,7 +860,7 @@ func _weapon_twin_blades(enemy_snapshot: Array[AxEnemy]) -> void:
     if chosen.is_empty():
         return
 
-    weapon_attack_timer = WeaponRules.mechanic_value(player.weapon_id, "attack_cooldown", 0.20)
+    weapon_attack_timer = WeaponRules.mechanic_value(player.weapon_id, "attack_cooldown", 0.20) * player.weapon_cooldown_mult
     var combo_cap: int = WeaponRules.mechanic_int(player.weapon_id, "combo_cap", 6) + player.blades_combo_cap_bonus
     var combo_step: float = WeaponRules.mechanic_value(player.weapon_id, "combo_step", 0.06) + player.blades_combo_step_bonus
     var combo_multiplier: float = 1.0 + float(weapon_combo) * combo_step
@@ -876,11 +876,11 @@ func _weapon_twin_blades(enemy_snapshot: Array[AxEnemy]) -> void:
             core_fx.enemy_hit(enemy.global_position, critical)
 
     weapon_combo = mini(combo_cap, weapon_combo + 1)
-    weapon_combo_timeout = 0.86
+    weapon_combo_timeout = 0.86 + player.blades_combo_timeout_bonus
     player.set_weapon_combo_visual(weapon_combo)
     if core_fx != null:
         core_fx.blade_flurry(player.global_position, primary_direction, weapon_combo)
-    Feedback.play("hit", 3)
+    Feedback.play("blades", 3)
 
 func _deal_weapon_damage(enemy: AxEnemy, raw_damage: float) -> bool:
     var critical: bool = randf() < player.crit_chance
