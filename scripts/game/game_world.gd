@@ -217,7 +217,7 @@ func _spawn_resource(kind: String) -> void:
     var spot: ResourceSpot = ResourceScene.instantiate() as ResourceSpot
     add_child(spot)
     spot.global_position = _resource_spawn_position(kind)
-    spot.configure(kind, randi() % 3)
+    spot.configure(kind, randi() % 3, biome_index)
     resources.append(spot)
 
 func _resource_spawn_position(kind: String) -> Vector2:
