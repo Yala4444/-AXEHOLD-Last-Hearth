@@ -183,18 +183,7 @@ func _update_active_event(delta: float) -> void:
         return
 
     if stage == "combat" and _alive_event_enemies() == 0:
-        if event_type == "survivor_rescue":
-            active_event["stage"] = "secure"
-            active_event["time"] = minf(15.0, maxf(8.0, time_left))
-            active_event["duration"] = 15.0
-            active_event["secure_progress"] = 0.0
-            if marker != null and is_instance_valid(marker):
-                marker.duration = 15.0
-                marker.set_state("secure")
-            world.hud.show_banner("МЕСТО ОЧИЩЕНО", Color("a8d0b1"))
-            world.hud.set_status("Подойди к выжившему и задержись рядом.")
-        else:
-            _complete_event()
+        _resolve_cleared_combat()
         return
 
     if str(active_event.get("stage", "")) == "secure":
@@ -210,6 +199,25 @@ func _update_active_event(delta: float) -> void:
 
     if time_left <= 0.0:
         _fail_event("Ты не успел вмешаться.")
+
+func _resolve_cleared_combat() -> void:
+    if active_event.is_empty() or str(active_event.get("stage", "")) != "combat":
+        return
+    var event_type: String = str(active_event.get("type", ""))
+    if event_type == "survivor_rescue":
+        var time_left: float = float(active_event.get("time", 0.0))
+        active_event["stage"] = "secure"
+        active_event["time"] = minf(15.0, maxf(8.0, time_left))
+        active_event["duration"] = 15.0
+        active_event["secure_progress"] = 0.0
+        var marker: DynamicEventMarker = active_event.get("marker") as DynamicEventMarker
+        if marker != null and is_instance_valid(marker):
+            marker.duration = 15.0
+            marker.set_state("secure")
+        world.hud.show_banner("МЕСТО ОЧИЩЕНО", Color("a8d0b1"))
+        world.hud.set_status("Подойди к выжившему и задержись рядом.")
+    else:
+        _complete_event()
 
 func _update_chain_cache(delta: float) -> void:
     var point: Vector2 = active_event.get("point", world.player.global_position)
@@ -373,7 +381,8 @@ func _on_enemy_defeated(enemy: AxEnemy) -> void:
     var event_id: String = str(active_event.get("id", ""))
     if str(enemy.get_meta("dynamic_event_id", "")) != event_id:
         return
-    _alive_event_enemies()
+    if _alive_event_enemies() == 0 and str(active_event.get("stage", "")) == "combat":
+        call_deferred("_resolve_cleared_combat")
 
 func _event_point(min_distance: float, max_distance: float) -> Vector2:
     var safe: Rect2 = world.world_rect.grow(-70.0)
