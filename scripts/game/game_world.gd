@@ -3,6 +3,7 @@ extends Node2D
 
 signal run_finished(result: Dictionary)
 signal quit_requested
+signal enemy_defeated(enemy: AxEnemy)
 
 const PlayerScene: PackedScene = preload("res://scenes/player.tscn")
 const EnemyScene: PackedScene = preload("res://scenes/enemy.tscn")
@@ -57,6 +58,7 @@ var backdrop: WorldBackdrop
 var world_generator: WorldGenerator
 var activity_director: WorldActivityDirector
 var run_variation: RunVariationDirector
+var dynamic_world: DynamicWorldDirector
 
 var resource_yield_multiplier: float = 1.0
 var turret_global_damage_mult: float = 1.0
@@ -132,6 +134,10 @@ func _start_run() -> void:
     player.died.connect(_on_player_died)
     player.damaged.connect(_on_player_damaged)
     player.level_up_requested.connect(_show_perks)
+
+    dynamic_world = DynamicWorldDirector.new()
+    add_child(dynamic_world)
+    dynamic_world.setup(self)
 
     _create_pads()
     for _i in range(52):
@@ -218,6 +224,7 @@ func _process(delta: float) -> void:
     player.set_home_hint(return_soon and player.global_position.distance_to(base_position) > 110.0)
 
     if phase == "day":
+        _update_day_enemies(delta)
         phase_time -= delta
         if phase_time <= 0.0:
             _start_night()
@@ -645,6 +652,23 @@ func _spawn_enemy(is_boss: bool = false, forced_kind: String = "") -> void:
     enemy.killed.connect(_on_enemy_killed)
     enemies.append(enemy)
 
+func spawn_event_enemy(kind: String, position: Vector2, elite_trait: String = "", event_id: String = "", anchor: Vector2 = Vector2.ZERO, behavior: String = "hunt") -> AxEnemy:
+    var enemy: AxEnemy = EnemyScene.instantiate() as AxEnemy
+    add_child(enemy)
+    var safe_rect: Rect2 = world_rect.grow(-28.0)
+    position.x = clampf(position.x, safe_rect.position.x, safe_rect.end.x)
+    position.y = clampf(position.y, safe_rect.position.y, safe_rect.end.y)
+    enemy.global_position = position
+    enemy.configure(kind, float(biome["difficulty"]) * (1.0 + float(wave) * 0.06), wave, Color(str(biome["enemy"])), false, biome_index)
+    if not elite_trait.is_empty():
+        enemy.configure_elite(elite_trait)
+    enemy.set_meta("dynamic_event_id", event_id)
+    enemy.set_meta("day_anchor", anchor)
+    enemy.set_meta("day_behavior", behavior)
+    enemy.killed.connect(_on_enemy_killed)
+    enemies.append(enemy)
+    return enemy
+
 func _edge_position() -> Vector2:
     var angle: float = randf_range(0.0, TAU)
     var radius: float = randf_range(330.0, 430.0)
@@ -653,6 +677,34 @@ func _edge_position() -> Vector2:
     point.x = clampf(point.x, safe_rect.position.x, safe_rect.end.x)
     point.y = clampf(point.y, safe_rect.position.y, safe_rect.end.y)
     return point
+
+func _update_day_enemies(delta: float) -> void:
+    if enemies.is_empty():
+        return
+
+    var enemy_snapshot: Array[AxEnemy] = enemies.duplicate()
+    _resolve_player_weapon(enemy_snapshot, delta)
+
+    for enemy: AxEnemy in enemy_snapshot:
+        if not is_instance_valid(enemy) or enemy.dying:
+            continue
+
+        var player_distance: float = enemy.global_position.distance_to(player.global_position)
+        var behavior: String = str(enemy.get_meta("day_behavior", "hunt"))
+        var target: Vector2 = player.global_position
+        if behavior == "attack_anchor" and player_distance >= 128.0:
+            var anchor_variant: Variant = enemy.get_meta("day_anchor", player.global_position)
+            if anchor_variant is Vector2:
+                target = anchor_variant as Vector2
+        enemy.set_target_position(target)
+
+        enemy.hit_cooldown = maxf(0.0, enemy.hit_cooldown - delta)
+        var contact_distance: float = 27.0 if enemy.elite else 23.0
+        if enemy.hit_cooldown <= 0.0 and player_distance < contact_distance:
+            player.take_damage(enemy.contact_damage)
+            enemy.hit_cooldown = 0.78
+
+    _update_turret(delta)
 
 func _update_night(delta: float) -> void:
     spawn_timer -= delta
@@ -1007,19 +1059,28 @@ func _on_enemy_killed(enemy: AxEnemy) -> void:
     kills += 1
     GameState.mission_add("kills")
     QuestDirector.record("kill_enemy", 1, {"enemy":enemy.enemy_type, "biome":biome_index})
+    if enemy.elite and not enemy.boss:
+        QuestDirector.record("elite_kill", 1, {"enemy":enemy.enemy_type, "trait":enemy.elite_trait, "biome":biome_index})
     var reward: int = 25 if enemy.boss else (3 if enemy.enemy_type == "brute" or enemy.enemy_type == "guardian" else 1)
+    if enemy.elite and not enemy.boss:
+        reward += 8
     if not enemy.boss and run_variation != null:
         reward = maxi(1, int(round(float(reward) * run_variation.reward_multiplier())))
     run_coins += reward
     var xp_reward: int = 20 if enemy.boss else (6 if enemy.enemy_type == "brute" or enemy.enemy_type == "guardian" else 4)
+    if enemy.elite and not enemy.boss:
+        xp_reward += 7
     player.gain_xp(xp_reward)
     if enemy.enemy_type == "guardian" and not enemy.boss:
+        add_mechanism_parts(1, enemy.global_position)
+    elif enemy.elite and not enemy.boss:
         add_mechanism_parts(1, enemy.global_position)
     if enemy.boss:
         add_mechanism_parts(2, enemy.global_position)
         run_shards = int(biome["reward"])
         boss_ref = null
         hud.hide_boss()
+    enemy_defeated.emit(enemy)
     enemy.queue_free()
 
 func _show_perks(level: int) -> void:
@@ -1071,7 +1132,8 @@ func _finish_run(won: bool) -> void:
         "kills": kills,
         "parts_unused": unused_parts,
         "parts_bonus": unused_parts * 8,
-        "contract": run_variation.contract_result() if run_variation != null else {}
+        "contract": run_variation.contract_result() if run_variation != null else {},
+        "dynamic_world": dynamic_world.result_summary() if dynamic_world != null else {}
     })
 
 func _refresh_hud() -> void:
