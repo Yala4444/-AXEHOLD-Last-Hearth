@@ -1,7 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://axehold_save.json"
-const SAVE_VERSION := 8
+const SAVE_VERSION := 9
 
 var data: Dictionary = {}
 
@@ -39,6 +39,15 @@ func defaults() -> Dictionary:
             "chapter1_ready_notified": false,
             "chapter1_seen": false,
             "chapter1_claimed": false
+        },
+        "frontier_state": {
+            "selected_assignment": "",
+            "assignment_progress": 0,
+            "assignment_ready": false,
+            "assignment_failed": false,
+            "assignments_completed": 0,
+            "assignment_history": {},
+            "selected_support": ""
         },
         "skins_owned": [true, false, false, false],
         "selected_skin": 0,
@@ -114,6 +123,16 @@ func _migrate_save() -> void:
             resident["quest_progress"] = int(resident.get("quest_progress", 0))
             residents[resident_id] = resident
         data["residents"] = residents
+    if version < 9:
+        data["frontier_state"] = {
+            "selected_assignment": "",
+            "assignment_progress": 0,
+            "assignment_ready": false,
+            "assignment_failed": false,
+            "assignments_completed": 0,
+            "assignment_history": {},
+            "selected_support": ""
+        }
     data["save_version"] = SAVE_VERSION
     save()
 
@@ -376,6 +395,68 @@ func claim_chapter_one() -> Dictionary:
 func current_chapter() -> int:
     var story: Dictionary = data.get("story_state", {})
     return 2 if bool(story.get("chapter1_claimed", false)) else 1
+
+func frontier_assignment_id() -> String:
+    var state: Dictionary = data.get("frontier_state", {})
+    return str(state.get("selected_assignment", ""))
+
+func select_frontier_assignment(assignment_id: String) -> bool:
+    if not chapter_one_complete():
+        return false
+    if FrontierRules.assignment(assignment_id).is_empty():
+        return false
+
+    var state: Dictionary = data.get("frontier_state", {})
+    state["selected_assignment"] = assignment_id
+    state["assignment_progress"] = 0
+    state["assignment_ready"] = false
+    state["assignment_failed"] = false
+    data["frontier_state"] = state
+    save()
+    Analytics.event("frontier_assignment_selected", {"id":assignment_id})
+    return true
+
+func clear_frontier_assignment() -> void:
+    var state: Dictionary = data.get("frontier_state", {})
+    state["selected_assignment"] = ""
+    state["assignment_progress"] = 0
+    state["assignment_ready"] = false
+    state["assignment_failed"] = false
+    data["frontier_state"] = state
+    save()
+
+func selected_run_support() -> String:
+    var state: Dictionary = data.get("frontier_state", {})
+    return str(state.get("selected_support", ""))
+
+func support_available(support_id: String) -> bool:
+    var spec: Dictionary = FrontierRules.support(support_id)
+    if spec.is_empty():
+        return false
+    var resident_id: String = str(spec.get("resident", ""))
+    var residents: Dictionary = data.get("residents", {})
+    var resident: Dictionary = residents.get(resident_id, {})
+    return bool(resident.get("unlocked", false)) and int(resident.get("trust", 0)) >= int(spec.get("trust", 1))
+
+func select_run_support(support_id: String) -> bool:
+    if not support_available(support_id):
+        return false
+    var state: Dictionary = data.get("frontier_state", {})
+    state["selected_support"] = support_id
+    data["frontier_state"] = state
+    save()
+    Analytics.event("resident_support_selected", {"id":support_id})
+    return true
+
+func consume_run_support() -> String:
+    var state: Dictionary = data.get("frontier_state", {})
+    var support_id: String = str(state.get("selected_support", ""))
+    if support_id.is_empty() or not support_available(support_id):
+        return ""
+    state["selected_support"] = ""
+    data["frontier_state"] = state
+    save()
+    return support_id
 
 func unlocked_resident_count() -> int:
     var count: int = 0
