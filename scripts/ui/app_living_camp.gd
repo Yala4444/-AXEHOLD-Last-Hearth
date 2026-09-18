@@ -141,7 +141,7 @@ func _show_arsenal() -> void:
     var mastery_effect := Label.new()
     hero_box.add_child(mastery_effect)
     mastery_effect.text = "%s\nСледующее: %s" % [
-        WeaponRules.mastery_bonus_text(selected_id, selected_mastery_level),
+        WeaponRules.weapon_mastery_bonus_text(selected_id, selected_mastery_level),
         WeaponRules.mastery_next_text(selected_id, selected_mastery_level)
     ]
     mastery_effect.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
