@@ -283,12 +283,31 @@ func _harvest(delta: float) -> void:
 
     bag_full_announced = false
     var reach: float = player.orbit_radius + player.axes * 4.0
-    var removed: Array[ResourceSpot] = []
+    var candidates: Array[Dictionary] = []
+
     for spot: ResourceSpot in resources:
         if not is_instance_valid(spot):
             continue
-        if player.global_position.distance_to(spot.global_position) > reach + spot.radius:
+        var distance: float = player.global_position.distance_to(spot.global_position)
+        if distance <= reach + spot.radius:
+            candidates.append({"spot":spot, "distance":distance})
+
+    candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+        return float(a.get("distance", 0.0)) < float(b.get("distance", 0.0))
+    )
+
+    var target_limit: int = candidates.size()
+    if player.weapon_style == "spear":
+        target_limit = mini(1, candidates.size())
+    elif player.weapon_style == "twin_blades":
+        target_limit = mini(2, candidates.size())
+
+    var removed: Array[ResourceSpot] = []
+    for i: int in range(target_limit):
+        var spot: ResourceSpot = candidates[i].get("spot") as ResourceSpot
+        if spot == null or not is_instance_valid(spot):
             continue
+
         var harvest_damage: float = player.damage * delta * GameRules.harvest_multiplier(spot.resource_type) * WeaponRules.mechanic_value(player.weapon_id, "harvest_mult", 1.0)
         if spot.damage(harvest_damage):
             var kind: String = "wood" if spot.resource_type == "tree" else ("stone" if spot.resource_type == "rock" else "ore")
