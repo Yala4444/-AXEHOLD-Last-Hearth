@@ -135,7 +135,7 @@ func _start_run() -> void:
     for _i in range(initial_ore):
         _spawn_resource("ore")
 
-    Analytics.event("run_start", {"biome": biome_index})
+    Analytics.event("run_start", {"biome": biome_index, "weapon": player.weapon_id})
     hud.show_banner(str(biome["name"]).to_upper())
     hud.set_status("Собирай добычу и возвращайся к Очагу.")
 
@@ -1013,7 +1013,7 @@ func _finish_run(won: bool) -> void:
     GameState.register_run(wave, won, biome_index, kills, builds, trees_cut)
     if won:
         QuestDirector.record("run_win", 1, {"biome":biome_index, "wave":wave})
-    Analytics.event("run_end", {"won": won, "wave": wave, "biome": biome_index, "kills": kills, "parts_unused":unused_parts})
+    Analytics.event("run_end", {"won": won, "wave": wave, "biome": biome_index, "kills": kills, "parts_unused":unused_parts, "weapon":player.weapon_id})
     var earned_shards: int = run_shards if won else 0
     run_finished.emit({
         "won": won,
