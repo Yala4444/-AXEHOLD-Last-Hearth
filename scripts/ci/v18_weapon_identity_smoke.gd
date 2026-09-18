@@ -15,13 +15,20 @@ func _run() -> void:
     GameState.data["settings"] = settings
     GameState.data["weapons_owned"] = ["axes", "spear", "hammer", "twin_blades"]
     GameState.data["selected_weapon"] = "axes"
+    GameState.data["weapon_mastery"] = {
+        "axes":{"runs":0,"wins":0,"kills":0},
+        "spear":{"runs":0,"wins":0,"kills":0},
+        "hammer":{"runs":0,"wins":0,"kills":0},
+        "twin_blades":{"runs":0,"wins":0,"kills":0}
+    }
 
     _test_profile_identity()
     _test_weapon_perk_offers()
+    _test_weapon_mastery()
     await _test_runtime_attacks()
 
     if failures.is_empty():
-        print("[V1.8 WEAPONS] four combat identities and exclusive perks passed")
+        print("[V1.8 WEAPONS] combat identities, exclusive perks and mastery passed")
     _finish()
 
 func _test_profile_identity() -> void:
@@ -58,6 +65,39 @@ func _test_weapon_perk_offers() -> void:
                 found_weapon_perk = true
         if not found_weapon_perk:
             _fail("Perk offer lacks weapon-exclusive option for " + weapon_id)
+
+func _test_weapon_mastery() -> void:
+    GameState.data["weapon_mastery"]["spear"] = {"runs":6,"wins":4,"kills":260}
+    GameState.data["selected_weapon"] = "spear"
+    var spear_player := AxPlayer.new()
+    add_child(spear_player)
+    spear_player.setup({"damage":0,"hp":0,"bag":0,"speed":0}, GameRules.skin(0))
+    if GameState.weapon_mastery_level("spear") < 4:
+        _fail("Spear persistent mastery did not reach rank IV")
+    if spear_player.spear_pierce_bonus < 1:
+        _fail("Spear mastery II did not add pierce")
+    if spear_player.weapon_cooldown_mult >= 0.99:
+        _fail("Spear mastery IV did not shorten cooldown")
+    spear_player.queue_free()
+
+    GameState.data["weapon_mastery"]["twin_blades"] = {"runs":6,"wins":4,"kills":260}
+    GameState.data["selected_weapon"] = "twin_blades"
+    var blade_player := AxPlayer.new()
+    add_child(blade_player)
+    blade_player.setup({"damage":0,"hp":0,"bag":0,"speed":0}, GameRules.skin(0))
+    if blade_player.blades_combo_cap_bonus < 1:
+        _fail("Twin Blade mastery II did not raise combo cap")
+    if blade_player.blades_combo_timeout_bonus <= 0.0:
+        _fail("Twin Blade mastery IV did not extend combo window")
+    blade_player.queue_free()
+
+    GameState.data["weapon_mastery"] = {
+        "axes":{"runs":0,"wins":0,"kills":0},
+        "spear":{"runs":0,"wins":0,"kills":0},
+        "hammer":{"runs":0,"wins":0,"kills":0},
+        "twin_blades":{"runs":0,"wins":0,"kills":0}
+    }
+    GameState.data["selected_weapon"] = "axes"
 
 func _test_runtime_attacks() -> void:
     var world: GameWorld = GameScene.instantiate() as GameWorld
