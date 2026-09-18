@@ -1,7 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://axehold_save.json"
-const SAVE_VERSION := 5
+const SAVE_VERSION := 6
 
 var data: Dictionary = {}
 
@@ -41,6 +41,7 @@ func defaults() -> Dictionary:
         },
         "trophies_claimed": [],
         "quest_state": {"date":"", "active":[], "used_ids":[], "claimed_today":0, "archive":0},
+        "building_projects": {"wall": false, "forge": false, "turret": false, "shrine": false},
         "residents": {
             "mira": {"unlocked": false, "trust": 0, "quest_step": 0, "quest_progress": 0},
             "thorn": {"unlocked": false, "trust": 0, "quest_step": 0, "quest_progress": 0}
@@ -73,9 +74,11 @@ func _migrate_save() -> void:
         data["quest_state"] = {"date":"", "active":[], "used_ids":[], "claimed_today":0, "archive":0}
         if not data.has("residents"):
             data["residents"] = {
-                "mira": {"unlocked": false, "trust": 0, "quest_step": 0},
-                "thorn": {"unlocked": false, "trust": 0, "quest_step": 0}
+                "mira": {"unlocked": false, "trust": 0, "quest_step": 0, "quest_progress": 0},
+                "thorn": {"unlocked": false, "trust": 0, "quest_step": 0, "quest_progress": 0}
             }
+    if version < 6:
+        data["building_projects"] = {"wall": false, "forge": false, "turret": false, "shrine": false}
     data["save_version"] = SAVE_VERSION
     save()
 
@@ -153,6 +156,45 @@ func buy_upgrade(kind: String) -> bool:
     data["coins"] = int(data["coins"]) - cost
     data["upgrades"][kind] = int(data["upgrades"].get(kind, 0)) + 1
     save()
+    return true
+
+func has_building_project(build_type: String) -> bool:
+    var projects: Dictionary = data.get("building_projects", {})
+    return bool(projects.get(build_type, false))
+
+func building_project_cost(build_type: String) -> Dictionary:
+    var spec: Dictionary = BuildingRules.project_spec(build_type)
+    return {
+        "coins": int(spec.get("coins", 999999)),
+        "shards": int(spec.get("shards", 999999))
+    }
+
+func buy_building_project(build_type: String) -> bool:
+    if has_building_project(build_type):
+        return false
+    var spec: Dictionary = BuildingRules.project_spec(build_type)
+    if spec.is_empty():
+        return false
+    if total_mastery() < int(spec.get("min_mastery", 0)):
+        return false
+
+    var coin_cost: int = int(spec.get("coins", 0))
+    var shard_cost: int = int(spec.get("shards", 0))
+    if int(data.get("coins", 0)) < coin_cost or int(data.get("shards", 0)) < shard_cost:
+        return false
+
+    data["coins"] = int(data.get("coins", 0)) - coin_cost
+    data["shards"] = int(data.get("shards", 0)) - shard_cost
+    var projects: Dictionary = data.get("building_projects", {})
+    projects[build_type] = true
+    data["building_projects"] = projects
+    _push_meta_notice("Чертёж изучен: %s" % str(spec.get("name", "Уровень II")))
+    save()
+    Analytics.event("building_project_bought", {
+        "type": build_type,
+        "coins": coin_cost,
+        "shards": shard_cost
+    })
     return true
 
 func mission_add(kind: String, amount: int = 1) -> void:
