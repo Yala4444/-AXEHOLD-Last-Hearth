@@ -8,7 +8,7 @@ signal level_up_requested(level: int)
 var target_position: Vector2 = Vector2.ZERO
 var move_input: Vector2 = Vector2.ZERO
 var direct_control: bool = false
-var move_speed: float = 126.0
+var move_speed: float = 138.0
 var max_hp: float = 100.0
 var hp: float = 100.0
 var damage: float = 25.0
@@ -32,7 +32,7 @@ var facing_x: float = 1.0
 var weapon_id: String = "axes"
 var weapon_style: String = "axes"
 var base_meta_damage: float = 25.0
-var base_meta_speed: float = 126.0
+var base_meta_speed: float = 138.0
 var base_meta_crit: float = 0.05
 var movement_bounds: Rect2 = Rect2()
 var has_movement_bounds: bool = false
@@ -47,7 +47,7 @@ func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     max_hp = 100.0 + hp_level * 10.0
     hp = max_hp
     base_meta_damage = 25.0 * pow(1.10, damage_level)
-    base_meta_speed = 126.0 * pow(1.04, speed_level)
+    base_meta_speed = 138.0 * pow(1.04, speed_level)
     base_meta_crit = 0.05
     capacity = 24 + bag_level * 5
     skin_body = Color(str(skin.get("body", "466bc8")))
