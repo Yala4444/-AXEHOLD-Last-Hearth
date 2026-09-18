@@ -109,7 +109,7 @@ func _button(parent: Control, text: String, primary: bool) -> Button:
 func _section(title_text: String, description: String) -> void:
     var marker := Label.new()
     body.add_child(marker)
-    marker.text = "■  " + _clean(title_text).to_upper()
+    marker.text = _clean(title_text).to_upper()
     marker.add_theme_font_size_override("font_size", 16)
     marker.add_theme_color_override("font_color", Color("e5c47e"))
     var desc := Label.new()
