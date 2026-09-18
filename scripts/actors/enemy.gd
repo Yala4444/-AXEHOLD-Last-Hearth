@@ -7,6 +7,7 @@ var enemy_type: String = "normal"
 var hp: float = 40.0
 var max_hp: float = 40.0
 var move_speed: float = 30.0
+var movement_multiplier: float = 1.0
 var contact_damage: float = 8.0
 var armor: float = 0.0
 var boss: bool = false
@@ -37,6 +38,7 @@ func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss
     boss = is_boss
     tint = color
     armor = 0.0
+    movement_multiplier = 1.0
     base_scale = 1.0
     surge_cooldown = randf_range(2.5, 3.3)
     surge_windup = 0.0
@@ -101,7 +103,7 @@ func _physics_process(delta: float) -> void:
 
     var moving: bool = has_target and windup <= 0.0
     if moving:
-        velocity = global_position.direction_to(target_position) * move_speed
+        velocity = global_position.direction_to(target_position) * move_speed * movement_multiplier
         move_and_slide()
     else:
         velocity = Vector2.ZERO
@@ -130,7 +132,7 @@ func _update_stalker_surge(delta: float) -> bool:
 
     if surge_time > 0.0:
         surge_time -= delta
-        velocity = surge_direction * 102.0
+        velocity = surge_direction * 102.0 * movement_multiplier
         move_and_slide()
         scale = Vector2(base_scale * 0.84, base_scale * 1.14)
         if surge_time <= 0.0:
@@ -171,7 +173,7 @@ func _update_charge(delta: float) -> bool:
 
     if charge_time > 0.0:
         charge_time -= delta
-        velocity = charge_direction * 190.0
+        velocity = charge_direction * 190.0 * movement_multiplier
         move_and_slide()
         scale = Vector2(base_scale * 0.90, base_scale * 1.12)
         if charge_time <= 0.0:
@@ -222,99 +224,123 @@ func take_damage(amount: float) -> void:
         Feedback.play("victory" if boss else "enemy_down", 18 if boss else 0)
 
 func _draw() -> void:
-    var shadow_radii: Vector2 = Vector2(20.0, 7.0) if boss else Vector2(12.0, 4.5)
+    # Modern 16-bit presentation: crisp silhouettes, integer blocks, smooth gameplay.
+    var shadow_w: float = 34.0 if boss else 22.0
     if enemy_type == "guardian" and not boss:
-        shadow_radii = Vector2(16.0, 5.5)
-    _draw_shadow_ellipse(Vector2(3, 9), shadow_radii, Color(0.05, 0.05, 0.05, 0.18))
+        shadow_w = 30.0
+    draw_rect(Rect2(-shadow_w * 0.5, 12, shadow_w, 5), Color(0.04, 0.04, 0.04, 0.22))
 
     if boss and charge_windup > 0.0:
         var charge_alpha: float = clampf(1.0 - charge_windup / 0.72, 0.0, 1.0)
-        draw_line(Vector2.ZERO, charge_direction * (54.0 + charge_alpha * 26.0), Color(1.0, 0.35, 0.28, 0.32 + charge_alpha * 0.55), 4.0)
-        draw_arc(Vector2.ZERO, 34.0 + charge_alpha * 5.0, 0.0, TAU, 44, Color(1.0, 0.45, 0.25, 0.28 + charge_alpha * 0.55), 2.5)
+        draw_line(Vector2.ZERO, charge_direction * (54.0 + charge_alpha * 26.0), Color(1.0, 0.35, 0.28, 0.35 + charge_alpha * 0.55), 4.0)
+        draw_rect(Rect2(-22, -22, 44, 44), Color(1.0, 0.42, 0.25, 0.25 + charge_alpha * 0.28), false, 2.0)
     elif boss and charge_time > 0.0:
         for trail_index: int in range(3):
-            var back: Vector2 = -charge_direction * float(18 + trail_index * 13)
-            draw_circle(back, 16.0 - trail_index * 3.0, Color(0.92, 0.32, 0.25, 0.16 - trail_index * 0.035))
+            var back: Vector2 = -charge_direction * float(18 + trail_index * 12)
+            draw_rect(Rect2(back - Vector2(8, 8), Vector2(16, 16)), Color(0.92, 0.32, 0.25, 0.15 - trail_index * 0.035))
 
     if enemy_type == "stalker" and surge_windup > 0.0:
-        var stalker_charge: float = clampf(1.0 - surge_windup / 0.22, 0.0, 1.0)
-        draw_arc(Vector2.ZERO, 17.0 + stalker_charge * 4.0, 0.0, TAU, 30, Color(0.78, 0.56, 1.0, 0.34 + stalker_charge * 0.46), 2.0)
-    elif enemy_type == "stalker" and surge_time > 0.0:
-        for trail_index: int in range(3):
-            var back: Vector2 = -surge_direction * float(12 + trail_index * 9)
-            draw_circle(back, 8.0 - trail_index * 1.6, Color(0.62, 0.42, 0.82, 0.18 - trail_index * 0.04))
+        var s: float = clampf(1.0 - surge_windup / 0.22, 0.0, 1.0)
+        draw_rect(Rect2(-15 - s * 3, -17 - s * 3, 30 + s * 6, 34 + s * 6), Color(0.72, 0.52, 0.92, 0.34 + s * 0.40), false, 2.0)
 
-    var body_radius: float = 24.0 if boss else 10.5
-    if enemy_type == "brute" and not boss:
-        body_radius = 14.0
-    elif enemy_type == "runner" and not boss:
-        body_radius = 9.0
-    elif enemy_type == "stalker" and not boss:
-        body_radius = 10.0
-    elif enemy_type == "guardian" and not boss:
-        body_radius = 15.0
-
-    var body_color: Color = (Color("9c4d51") if boss else tint).lightened(hit_flash * 0.36)
-
-    if enemy_type == "runner" and not boss:
-        var runner_body := PackedVector2Array([
-            Vector2(-8, -10), Vector2(8, -7), Vector2(10, 7), Vector2(2, 13), Vector2(-9, 8)
-        ])
-        draw_colored_polygon(runner_body, body_color)
-        draw_line(Vector2(-5, 7), Vector2(-11, 16), body_color.darkened(0.12), 3.0)
-        draw_line(Vector2(5, 7), Vector2(11, 15), body_color.darkened(0.12), 3.0)
-    elif enemy_type == "stalker" and not boss:
-        var stalker_body := PackedVector2Array([
-            Vector2(0, -14), Vector2(10, -4), Vector2(7, 10), Vector2(0, 14), Vector2(-8, 8), Vector2(-10, -4)
-        ])
-        draw_colored_polygon(stalker_body, body_color.darkened(0.05))
-        draw_line(Vector2(-6, 7), Vector2(-14, 14), body_color.darkened(0.22), 2.5)
-        draw_line(Vector2(6, 7), Vector2(14, 14), body_color.darkened(0.22), 2.5)
-        draw_colored_polygon(PackedVector2Array([Vector2(-7, -8), Vector2(-12, -17), Vector2(-2, -11)]), Color("b9a1d6"))
-        draw_colored_polygon(PackedVector2Array([Vector2(7, -8), Vector2(12, -17), Vector2(2, -11)]), Color("b9a1d6"))
-    elif enemy_type == "guardian" and not boss:
-        var guardian_body := PackedVector2Array([
-            Vector2(-12, -11), Vector2(12, -11), Vector2(17, 0), Vector2(10, 14), Vector2(-10, 14), Vector2(-17, 0)
-        ])
-        draw_colored_polygon(guardian_body, body_color.darkened(0.10))
-        draw_arc(Vector2.ZERO, 18.0, -PI * 0.82, PI * 0.82, 28, Color("c9c5ad").lightened(hit_flash * 0.28), 3.0)
-        draw_line(Vector2(-10, -3), Vector2(10, -3), Color(0.86, 0.83, 0.68, 0.72), 2.0)
-    else:
-        draw_circle(Vector2.ZERO, body_radius, body_color)
-
-    if enemy_type == "brute" and not boss:
-        draw_circle(Vector2(-11, -4), 6.0, body_color.darkened(0.09))
-        draw_circle(Vector2(11, -4), 6.0, body_color.darkened(0.09))
-        draw_colored_polygon(PackedVector2Array([Vector2(-10, -10), Vector2(-17, -20), Vector2(-4, -14)]), Color("baa98f"))
-        draw_colored_polygon(PackedVector2Array([Vector2(10, -10), Vector2(17, -20), Vector2(4, -14)]), Color("baa98f"))
+    var body_color: Color = (Color("9c4d51") if boss else tint).lightened(hit_flash * 0.34)
+    var dark: Color = body_color.darkened(0.28)
+    var light: Color = body_color.lightened(0.16)
 
     if boss:
-        var pulse: float = 0.5 + sin(animation_time * 3.2) * 0.5
-        draw_circle(Vector2.ZERO, 31.0 + pulse * 2.0, Color(0.78, 0.23, 0.27, 0.06 + pulse * 0.04))
-        draw_colored_polygon(PackedVector2Array([Vector2(-15, -15), Vector2(-27, -30), Vector2(-7, -20)]), Color("d5c19e"))
-        draw_colored_polygon(PackedVector2Array([Vector2(15, -15), Vector2(27, -30), Vector2(7, -20)]), Color("d5c19e"))
-        draw_arc(Vector2.ZERO, 19.0, PI * 0.15, PI * 0.85, 18, Color(0.98, 0.55, 0.38, 0.55), 2.0)
-
-    var eye_offset: float = 5.0 if boss else 3.0
-    var eye_color: Color = Color("d5b8ff") if enemy_type == "stalker" else Color.WHITE
-    draw_circle(Vector2(-eye_offset, -2), 1.9 if boss else 1.6, eye_color)
-    draw_circle(Vector2(eye_offset, -2), 1.9 if boss else 1.6, eye_color)
-    if boss or enemy_type == "brute" or enemy_type == "guardian":
-        draw_circle(Vector2(-eye_offset, -2), 0.8, Color("6e252c"))
-        draw_circle(Vector2(eye_offset, -2), 0.8, Color("6e252c"))
+        _draw_pixel_boss(body_color, dark, light)
+    elif enemy_type == "runner":
+        _draw_pixel_runner(body_color, dark, light)
+    elif enemy_type == "brute":
+        _draw_pixel_brute(body_color, dark, light)
+    elif enemy_type == "stalker":
+        _draw_pixel_stalker(body_color, dark, light)
+    elif enemy_type == "guardian":
+        _draw_pixel_guardian(body_color, dark, light)
+    else:
+        _draw_pixel_ghoul(body_color, dark, light)
 
     if hit_flash > 0.25:
-        draw_arc(Vector2.ZERO, body_radius + 5.0, 0.0, TAU, 28, Color(1.0, 0.9, 0.72, hit_flash * 0.45), 2.0)
+        draw_rect(Rect2(-17, -21, 34, 39), Color(1.0, 0.90, 0.72, hit_flash * 0.42), false, 2.0)
 
     if not dying:
         var ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0)
-        var width: float = 54.0 if boss else (30.0 if enemy_type == "guardian" else 25.0)
-        var bar_y: float = -37.0 if boss else -25.0
+        var width: float = 54.0 if boss else (32.0 if enemy_type == "guardian" else 26.0)
+        var bar_y: float = -39.0 if boss else -27.0
         var bar_color: Color = Color("cf6165") if boss else (Color("c7b56e") if enemy_type == "guardian" else Color("8f7198"))
-        draw_rect(Rect2(-width / 2.0, bar_y, width, 4.0), Color(0.1, 0.1, 0.1, 0.25))
+        draw_rect(Rect2(-width / 2.0, bar_y, width, 4.0), Color(0.08, 0.08, 0.08, 0.35))
         draw_rect(Rect2(-width / 2.0, bar_y, width * ratio, 4.0), bar_color)
         if armor > 0.0 and not boss:
-            draw_rect(Rect2(-width / 2.0, bar_y + 5.5, width * armor, 1.5), Color(0.88, 0.82, 0.56, 0.62))
+            draw_rect(Rect2(-width / 2.0, bar_y + 6.0, width * armor, 2.0), Color("dfca78"))
+
+func _draw_pixel_ghoul(body: Color, dark: Color, light: Color) -> void:
+    draw_rect(Rect2(-9, -12, 18, 22), dark)
+    draw_rect(Rect2(-7, -14, 14, 22), body)
+    draw_rect(Rect2(-5, -11, 10, 5), light)
+    draw_rect(Rect2(-5, 9, 4, 7), dark)
+    draw_rect(Rect2(2, 9, 4, 7), dark)
+    _pixel_eyes(3.0, Color("efe8d6"))
+
+func _draw_pixel_runner(body: Color, dark: Color, light: Color) -> void:
+    draw_rect(Rect2(-7, -14, 14, 18), body)
+    draw_rect(Rect2(-10, -8, 20, 9), dark)
+    draw_rect(Rect2(-5, 3, 4, 12), dark)
+    draw_rect(Rect2(2, 3, 4, 12), dark)
+    draw_rect(Rect2(-8, 14, 7, 3), light)
+    draw_rect(Rect2(2, 14, 8, 3), light)
+    _pixel_eyes(3.0, Color("f6f0df"))
+
+func _draw_pixel_brute(body: Color, dark: Color, light: Color) -> void:
+    draw_rect(Rect2(-15, -12, 30, 24), dark)
+    draw_rect(Rect2(-12, -15, 24, 27), body)
+    draw_rect(Rect2(-18, -6, 7, 16), body)
+    draw_rect(Rect2(11, -6, 7, 16), body)
+    draw_colored_polygon(PackedVector2Array([Vector2(-9,-14),Vector2(-16,-23),Vector2(-4,-17)]), Color("c7b18b"))
+    draw_colored_polygon(PackedVector2Array([Vector2(9,-14),Vector2(16,-23),Vector2(4,-17)]), Color("c7b18b"))
+    draw_rect(Rect2(-7, 7, 14, 4), light)
+    _pixel_eyes(4.0, Color("f0ddc4"))
+
+func _draw_pixel_stalker(body: Color, dark: Color, light: Color) -> void:
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(0,-19),Vector2(11,-7),Vector2(8,11),Vector2(0,16),Vector2(-9,10),Vector2(-11,-7)
+    ]), dark)
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(0,-15),Vector2(8,-5),Vector2(6,9),Vector2(0,13),Vector2(-6,8),Vector2(-8,-5)
+    ]), body)
+    draw_rect(Rect2(-15, 8, 8, 3), light)
+    draw_rect(Rect2(7, 8, 8, 3), light)
+    draw_colored_polygon(PackedVector2Array([Vector2(-6,-12),Vector2(-12,-21),Vector2(-2,-15)]), Color("bca0d9"))
+    draw_colored_polygon(PackedVector2Array([Vector2(6,-12),Vector2(12,-21),Vector2(2,-15)]), Color("bca0d9"))
+    _pixel_eyes(3.0, Color("d7b8ff"))
+
+func _draw_pixel_guardian(body: Color, dark: Color, light: Color) -> void:
+    draw_rect(Rect2(-16, -14, 32, 28), dark)
+    draw_rect(Rect2(-13, -11, 26, 24), body)
+    draw_rect(Rect2(-15, -9, 30, 5), Color("c7c2a7"))
+    draw_rect(Rect2(-12, 1, 24, 5), Color("aaa78f"))
+    draw_rect(Rect2(-18, -4, 6, 17), Color("8f8d7d"))
+    draw_rect(Rect2(12, -4, 6, 17), Color("8f8d7d"))
+    draw_rect(Rect2(-9, 12, 7, 7), dark)
+    draw_rect(Rect2(2, 12, 7, 7), dark)
+    _pixel_eyes(4.0, Color("f4e6bf"))
+
+func _draw_pixel_boss(body: Color, dark: Color, light: Color) -> void:
+    draw_rect(Rect2(-24, -20, 48, 39), dark)
+    draw_rect(Rect2(-20, -23, 40, 40), body)
+    draw_rect(Rect2(-27, -9, 8, 22), body)
+    draw_rect(Rect2(19, -9, 8, 22), body)
+    draw_colored_polygon(PackedVector2Array([Vector2(-13,-21),Vector2(-26,-34),Vector2(-7,-27)]), Color("d8c39e"))
+    draw_colored_polygon(PackedVector2Array([Vector2(13,-21),Vector2(26,-34),Vector2(7,-27)]), Color("d8c39e"))
+    draw_rect(Rect2(-14, 5, 28, 6), light)
+    draw_rect(Rect2(-12, 16, 9, 8), dark)
+    draw_rect(Rect2(3, 16, 9, 8), dark)
+    _pixel_eyes(7.0, Color("ffe2c8"))
+
+func _pixel_eyes(offset: float, color: Color) -> void:
+    draw_rect(Rect2(-offset - 2.0, -5, 3, 3), color)
+    draw_rect(Rect2(offset - 1.0, -5, 3, 3), color)
+    draw_rect(Rect2(-offset - 1.0, -4, 1, 1), Color("6b2830"))
+    draw_rect(Rect2(offset, -4, 1, 1), Color("6b2830"))
 
 func _draw_shadow_ellipse(center: Vector2, radii: Vector2, color: Color) -> void:
     var points := PackedVector2Array()

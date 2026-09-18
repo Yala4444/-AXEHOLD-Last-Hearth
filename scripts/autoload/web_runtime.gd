@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-const BUILD_LABEL := "v0.9.3"
+const BUILD_LABEL := "v1.0 alpha"
 
 var version_label: Label
 var scan_timer: float = 0.0

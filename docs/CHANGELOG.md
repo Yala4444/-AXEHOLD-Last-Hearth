@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.0-alpha.1 — Resource-first mobile redesign
+- Recentered the run around the original satisfying loop: harvest -> backpack -> hearth storage -> construction -> night defense.
+- Added always-visible, separate Backpack and Hearth Storage panels with wood/stone/ore counts.
+- Added contextual building cards that explain each building's effect, missing resources and construction progress.
+- Reworked Palisade, Forge, Tower and Shrine into tangible roles: base mitigation + enemy slow, weapon power/reach, visible auto-fire, and hero/hearth regeneration.
+- Added visible hold-to-build construction instead of instant invisible building.
+- Lengthened gathering phases and moved resource spawns out from under the mobile HUD.
+- Added a physical palisade around the Hearth, visible tower projectiles, deposit feedback and a clearer resource economy.
+- Shifted hero, resources, enemies, buildings and app shell toward a cohesive modern 16-bit / pixel-survival visual language.
+- Added a dedicated v1 regression that verifies backpack deposit, visible storage, construction, Forge power, Tower damage and Shrine regeneration.
+- Sanitized dynamic gameplay messages so unsupported emoji glyphs cannot reappear in mobile Web UI.
+
+
 ## 0.9.3 — Mobile movement bridge hotfix
 - Replaced passive GameWorld discovery with an explicit `MobileControls.bind_world()` bridge from the Web runtime.
 - Joystick direction is now applied to the live player immediately on touch/drag and reinforced while the stick is held.

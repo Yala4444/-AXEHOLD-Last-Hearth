@@ -4,7 +4,7 @@ func _build_shell() -> void:
     var background := ColorRect.new()
     add_child(background)
     background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    background.color = Color("0b1218")
+    background.color = Color("0b1117")
 
     shell = Control.new()
     add_child(shell)
@@ -13,60 +13,51 @@ func _build_shell() -> void:
     var margin := MarginContainer.new()
     shell.add_child(margin)
     margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    margin.add_theme_constant_override("margin_left", 12)
-    margin.add_theme_constant_override("margin_right", 12)
-    margin.add_theme_constant_override("margin_top", 12)
-    margin.add_theme_constant_override("margin_bottom", 10)
+    margin.add_theme_constant_override("margin_left", 10)
+    margin.add_theme_constant_override("margin_right", 10)
+    margin.add_theme_constant_override("margin_top", 10)
+    margin.add_theme_constant_override("margin_bottom", 8)
 
     var main := VBoxContainer.new()
     margin.add_child(main)
-    main.add_theme_constant_override("separation", 9)
+    main.add_theme_constant_override("separation", 8)
 
     var header_panel := PanelContainer.new()
     main.add_child(header_panel)
-    header_panel.custom_minimum_size = Vector2(0, 58)
-    var header_style := StyleBoxFlat.new()
-    header_style.bg_color = Color("111a22")
-    header_style.border_color = Color(0.20, 0.28, 0.33, 0.65)
-    header_style.set_border_width_all(1)
-    header_style.corner_radius_top_left = 18
-    header_style.corner_radius_top_right = 18
-    header_style.corner_radius_bottom_left = 18
-    header_style.corner_radius_bottom_right = 18
-    header_style.content_margin_left = 12
-    header_style.content_margin_right = 10
-    header_panel.add_theme_stylebox_override("panel", header_style)
+    header_panel.custom_minimum_size = Vector2(0, 56)
+    header_panel.add_theme_stylebox_override("panel", _pixel_style(Color("111a21"), Color("394750"), 2, 2, 10))
 
     var header := HBoxContainer.new()
     header_panel.add_child(header)
-    header.add_theme_constant_override("separation", 7)
+    header.add_theme_constant_override("separation", 6)
 
     var title_box := VBoxContainer.new()
     header.add_child(title_box)
     title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    title_box.add_theme_constant_override("separation", -2)
+    title_box.add_theme_constant_override("separation", -3)
 
     var title := Label.new()
     title_box.add_child(title)
     title.text = "AXEHOLD"
     title.add_theme_font_size_override("font_size", 17)
-    title.add_theme_color_override("font_color", Color("f1eadb"))
+    title.add_theme_color_override("font_color", Color("f2ead8"))
 
     var subtitle := Label.new()
     title_box.add_child(subtitle)
-    subtitle.text = "LAST HEARTH"
-    subtitle.add_theme_font_size_override("font_size", 9)
-    subtitle.add_theme_color_override("font_color", Color("c7aa72"))
+    subtitle.text = "LAST HEARTH  •  V1 ALPHA"
+    subtitle.add_theme_font_size_override("font_size", 8)
+    subtitle.add_theme_color_override("font_color", Color("c5a66b"))
 
     coins_label = _header_pill(header, "МОН 0", Color("d5ae64"))
     shards_label = _header_pill(header, "ОСК 0", Color("d88962"))
 
     var settings := Button.new()
     header.add_child(settings)
-    settings.text = "..."
-    settings.custom_minimum_size = Vector2(42, 40)
-    settings.add_theme_font_size_override("font_size", 14)
+    settings.text = "НАСТ"
+    settings.custom_minimum_size = Vector2(44, 40)
+    settings.add_theme_font_size_override("font_size", 7)
     settings.tooltip_text = "Настройки"
+    settings.add_theme_stylebox_override("normal", _pixel_style(Color("172129"), Color("3d4b52"), 1, 2, 5))
     settings.pressed.connect(_show_settings)
 
     var scroll := ScrollContainer.new()
@@ -77,39 +68,80 @@ func _build_shell() -> void:
     body = VBoxContainer.new()
     scroll.add_child(body)
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    body.add_theme_constant_override("separation", 10)
+    body.add_theme_constant_override("separation", 9)
 
     nav = HBoxContainer.new()
     main.add_child(nav)
-    nav.custom_minimum_size = Vector2(0, 58)
-    nav.add_theme_constant_override("separation", 5)
-    _mobile_nav_button("ЛАГ", _show_home)
+    nav.custom_minimum_size = Vector2(0, 56)
+    nav.add_theme_constant_override("separation", 4)
+    _mobile_nav_button("ЛАГЕРЬ", _show_home)
     _mobile_nav_button("КАРТА", _show_map)
     _mobile_nav_button("КУЗНЯ", _show_forge)
     _mobile_nav_button("ЦЕЛИ", _show_goals)
     _mobile_nav_button("ОБЛИК", _show_collection)
 
+func _panel(parent: Control) -> PanelContainer:
+    var panel := PanelContainer.new()
+    parent.add_child(panel)
+    panel.add_theme_stylebox_override("panel", _pixel_style(Color("172129"), Color("34414a"), 1, 3, 12))
+    return panel
+
+func _button(parent: Control, text: String, primary: bool) -> Button:
+    var button := Button.new()
+    parent.add_child(button)
+    button.text = _clean(text)
+    button.custom_minimum_size = Vector2(0, 46)
+    button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    button.add_theme_font_size_override("font_size", 10)
+    var normal: Color = Color("b98a46") if primary else Color("202b33")
+    var border: Color = Color("e0b867") if primary else Color("43515a")
+    button.add_theme_stylebox_override("normal", _pixel_style(normal, border, 1, 3, 8))
+    button.add_theme_stylebox_override("hover", _pixel_style(normal.lightened(0.07), border.lightened(0.10), 1, 3, 8))
+    button.add_theme_stylebox_override("pressed", _pixel_style(normal.darkened(0.12), border.darkened(0.10), 1, 3, 8))
+    button.add_theme_color_override("font_color", Color("16191b") if primary else Color("eef1eb"))
+    return button
+
+func _section(title_text: String, description: String) -> void:
+    var marker := Label.new()
+    body.add_child(marker)
+    marker.text = "■  " + _clean(title_text).to_upper()
+    marker.add_theme_font_size_override("font_size", 16)
+    marker.add_theme_color_override("font_color", Color("e5c47e"))
+    var desc := Label.new()
+    body.add_child(desc)
+    desc.text = _clean(description)
+    desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    desc.add_theme_font_size_override("font_size", 10)
+    desc.add_theme_color_override("font_color", Color("9eabb0"))
+
+func _stat(parent: Control, title_text: String, value_text: String) -> void:
+    var panel := _panel(parent)
+    panel.custom_minimum_size = Vector2(170, 68)
+    var box := VBoxContainer.new()
+    panel.add_child(box)
+    box.add_theme_constant_override("separation", 2)
+    var title := Label.new()
+    box.add_child(title)
+    title.text = _clean(title_text).to_upper()
+    title.add_theme_font_size_override("font_size", 8)
+    title.add_theme_color_override("font_color", Color("9fa9ad"))
+    var value := Label.new()
+    box.add_child(value)
+    value.text = _clean(value_text)
+    value.add_theme_font_size_override("font_size", 18)
+    value.add_theme_color_override("font_color", Color("f0eadb"))
+
 func _header_pill(parent: Control, text: String, accent: Color) -> Label:
     var panel := PanelContainer.new()
     parent.add_child(panel)
-    panel.custom_minimum_size = Vector2(58, 40)
-    var style := StyleBoxFlat.new()
-    style.bg_color = Color("1c2730")
-    style.border_color = Color(accent, 0.35)
-    style.set_border_width_all(1)
-    style.corner_radius_top_left = 14
-    style.corner_radius_top_right = 14
-    style.corner_radius_bottom_left = 14
-    style.corner_radius_bottom_right = 14
-    style.content_margin_left = 7
-    style.content_margin_right = 7
-    panel.add_theme_stylebox_override("panel", style)
+    panel.custom_minimum_size = Vector2(57, 40)
+    panel.add_theme_stylebox_override("panel", _pixel_style(Color("1b262e"), Color(accent, 0.48), 1, 2, 6))
     var label := Label.new()
     panel.add_child(label)
     label.text = text
     label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    label.add_theme_font_size_override("font_size", 10)
+    label.add_theme_font_size_override("font_size", 9)
     label.add_theme_color_override("font_color", Color("eef2ef"))
     return label
 
@@ -118,17 +150,10 @@ func _mobile_nav_button(text: String, callback: Callable) -> void:
     nav.add_child(button)
     button.text = text
     button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    button.custom_minimum_size = Vector2(0, 52)
-    button.add_theme_font_size_override("font_size", 9)
-    var style := StyleBoxFlat.new()
-    style.bg_color = Color("151e25")
-    style.border_color = Color(0.22, 0.30, 0.34, 0.50)
-    style.set_border_width_all(1)
-    style.corner_radius_top_left = 12
-    style.corner_radius_top_right = 12
-    style.corner_radius_bottom_left = 12
-    style.corner_radius_bottom_right = 12
-    button.add_theme_stylebox_override("normal", style)
+    button.custom_minimum_size = Vector2(0, 50)
+    button.add_theme_font_size_override("font_size", 7)
+    button.add_theme_stylebox_override("normal", _pixel_style(Color("141d23"), Color("303d45"), 1, 2, 4))
+    button.add_theme_stylebox_override("pressed", _pixel_style(Color("293840"), Color("bd9858"), 1, 2, 4))
     button.pressed.connect(callback)
 
 func _refresh_currency() -> void:
@@ -136,3 +161,24 @@ func _refresh_currency() -> void:
         coins_label.text = "МОН %d" % int(GameState.data.get("coins", 0))
     if shards_label != null:
         shards_label.text = "ОСК %d" % int(GameState.data.get("shards", 0))
+
+func _clean(value: String) -> String:
+    var sanitizer: Node = get_tree().root.get_node_or_null("UISanitizer")
+    if sanitizer != null and sanitizer.has_method("clean_text"):
+        return str(sanitizer.call("clean_text", value))
+    return value
+
+func _pixel_style(fill: Color, border: Color, radius: int, border_width: int, margin: int) -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = fill
+    style.border_color = border
+    style.set_border_width_all(border_width)
+    style.corner_radius_top_left = radius
+    style.corner_radius_top_right = radius
+    style.corner_radius_bottom_left = radius
+    style.corner_radius_bottom_right = radius
+    style.content_margin_left = margin
+    style.content_margin_right = margin
+    style.content_margin_top = margin
+    style.content_margin_bottom = margin
+    return style
