@@ -133,6 +133,7 @@ func configure_elite(trait: String) -> void:
             contact_damage *= 1.55
             armor = minf(0.55, armor + 0.12)
             base_scale *= 1.22
+            charge_cooldown = randf_range(3.8, 4.8)
         _:
             elite_title = "ЭЛИТА"
             max_hp *= 1.55
@@ -151,7 +152,7 @@ func _physics_process(delta: float) -> void:
         _update_death(delta)
         return
 
-    if boss and _update_charge(delta):
+    if (boss or (elite and elite_trait == "warlord")) and _update_charge(delta):
         queue_redraw()
         return
 
@@ -296,11 +297,11 @@ func _draw() -> void:
             var pip_angle: float = -2.45 + float(pip_index) * 0.40
             draw_circle(Vector2(cos(pip_angle), sin(pip_angle)) * 27.0 + Vector2(0, -2), 2.0, elite_glow)
 
-    if boss and charge_windup > 0.0:
+    if (boss or (elite and elite_trait == "warlord")) and charge_windup > 0.0:
         var charge_alpha: float = clampf(1.0 - charge_windup / 0.72, 0.0, 1.0)
         draw_line(Vector2.ZERO, charge_direction * (54.0 + charge_alpha * 26.0), Color(1.0, 0.35, 0.28, 0.35 + charge_alpha * 0.55), 4.0)
         draw_rect(Rect2(-22, -22, 44, 44), Color(1.0, 0.42, 0.25, 0.25 + charge_alpha * 0.28), false, 2.0)
-    elif boss and charge_time > 0.0:
+    elif (boss or (elite and elite_trait == "warlord")) and charge_time > 0.0:
         for trail_index: int in range(3):
             var back: Vector2 = -charge_direction * float(18 + trail_index * 12)
             draw_rect(Rect2(back - Vector2(8, 8), Vector2(16, 16)), Color(0.92, 0.32, 0.25, 0.15 - trail_index * 0.035))
