@@ -116,6 +116,35 @@ func turret_hit(pos: Vector2) -> void:
     for i: int in range(6):
         _particle(pos, Vector2(randf_range(-42.0, 42.0), randf_range(-42.0, 42.0)), Color("ffd36e"), 0.28, randf_range(1.5, 3.0), 0.0, 4.0)
 
+func spear_thrust(from_pos: Vector2, to_pos: Vector2) -> void:
+    var delta: Vector2 = to_pos - from_pos
+    var length: float = delta.length()
+    if length <= 1.0:
+        return
+    var direction: Vector2 = delta / length
+    var side := Vector2(-direction.y, direction.x)
+    for i: int in range(9):
+        var t: float = float(i + 1) / 10.0
+        var pos: Vector2 = from_pos.lerp(to_pos, t)
+        _particle(pos, side * randf_range(-18.0, 18.0), Color("a8d49f"), 0.16 + t * 0.08, 2.0 + t * 1.2, 0.0, 5.0)
+    _particle(to_pos, direction * 28.0, Color("e0f0d6"), 0.22, 4.0, 0.0, 5.0)
+
+func hammer_slam(pos: Vector2, radius: float) -> void:
+    _pulse(pos, 15.0, radius, Color(0.52, 0.80, 0.94, 0.58), 0.32)
+    for i: int in range(16):
+        var angle: float = TAU * float(i) / 16.0
+        var direction := Vector2(cos(angle), sin(angle))
+        _particle(pos + direction * 10.0, direction * randf_range(42.0, 82.0), Color("b8d8e8"), 0.28, randf_range(1.8, 3.2), 26.0, 3.2)
+
+func blade_flurry(pos: Vector2, direction: Vector2, combo: int) -> void:
+    var dir: Vector2 = direction.normalized() if direction.length_squared() > 0.01 else Vector2.RIGHT
+    var side := Vector2(-dir.y, dir.x)
+    var count: int = 5 + mini(5, combo)
+    for i: int in range(count):
+        var sign_value: float = -1.0 if i % 2 == 0 else 1.0
+        var start: Vector2 = pos + dir * randf_range(8.0, 20.0) + side * sign_value * randf_range(2.0, 10.0)
+        _particle(start, dir * randf_range(36.0, 70.0) + side * sign_value * randf_range(18.0, 42.0), Color("f0a06f"), 0.18, 2.2, 0.0, 5.0)
+
 func _particle(pos: Vector2, vel: Vector2, color: Color, life: float, size: float, gravity: float, drag: float) -> void:
     particles.append({
         "pos": pos,
