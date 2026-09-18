@@ -371,7 +371,7 @@ func _deposit_and_build(delta: float) -> void:
                 branch_names.append(str(branch.get("name", "ВЕТКА")))
             hud.set_build_context(
                 nearest.label + " I → II",
-                "Выбор: " + PackedStringArray(branch_names).join(" / "),
+                "Выбор: " + " / ".join(PackedStringArray(branch_names)),
                 upgrade_cost,
                 storage,
                 ready,
