@@ -250,6 +250,16 @@ jobs:
             exit 1
           fi
 
+      - name: V1.13 visual reboot regression
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_v113_visual_reboot_smoke.tscn 2>&1 | tee /tmp/godot-v113-visual.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v113-visual.log; then
+            echo "GDScript parse errors detected during v1.13 visual reboot test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |
