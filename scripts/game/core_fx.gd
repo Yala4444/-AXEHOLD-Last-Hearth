@@ -214,7 +214,7 @@ func boss_arrival(pos: Vector2, biome_index: int) -> void:
         )
     _popup(pos + Vector2(0, -52), "ХРАНИТЕЛЬ", color.lightened(0.20), 1.05)
 
-func enemy_down(pos: Vector2, enemy_type: String, boss: bool, biome_index: int) -> void:
+func enemy_down(pos: Vector2, enemy_type: String, boss: bool, biome_index: int, elite: bool = false) -> void:
     var color: Color = Color("9b7aa8")
     if biome_index == 0:
         color = Color("779a67")
@@ -223,7 +223,7 @@ func enemy_down(pos: Vector2, enemy_type: String, boss: bool, biome_index: int) 
     elif biome_index == 2:
         color = Color("b96349")
 
-    var count: int = 30 if boss else (12 if enemy_type == "guardian" or enemy_type == "brute" else 7)
+    var count: int = 30 if boss else (18 if elite else (12 if enemy_type == "guardian" or enemy_type == "brute" else 7))
     for i: int in range(count):
         var angle: float = TAU * float(i) / float(maxi(1, count)) + randf_range(-0.22, 0.22)
         var dir := Vector2(cos(angle), sin(angle))
@@ -240,6 +240,9 @@ func enemy_down(pos: Vector2, enemy_type: String, boss: bool, biome_index: int) 
         _pulse(pos, 20.0, 112.0, Color(color.r, color.g, color.b, 0.62), 0.86)
         _pulse(pos, 12.0, 72.0, Color(1.0, 0.76, 0.34, 0.46), 0.58)
         _popup(pos + Vector2(0, -48), "ХРАНИТЕЛЬ ПАЛ", Color("ffe1a0"), 1.2)
+    elif elite:
+        _pulse(pos, 12.0, 58.0, Color(0.93, 0.67, 0.29, 0.52), 0.46)
+        _popup(pos + Vector2(0, -34), "ЭЛИТА ПОВЕРЖЕНА", Color("f0c47d"), 0.84)
 
 func player_hit(pos: Vector2) -> void:
     _pulse(pos, 12.0, 34.0, Color(0.94, 0.28, 0.22, 0.34), 0.20)
