@@ -29,7 +29,7 @@ func _process(_delta: float) -> void:
     )
     if not outer_reach_recorded and max_distance_from_hearth >= 720.0:
         outer_reach_recorded = true
-        QuestDirector.record("reach_outer", 1, {"biome":world.biome_index})
+        QuestDirector.record("reach_outer", 1, {"biome":world.biome_index, "wave":world.wave})
     _check_contract_progress()
     _maybe_preview_night()
 
