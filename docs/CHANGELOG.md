@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.9.0-alpha.1 — Story & Residents
+- Added a dedicated Chronicle screen to the Last Hearth.
+- Added a real Chapter I finale that unlocks after all three Guardian relics are collected.
+- Completing Chapter I now reveals the old Hearth network, advances the story to Chapter II and grants a one-time 2-shard reward.
+- Added Chapter II direction: Road to the Fires, without pretending unfinished regions are already playable.
+- Expanded Scout Mira from a three-step resident chain to five steps, now including Memory Rifts and relit ancient Hearths.
+- Added Thorn, Engineer of the Old Fire, as a second permanent named resident.
+- Repairing a Broken Tower can now return Thorn to the camp.
+- Added Thorn's four-step chain around tower repair, Mechanism Parts, Level-II buildings and surviving nights.
+- Locked Mira and Thorn now receive guaranteed discovery opportunities in expedition encounter composition.
+- Added resident roles, trust caps and centralized ResidentRules data.
+- Added a Chronicle hotspot and Chapter indicator to the living camp.
+- Mira and Thorn now have recognizable in-world silhouettes in the camp.
+- Generalized the Quest Board to render multiple named resident chains.
+- Added save migration for story state and resident quest normalization.
+- Added dedicated v1.9 regression coverage for chapter completion, one-time rewards, deterministic resident discovery and both resident chains.
+- Bumped Android/iOS metadata to 1.9.0-alpha.1 / build 23.
+
 ## 1.8.0-alpha.1 — Weapon Identity
 - Replaced the shared radial combat model with four independent weapon resolvers.
 - Wanderer Axes retain continuous circular zone control.
