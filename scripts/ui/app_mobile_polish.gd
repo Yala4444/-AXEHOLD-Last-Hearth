@@ -1,5 +1,7 @@
 extends "res://scripts/ui/app_expedition_wow.gd"
 
+var mobile_scroll: MobileScrollContainer
+
 func _build_shell() -> void:
     var background := ColorRect.new()
     add_child(background)
@@ -60,13 +62,12 @@ func _build_shell() -> void:
     settings.add_theme_stylebox_override("normal", _pixel_style(Color("172129"), Color("3d4b52"), 1, 2, 5))
     settings.pressed.connect(_show_settings)
 
-    var scroll := ScrollContainer.new()
-    main.add_child(scroll)
-    scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    mobile_scroll = MobileScrollContainer.new()
+    main.add_child(mobile_scroll)
+    mobile_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
     body = VBoxContainer.new()
-    scroll.add_child(body)
+    mobile_scroll.add_child(body)
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation", 9)
 
@@ -78,6 +79,11 @@ func _build_shell() -> void:
     _mobile_nav_button("АРСЕНАЛ", _show_arsenal)
     _mobile_nav_button("КАРТА", _show_map)
     _mobile_nav_button("ТРОФЕИ", _show_goals)
+
+func _clear_body() -> void:
+    super._clear_body()
+    if mobile_scroll != null:
+        mobile_scroll.set_deferred("scroll_vertical", 0)
 
 func _panel(parent: Control) -> PanelContainer:
     var panel := PanelContainer.new()
