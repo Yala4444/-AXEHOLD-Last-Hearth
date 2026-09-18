@@ -282,6 +282,7 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         world.hud.set_status("Тьма отступила. +7 мон. · герой исцелён.")
     elif activity.activity_type == "rare_ore":
         _give_resource("ore", 6, activity.global_position)
+        world.add_mechanism_parts(1, activity.global_position)
         world.run_coins += 8
         world.player.gain_xp(7)
         if world.run_variation != null:
@@ -290,6 +291,7 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         world.hud.set_status("+6 руды · шум привлёк внимание Тьмы.")
     elif activity.activity_type == "broken_tower":
         world.player.inventory["stone"] = maxi(0, int(world.player.inventory.get("stone", 0)) - 4)
+        world.add_mechanism_parts(1, activity.global_position)
         world.player.queue_redraw()
         world.turret_global_damage_mult *= 1.12
         world.turret_global_fire_mult *= 0.92
@@ -305,6 +307,7 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         world.hud.set_status("+8% скорость до конца экспедиции.")
     elif activity.activity_type == "wanderer_grave":
         world.run_coins += 14
+        world.add_mechanism_parts(1, activity.global_position)
         world.player.gain_xp(10)
         world.player.shield_hits = mini(5, world.player.shield_hits + 1)
         if world.run_variation != null:
@@ -322,6 +325,7 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         world.hud.set_status("Маршрут отмечен. Угроза Тьмы снизилась.")
     elif activity.activity_type == "infected_cache":
         _give_resource("stone", 4, activity.global_position)
+        world.add_mechanism_parts(1, activity.global_position)
         _give_resource("ore", 3, activity.global_position)
         world.run_coins += 11
         if world.run_variation != null:
