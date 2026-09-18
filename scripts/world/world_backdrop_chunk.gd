@@ -150,24 +150,169 @@ func _draw_landmarks() -> void:
     var sx: int = int(floor(chunk_rect.position.x))
     var sy: int = int(floor(chunk_rect.position.y))
     var selector: int = abs(sx * 7 + sy * 11)
-    if selector % 3 != 0:
+    if selector % 2 != 0:
         return
-    var p := Vector2(chunk_rect.size.x * 0.58, chunk_rect.size.y * 0.43)
+
+    var p := Vector2(
+        chunk_rect.size.x * (0.34 + float(selector % 5) * 0.08),
+        chunk_rect.size.y * (0.31 + float((selector / 3) % 5) * 0.09)
+    )
     var world_p := chunk_rect.position + p
-    if world_p.x < 60.0 or world_p.y < 60.0 or world_p.x > world_size.x - 60.0 or world_p.y > world_size.y - 60.0:
+    if world_p.x < 70.0 or world_p.y < 70.0 or world_p.x > world_size.x - 70.0 or world_p.y > world_size.y - 70.0:
         return
-    if world_p.distance_to(base_position) < 210.0:
+
+    var distance: float = world_p.distance_to(base_position)
+    if distance < 220.0:
         return
+
+    var variant: int = selector % 6
+    var landmark_scale: float = clampf(0.84 + distance / maxf(world_size.length(), 1.0) * 0.72, 0.84, 1.22)
+    if selector % 11 == 0:
+        landmark_scale *= 1.18
+
     match biome_index:
         1:
-            draw_line(p + Vector2(-14, 8), p + Vector2(12, -10), Color(0.63, 0.82, 0.86, 0.24), 2.0)
-            draw_line(p + Vector2(-8, -6), p + Vector2(8, 10), Color(0.76, 0.92, 0.94, 0.18), 1.0)
+            _draw_frost_landmark(p, variant, landmark_scale)
         2:
-            draw_rect(Rect2(p - Vector2(3, 16), Vector2(6, 30)), Color(0.16, 0.11, 0.10, 0.32))
-            draw_line(p + Vector2(0, -9), p + Vector2(12, -18), Color(0.19, 0.12, 0.10, 0.30), 3.0)
+            _draw_ash_landmark(p, variant, landmark_scale)
         _:
-            draw_rect(Rect2(p - Vector2(14, 4), Vector2(28, 8)), Color(0.28, 0.22, 0.16, 0.20))
-            draw_circle(p + Vector2(-9, 0), 5.0, Color(0.24, 0.18, 0.14, 0.20))
+            _draw_forest_landmark(p, variant, landmark_scale)
+
+func _draw_forest_landmark(p: Vector2, variant: int, s: float) -> void:
+    var wood := Color(0.26, 0.19, 0.13, 0.62 if not night else 0.46)
+    var stone := Color(0.34, 0.37, 0.31, 0.54 if not night else 0.42)
+    var moss := Color(0.28, 0.43, 0.24, 0.48 if not night else 0.30)
+    match variant:
+        0:
+            # Fallen caravan wheel and broken axle.
+            draw_circle(p + Vector2(-10, 4) * s, 12.0 * s, Color(0.10, 0.08, 0.06, 0.18))
+            draw_arc(p + Vector2(-10, 0) * s, 10.0 * s, 0.0, TAU, 16, wood, 3.0 * s)
+            draw_line(p + Vector2(-20, 0) * s, p + Vector2(1, 0) * s, wood, 2.0 * s)
+            draw_line(p + Vector2(-10, -10) * s, p + Vector2(-10, 10) * s, wood, 2.0 * s)
+            draw_line(p + Vector2(-2, 1) * s, p + Vector2(22, -11) * s, wood.darkened(0.12), 4.0 * s)
+        1:
+            # Old road marker swallowed by roots.
+            draw_rect(Rect2(p + Vector2(-8, -22) * s, Vector2(16, 35) * s), stone)
+            draw_rect(Rect2(p + Vector2(-5, -18) * s, Vector2(10, 4) * s), stone.lightened(0.14))
+            draw_line(p + Vector2(-18, 12) * s, p + Vector2(18, -1) * s, moss, 4.0 * s)
+            draw_line(p + Vector2(-12, 16) * s, p + Vector2(10, 5) * s, moss.darkened(0.08), 3.0 * s)
+        2:
+            # Ruined arch from the old Hearth road.
+            draw_rect(Rect2(p + Vector2(-23, -8) * s, Vector2(7, 30) * s), stone)
+            draw_rect(Rect2(p + Vector2(16, -8) * s, Vector2(7, 30) * s), stone)
+            draw_line(p + Vector2(-20, -8) * s, p + Vector2(18, -17) * s, stone.lightened(0.08), 7.0 * s)
+            draw_line(p + Vector2(-13, -10) * s, p + Vector2(6, 7) * s, moss, 3.0 * s)
+        3:
+            # Abandoned camp remains.
+            draw_line(p + Vector2(-20, 9) * s, p + Vector2(20, -7) * s, wood, 5.0 * s)
+            draw_line(p + Vector2(-18, -6) * s, p + Vector2(18, 11) * s, wood.darkened(0.10), 5.0 * s)
+            draw_rect(Rect2(p + Vector2(9, -20) * s, Vector2(13, 9) * s), Color(0.38, 0.30, 0.20, 0.50))
+        4:
+            # Root-covered shrine.
+            draw_rect(Rect2(p + Vector2(-10, -19) * s, Vector2(20, 33) * s), stone.darkened(0.06))
+            draw_circle(p + Vector2(0, -7) * s, 5.0 * s, Color(0.53, 0.68, 0.40, 0.48))
+            draw_arc(p + Vector2(0, -6) * s, 15.0 * s, 2.9, 6.1, 16, moss, 3.0 * s)
+        _:
+            # Half-collapsed cabin silhouette.
+            draw_rect(Rect2(p + Vector2(-24, -5) * s, Vector2(42, 24) * s), wood.darkened(0.18))
+            draw_colored_polygon(PackedVector2Array([
+                p + Vector2(-28, -5) * s,
+                p + Vector2(-3, -24) * s,
+                p + Vector2(22, -5) * s
+            ]), wood.darkened(0.32))
+            draw_rect(Rect2(p + Vector2(-4, 5) * s, Vector2(10, 14) * s), Color(0.06, 0.07, 0.06, 0.32))
+
+func _draw_frost_landmark(p: Vector2, variant: int, s: float) -> void:
+    var ice := Color(0.61, 0.83, 0.88, 0.54 if not night else 0.42)
+    var pale := Color(0.80, 0.94, 0.96, 0.60 if not night else 0.46)
+    var stone := Color(0.35, 0.45, 0.47, 0.52)
+    match variant:
+        0:
+            # Crystal cluster.
+            for i: int in range(3):
+                var offset := Vector2(float(i - 1) * 11.0, float(abs(i - 1)) * 5.0) * s
+                draw_colored_polygon(PackedVector2Array([
+                    p + offset + Vector2(0, -25) * s,
+                    p + offset + Vector2(8, -4) * s,
+                    p + offset + Vector2(4, 15) * s,
+                    p + offset + Vector2(-6, 14) * s,
+                    p + offset + Vector2(-9, -4) * s
+                ]), ice.lightened(float(i) * 0.05))
+                draw_line(p + offset + Vector2(0, -20) * s, p + offset + Vector2(1, 10) * s, pale, 1.5 * s)
+        1:
+            # Frozen road arch.
+            draw_rect(Rect2(p + Vector2(-22, -5) * s, Vector2(7, 29) * s), stone)
+            draw_rect(Rect2(p + Vector2(15, -5) * s, Vector2(7, 29) * s), stone)
+            draw_line(p + Vector2(-19, -7) * s, p + Vector2(17, -15) * s, pale.darkened(0.12), 6.0 * s)
+            draw_line(p + Vector2(-9, -10) * s, p + Vector2(8, 10) * s, ice, 2.0 * s)
+        2:
+            # Frozen cart.
+            draw_rect(Rect2(p + Vector2(-20, -8) * s, Vector2(35, 18) * s), Color(0.30, 0.28, 0.24, 0.46))
+            draw_circle(p + Vector2(-12, 13) * s, 7.0 * s, Color(0.22, 0.24, 0.24, 0.50))
+            draw_circle(p + Vector2(10, 13) * s, 7.0 * s, Color(0.22, 0.24, 0.24, 0.50))
+            draw_line(p + Vector2(-22, -12) * s, p + Vector2(18, -12) * s, pale, 3.0 * s)
+        3:
+            # Ice-bound cairn.
+            draw_rect(Rect2(p + Vector2(-15, 5) * s, Vector2(30, 10) * s), stone.darkened(0.06))
+            draw_rect(Rect2(p + Vector2(-10, -7) * s, Vector2(20, 11) * s), stone)
+            draw_rect(Rect2(p + Vector2(-5, -19) * s, Vector2(10, 11) * s), pale.darkened(0.18))
+        4:
+            # Frozen memorial spear.
+            draw_line(p + Vector2(0, 18) * s, p + Vector2(0, -25) * s, Color(0.30, 0.25, 0.22, 0.58), 4.0 * s)
+            draw_colored_polygon(PackedVector2Array([
+                p + Vector2(0, -31) * s,
+                p + Vector2(-7, -20) * s,
+                p + Vector2(7, -20) * s
+            ]), pale)
+            draw_line(p + Vector2(-13, 10) * s, p + Vector2(14, 4) * s, ice, 2.0 * s)
+        _:
+            # Deep ice fissure.
+            draw_line(p + Vector2(-27, -9) * s, p + Vector2(-10, -1) * s, Color(0.25, 0.47, 0.55, 0.58), 3.0 * s)
+            draw_line(p + Vector2(-10, -1) * s, p + Vector2(3, 15) * s, Color(0.25, 0.47, 0.55, 0.58), 3.0 * s)
+            draw_line(p + Vector2(3, 15) * s, p + Vector2(25, 5) * s, pale, 2.0 * s)
+
+func _draw_ash_landmark(p: Vector2, variant: int, s: float) -> void:
+    var char := Color(0.13, 0.09, 0.08, 0.66 if not night else 0.54)
+    var iron := Color(0.33, 0.30, 0.29, 0.58)
+    var ember := Color(0.94, 0.29, 0.12, 0.44 if not night else 0.62)
+    match variant:
+        0:
+            # Ruined forge with anvil.
+            draw_rect(Rect2(p + Vector2(-24, -5) * s, Vector2(44, 22) * s), char)
+            draw_rect(Rect2(p + Vector2(-6, -18) * s, Vector2(9, 19) * s), iron)
+            draw_rect(Rect2(p + Vector2(-12, -21) * s, Vector2(24, 7) * s), iron.lightened(0.10))
+            draw_circle(p + Vector2(17, 7) * s, 3.5 * s, ember)
+        1:
+            # Charred tree with ember wound.
+            draw_rect(Rect2(p + Vector2(-4, -23) * s, Vector2(8, 43) * s), char)
+            draw_line(p + Vector2(0, -12) * s, p + Vector2(-17, -24) * s, char, 5.0 * s)
+            draw_line(p + Vector2(1, -9) * s, p + Vector2(18, -19) * s, char, 5.0 * s)
+            draw_rect(Rect2(p + Vector2(-2, -5) * s, Vector2(4, 11) * s), ember)
+        2:
+            # Furnace stack.
+            draw_rect(Rect2(p + Vector2(-12, -28) * s, Vector2(24, 43) * s), iron.darkened(0.14))
+            draw_rect(Rect2(p + Vector2(-16, 8) * s, Vector2(32, 9) * s), char)
+            draw_rect(Rect2(p + Vector2(-5, -15) * s, Vector2(10, 8) * s), ember.darkened(0.20))
+        3:
+            # Molten fissure.
+            draw_line(p + Vector2(-29, -7) * s, p + Vector2(-9, 2) * s, ember.darkened(0.10), 4.0 * s)
+            draw_line(p + Vector2(-9, 2) * s, p + Vector2(5, -5) * s, Color(1.0, 0.48, 0.18, ember.a), 4.0 * s)
+            draw_line(p + Vector2(5, -5) * s, p + Vector2(27, 9) * s, ember, 4.0 * s)
+        4:
+            # Broken war standard.
+            draw_line(p + Vector2(-3, 18) * s, p + Vector2(0, -25) * s, iron, 4.0 * s)
+            draw_colored_polygon(PackedVector2Array([
+                p + Vector2(0, -23) * s,
+                p + Vector2(20, -16) * s,
+                p + Vector2(5, -7) * s
+            ]), Color(0.32, 0.13, 0.11, 0.56))
+            draw_circle(p + Vector2(3, -18) * s, 2.5 * s, ember)
+        _:
+            # Collapsed smelter pipework.
+            draw_rect(Rect2(p + Vector2(-23, -10) * s, Vector2(16, 28) * s), iron.darkened(0.18))
+            draw_line(p + Vector2(-8, -2) * s, p + Vector2(18, -15) * s, iron, 7.0 * s)
+            draw_line(p + Vector2(15, -16) * s, p + Vector2(24, 8) * s, iron.darkened(0.10), 6.0 * s)
+            draw_circle(p + Vector2(-15, 4) * s, 3.0 * s, ember)
 
 func _draw_world_edge_segment() -> void:
     var edge: Color = Color(0.03, 0.08, 0.04, 0.18) if not night else Color(0.01, 0.025, 0.03, 0.26)
