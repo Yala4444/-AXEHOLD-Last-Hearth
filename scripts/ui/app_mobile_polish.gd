@@ -4,7 +4,7 @@ func _build_shell() -> void:
     var background := ColorRect.new()
     add_child(background)
     background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    background.color = Color("0b1117")
+    background.color = Color("091014")
 
     shell = Control.new()
     add_child(shell)
@@ -25,7 +25,7 @@ func _build_shell() -> void:
     var header_panel := PanelContainer.new()
     main.add_child(header_panel)
     header_panel.custom_minimum_size = Vector2(0, 50)
-    header_panel.add_theme_stylebox_override("panel", _pixel_style(Color("111a21"), Color("394750"), 2, 2, 10))
+    header_panel.add_theme_stylebox_override("panel", _pixel_style(Color("10191d"), Color("344249"), 2, 1, 9))
 
     var header := HBoxContainer.new()
     header_panel.add_child(header)
@@ -44,7 +44,7 @@ func _build_shell() -> void:
 
     var subtitle := Label.new()
     title_box.add_child(subtitle)
-    subtitle.text = "LAST HEARTH  •  V1.3"
+    subtitle.text = "LAST HEARTH  •  V1.4 IDENTITY"
     subtitle.add_theme_font_size_override("font_size", 8)
     subtitle.add_theme_color_override("font_color", Color("c5a66b"))
 
@@ -82,7 +82,7 @@ func _build_shell() -> void:
 func _panel(parent: Control) -> PanelContainer:
     var panel := PanelContainer.new()
     parent.add_child(panel)
-    panel.add_theme_stylebox_override("panel", _pixel_style(Color("172129"), Color("34414a"), 1, 3, 12))
+    panel.add_theme_stylebox_override("panel", _pixel_style(Color("141e23"), Color("303e44"), 1, 2, 11))
     return panel
 
 func _button(parent: Control, text: String, primary: bool) -> Button:
@@ -92,8 +92,8 @@ func _button(parent: Control, text: String, primary: bool) -> Button:
     button.custom_minimum_size = Vector2(0, 46)
     button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     button.add_theme_font_size_override("font_size", 10)
-    var normal: Color = Color("b98a46") if primary else Color("202b33")
-    var border: Color = Color("e0b867") if primary else Color("43515a")
+    var normal: Color = Color("bd9251") if primary else Color("182329")
+    var border: Color = Color("e0b867") if primary else Color("37464d")
     button.add_theme_stylebox_override("normal", _pixel_style(normal, border, 1, 3, 8))
     button.add_theme_stylebox_override("hover", _pixel_style(normal.lightened(0.07), border.lightened(0.10), 1, 3, 8))
     button.add_theme_stylebox_override("pressed", _pixel_style(normal.darkened(0.12), border.darkened(0.10), 1, 3, 8))
