@@ -43,6 +43,8 @@ func configure(kind: String, index: int) -> void:
             required_time = 0.68
         "wounded_scout":
             required_time = 1.20
+        "stranded_engineer":
+            required_time = 1.35
         "nest":
             max_hp = 110.0
             hp = max_hp
@@ -129,6 +131,8 @@ func _draw() -> void:
             _draw_memory_rift()
         "wounded_scout":
             _draw_wounded_scout()
+        "stranded_engineer":
+            _draw_stranded_engineer()
         _:
             _draw_chest()
 
@@ -170,6 +174,8 @@ func _title() -> String:
             return "РАЗЛОМ ПАМЯТИ"
         "wounded_scout":
             return "РАЗВЕДЧИЦА"
+        "stranded_engineer":
+            return "МЕХАНИК"
         _:
             return "ТАЙНИК"
 
@@ -289,6 +295,18 @@ func _draw_wounded_scout() -> void:
     draw_line(Vector2(5, 2), Vector2(14, 8), Color("c99472"), 3.0)
     draw_rect(Rect2(3, -4, 5, 8), Color("8f4b49"))
 
+func _draw_stranded_engineer() -> void:
+    var pulse: float = (sin(elapsed * 3.6) + 1.0) * 0.5
+    draw_circle(Vector2.ZERO, 30.0 + pulse * 2.0, Color(0.86, 0.58, 0.27, 0.05))
+    draw_rect(Rect2(-21, 11, 42, 5), Color(0.04, 0.05, 0.04, 0.16))
+    draw_circle(Vector2(-3, -14), 6.0, Color("b98264"))
+    draw_rect(Rect2(-10, -8, 15, 19), Color("6e5944"))
+    draw_rect(Rect2(5, -4, 13, 12), Color("4b5556"))
+    draw_circle(Vector2(11, 2), 4.0, Color("9ea5a4"))
+    draw_circle(Vector2(11, 2), 1.8, Color("454b4c"))
+    draw_line(Vector2(-7, 2), Vector2(-17, 11), Color("b98264"), 3.0)
+    draw_line(Vector2(1, 1), Vector2(13, 8), Color("b98264"), 3.0)
+
 func _draw_finished() -> void:
     match activity_type:
         "nest":
@@ -320,6 +338,9 @@ func _draw_finished() -> void:
             ]), Color("f29a3c"))
         "wounded_scout":
             draw_rect(Rect2(-10, 5, 20, 5), Color(0.23, 0.28, 0.25, 0.28))
+        "stranded_engineer":
+            draw_rect(Rect2(-12, 4, 24, 6), Color(0.31, 0.27, 0.22, 0.30))
+            draw_circle(Vector2(8, 0), 5.0, Color(0.52, 0.56, 0.55, 0.28))
         "memory_rift":
             draw_circle(Vector2.ZERO, 15.0, Color(0.42, 0.52, 0.68, 0.10))
         "rare_ore":
