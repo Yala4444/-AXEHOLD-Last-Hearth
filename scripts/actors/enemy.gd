@@ -93,12 +93,12 @@ func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss
     scale = Vector2.ONE * base_scale
     queue_redraw()
 
-func configure_elite(trait: String) -> void:
+func configure_elite(trait_id: String) -> void:
     if boss:
         return
     elite = true
-    elite_trait = trait
-    match trait:
+    elite_trait = trait_id
+    match trait_id:
         "ravenous":
             elite_title = "ГОЛОДНЫЙ"
             elite_glow = Color("db8a64")
