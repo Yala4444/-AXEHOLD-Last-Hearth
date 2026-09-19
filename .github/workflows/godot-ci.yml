@@ -270,6 +270,16 @@ jobs:
             exit 1
           fi
 
+      - name: V1.15 living expedition regression
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_v115_living_expedition_smoke.tscn 2>&1 | tee /tmp/godot-v115-living.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v115-living.log; then
+            echo "GDScript parse errors detected during v1.15 living expedition test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |

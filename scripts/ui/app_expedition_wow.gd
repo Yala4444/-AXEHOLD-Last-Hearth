@@ -100,6 +100,25 @@ func _show_result() -> void:
         region_note.add_theme_font_size_override("font_size", 9)
         region_note.add_theme_color_override("font_color", VisualSystem.GOLD)
 
+    var field_result: Dictionary = result_data.get("field_objectives", {})
+    if not field_result.is_empty():
+        var field_note := Label.new()
+        box.add_child(field_note)
+        field_note.text = "ПОЛЕВЫЕ ЦЕЛИ · %d выполнено · %d идеально · %d упущено" % [
+            int(field_result.get("completed", 0)),
+            int(field_result.get("perfect", 0)),
+            int(field_result.get("failed", 0))
+        ]
+        if int(field_result.get("salvage", 0)) > 0 or int(field_result.get("purge", 0)) > 0:
+            field_note.text += " · тайники %d · зачистки %d" % [
+                int(field_result.get("salvage", 0)),
+                int(field_result.get("purge", 0))
+            ]
+        field_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        field_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        field_note.add_theme_font_size_override("font_size", 9)
+        field_note.add_theme_color_override("font_color", Color("b9cbbf"))
+
     var parts_unused: int = int(result_data.get("parts_unused", 0))
     if parts_unused > 0:
         var parts_note := Label.new()
