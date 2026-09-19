@@ -2,6 +2,7 @@ extends Node
 
 const GameScene: PackedScene = preload("res://scenes/game.tscn")
 const CampScene: PackedScene = preload("res://scenes/camp_view.tscn")
+const AppScene: PackedScene = preload("res://scenes/app.tscn")
 
 var failures: Array[String] = []
 
@@ -18,6 +19,7 @@ func _run() -> void:
     GameState.data["selected_weapon"] = "spear"
 
     await _test_world_foundation()
+    await _test_app_gameplay_backdrop()
     await _test_camp_affordances()
     _test_new_perks()
     _test_quest_specs()
@@ -76,6 +78,38 @@ func _test_world_foundation() -> void:
 
     world.queue_free()
     await _wait_frames(5)
+
+func _test_app_gameplay_backdrop() -> void:
+    var app: Control = AppScene.instantiate() as Control
+    add_child(app)
+    await _wait_frames(5)
+
+    var menu_background: ColorRect = app.get("menu_background") as ColorRect
+    var menu_vignette: ColorRect = app.get("menu_vignette") as ColorRect
+    if menu_background == null or menu_vignette == null:
+        _fail("Mobile app did not expose menu-only backdrop layers")
+    else:
+        if not menu_background.visible or not menu_vignette.visible:
+            _fail("Menu backdrop should be visible while in camp")
+
+    app.call("_start_game")
+    await _wait_frames(8)
+
+    if menu_background != null and menu_background.visible:
+        _fail("Menu background remained visible behind gameplay and can leak as a black WebGL quadrant")
+    if menu_vignette != null and menu_vignette.visible:
+        _fail("Menu vignette remained visible behind gameplay")
+    var active_game: GameWorld = app.get("active_game") as GameWorld
+    if active_game == null:
+        _fail("App did not enter gameplay while testing menu backdrop isolation")
+    elif active_game.world_fill == null:
+        _fail("Gameplay world has no screen-space biome fill after menu backdrop is hidden")
+
+    if active_game != null:
+        active_game.queue_free()
+        app.set("active_game", null)
+    app.queue_free()
+    await _wait_frames(4)
 
 func _test_camp_affordances() -> void:
     var camp: CampView = CampScene.instantiate() as CampView
