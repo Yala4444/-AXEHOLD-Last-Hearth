@@ -65,70 +65,133 @@ func _draw() -> void:
         draw_rect(Rect2(-14, -24, 28 * ratio, 4), Color("72a66d"))
 
 func _draw_tree(flash: float) -> void:
-    draw_rect(Rect2(-13, 14, 28, 5), Color(0.06, 0.08, 0.05, 0.16))
-    var trunk: Color = Color("704d35")
-    draw_rect(Rect2(-4, 3, 8, 18), trunk.lightened(flash * 0.4))
+    _draw_shadow_ellipse(Vector2(0, 17), Vector2(16, 4.5), Color(0.03, 0.04, 0.03, 0.20))
+    var trunk: Color = Color("6c4a32").lightened(flash * 0.30)
+    var bark_dark: Color = trunk.darkened(0.22)
+    var s: float = 1.0 + float(variant % 3) * 0.05
+
+    # Tapered trunk reads much less like a placeholder rectangle.
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-5, 18), Vector2(-4, -2), Vector2(-1, -9),
+        Vector2(4, -7), Vector2(5, 18)
+    ]), bark_dark)
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-3, 17), Vector2(-2, -3), Vector2(0, -8),
+        Vector2(3, -6), Vector2(3, 17)
+    ]), trunk)
+    draw_line(Vector2(-1, 2), Vector2(2, 11), trunk.lightened(0.16), 1.2)
+
+    if biome_index == 2:
+        # Ash trees are silhouettes with ember wounds and broken limbs.
+        var charred := Color("332723").lightened(flash * 0.18)
+        draw_line(Vector2(-1,-3), Vector2(-14,-16), charred, 4.2)
+        draw_line(Vector2(1,-7), Vector2(14,-18), charred, 4.2)
+        if variant % 2 == 0:
+            draw_line(Vector2(-8,-11), Vector2(-16,-7), charred, 2.8)
+        else:
+            draw_line(Vector2(8,-13), Vector2(16,-8), charred, 2.8)
+        draw_circle(Vector2(1,-1), 3.2, Color(0.82,0.26,0.11,0.32 + flash))
+        draw_line(Vector2(0,-2), Vector2(1,6), Color(0.94,0.36,0.15,0.24 + flash), 1.5)
+        return
+
+    var crown: Color
+    if biome_index == 1:
+        var cold: Array[Color] = [Color("527b72"),Color("648a80"),Color("476c68")]
+        crown = cold[variant % cold.size()].lightened(flash)
+    else:
+        var greens: Array[Color] = [Color("447b4d"),Color("548d52"),Color("3d6f45")]
+        crown = greens[variant % greens.size()].lightened(flash)
+
+    var crown_dark := crown.darkened(0.18)
+    var crown_light := crown.lightened(0.10)
+    var y_shift: float = -2.0 if variant % 2 == 0 else 1.0
+
+    # Layered canopy clusters: same resource readability, much richer silhouette.
+    draw_circle(Vector2(-9*s,-9+y_shift), 11.0*s, crown_dark)
+    draw_circle(Vector2(8*s,-11+y_shift), 12.0*s, crown_dark)
+    draw_circle(Vector2(0,-18+y_shift), 13.0*s, crown)
+    draw_circle(Vector2(-14*s,-2+y_shift), 8.5*s, crown)
+    draw_circle(Vector2(14*s,-3+y_shift), 8.5*s, crown)
+    draw_circle(Vector2(-3,-8+y_shift), 13.5*s, crown)
+    draw_circle(Vector2(8,-5+y_shift), 10.0*s, crown_light)
 
     if biome_index == 1:
-        var cold: Array[Color] = [Color("5f8177"), Color("6d8e82"), Color("54756e")]
-        var crown: Color = cold[variant % cold.size()].lightened(flash)
-        draw_rect(Rect2(-11, -11, 22, 17), crown.darkened(0.10))
-        draw_rect(Rect2(-16, -5, 32, 12), crown)
-        draw_rect(Rect2(-9, -17, 18, 7), crown.lightened(0.08))
-        draw_rect(Rect2(-10, -17, 20, 3), Color(0.88, 0.95, 0.95, 0.62))
-        draw_rect(Rect2(-16, -6, 13, 2), Color(0.88, 0.95, 0.95, 0.42))
-    elif biome_index == 2:
-        draw_rect(Rect2(-5, -12, 10, 20), Color("3f312b"))
-        draw_line(Vector2(0, -8), Vector2(-13, -17), Color("3f312b"), 4.0)
-        draw_line(Vector2(1, -3), Vector2(13, -12), Color("3f312b"), 4.0)
-        draw_rect(Rect2(-3, -4, 6, 5), Color(0.68, 0.24, 0.12, 0.38 + flash))
+        draw_arc(Vector2(0,-18+y_shift), 13.0*s, 3.35, 5.95, 14, Color(0.89,0.96,0.96,0.58), 2.0)
+        draw_line(Vector2(-16,-4),Vector2(-5,-4),Color(0.90,0.97,0.98,0.40),1.5)
     else:
-        var greens: Array[Color] = [Color("4d8950"), Color("5d9757"), Color("407b47")]
-        var crown: Color = greens[variant % greens.size()].lightened(flash)
-        draw_rect(Rect2(-12, -12, 24, 17), crown.darkened(0.08))
-        draw_rect(Rect2(-17, -6, 34, 13), crown)
-        draw_rect(Rect2(-10, -17, 20, 7), crown.lightened(0.08))
-        draw_rect(Rect2(-7, -14, 5, 5), Color(0.75, 0.90, 0.70, 0.18 + flash * 0.5))
+        draw_circle(Vector2(-7,-17+y_shift), 2.1, Color(0.80,0.91,0.61,0.20))
+        draw_circle(Vector2(11,-7+y_shift), 1.8, Color(0.74,0.88,0.55,0.18))
 
 func _draw_rock(flash: float) -> void:
-    var rock_color: Color = Color("858c91")
+    _draw_shadow_ellipse(Vector2(0, 10), Vector2(15, 4.0), Color(0.03,0.04,0.04,0.18))
+    var rock_color: Color = Color("7e8788")
     if biome_index == 1:
-        rock_color = Color("8ca9ad")
+        rock_color = Color("78979d")
     elif biome_index == 2:
-        rock_color = Color("5b5554")
+        rock_color = Color("554d4c")
     rock_color = rock_color.lightened(flash)
-    draw_rect(Rect2(-13, 8, 27, 6), Color(0.06, 0.07, 0.07, 0.14))
+
+    var pts := PackedVector2Array([
+        Vector2(-14,7),Vector2(-11,-5),Vector2(-4,-13),
+        Vector2(7,-11),Vector2(14,-3),Vector2(12,7),
+        Vector2(5,12),Vector2(-7,11)
+    ])
+    draw_colored_polygon(pts, rock_color.darkened(0.08))
     draw_colored_polygon(PackedVector2Array([
-        Vector2(-13, 8), Vector2(-10, -7), Vector2(-3, -13),
-        Vector2(8, -10), Vector2(14, 1), Vector2(8, 11), Vector2(-7, 12)
-    ]), rock_color)
-    draw_rect(Rect2(-5, -9, 5, 11), rock_color.lightened(0.16))
-    draw_rect(Rect2(4, 0, 6, 4), rock_color.darkened(0.15))
+        Vector2(-10,-4),Vector2(-4,-11),Vector2(4,-9),Vector2(7,-1),Vector2(0,4),Vector2(-8,3)
+    ]), rock_color.lightened(0.12))
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(0,4),Vector2(7,-1),Vector2(12,7),Vector2(5,11),Vector2(-2,8)
+    ]), rock_color.darkened(0.18))
+    draw_line(Vector2(-4,-10),Vector2(0,4),rock_color.lightened(0.22),1.2)
+    draw_line(Vector2(0,4),Vector2(-7,9),rock_color.darkened(0.28),1.0)
+
     if biome_index == 1:
-        draw_line(Vector2(-8, -4), Vector2(7, 7), Color(0.80, 0.95, 0.98, 0.46), 1.0)
+        draw_line(Vector2(-7,-3),Vector2(6,7),Color(0.82,0.95,0.98,0.48),1.2)
+        draw_line(Vector2(1,-8),Vector2(5,-3),Color(0.86,0.97,1.0,0.36),1.0)
     elif biome_index == 2:
-        draw_rect(Rect2(7, -3, 3, 5), Color(0.76, 0.24, 0.12, 0.28))
+        draw_line(Vector2(5,-5),Vector2(2,5),Color(0.82,0.28,0.13,0.30),1.4)
+        draw_circle(Vector2(4,1),1.8,Color(0.95,0.42,0.18,0.28))
 
 func _draw_ore(flash: float) -> void:
-    var ore_color: Color = Color("79578f")
-    var crystal: Color = Color("c4a1df")
+    _draw_shadow_ellipse(Vector2(0, 11), Vector2(15, 4.2), Color(0.03,0.03,0.04,0.20))
+    var base: Color = Color("554560")
+    var crystal: Color = Color("a779bf")
+    var bright: Color = Color("d7b6e8")
     if biome_index == 1:
-        ore_color = Color("5d8292")
-        crystal = Color("b9e5ee")
+        base = Color("506f7a")
+        crystal = Color("85bdcb")
+        bright = Color("d2f1f5")
     elif biome_index == 2:
-        ore_color = Color("6f443f")
-        crystal = Color("e17a4b")
-    ore_color = ore_color.lightened(flash)
-    draw_rect(Rect2(-13, 8, 27, 6), Color(0.06, 0.05, 0.08, 0.14))
+        base = Color("5d3935")
+        crystal = Color("c95f3c")
+        bright = Color("ffb36b")
+    base = base.lightened(flash)
+
     draw_colored_polygon(PackedVector2Array([
-        Vector2(-13, 8), Vector2(-10, -8), Vector2(-2, -14),
-        Vector2(10, -9), Vector2(14, 2), Vector2(7, 12), Vector2(-7, 11)
-    ]), ore_color)
-    draw_rect(Rect2(-4, -8, 6, 7), crystal.lightened(flash))
-    draw_rect(Rect2(5, 0, 5, 5), crystal.darkened(0.12))
-    draw_rect(Rect2(-8, 3, 4, 4), crystal.darkened(0.22))
+        Vector2(-14,9),Vector2(-11,-4),Vector2(-3,-10),Vector2(8,-8),
+        Vector2(14,2),Vector2(8,11),Vector2(-6,12)
+    ]),base)
+
+    var offsets: Array[Vector2] = [Vector2(-6,1),Vector2(2,-3),Vector2(8,3)]
+    var heights: Array[float] = [14.0,20.0,11.0]
+    for i: int in range(3):
+        var p: Vector2 = offsets[i]
+        var h: float = heights[i] + float((variant+i)%2)*3.0
+        var shard := PackedVector2Array([
+            p + Vector2(0,-h),
+            p + Vector2(5,-4),
+            p + Vector2(3,7),
+            p + Vector2(-4,7),
+            p + Vector2(-5,-4)
+        ])
+        draw_colored_polygon(shard, crystal.lightened(float(i)*0.035 + flash))
+        draw_line(p+Vector2(0,-h+3),p+Vector2(-1,5),bright,1.2)
+
     if hit_pulse > 0.1:
-        draw_rect(Rect2(9, -10, 4, 4), Color(crystal, hit_pulse * 0.80))
+        for i: int in range(3):
+            var a: float = -1.6 + float(i)*0.7
+            draw_circle(Vector2(cos(a),sin(a))*18.0,1.6,Color(bright,hit_pulse*0.76))
 
 func _draw_shadow_ellipse(center: Vector2, radii: Vector2, color: Color) -> void:
     var points: PackedVector2Array = PackedVector2Array()
