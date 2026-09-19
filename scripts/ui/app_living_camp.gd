@@ -11,6 +11,9 @@ func _show_home() -> void:
     camp.action_requested.connect(_on_camp_action)
 
     selected_biome = clampi(selected_biome, 0, GameRules.BIOMES.size() - 1)
+    var tutorial_pending: bool = GameState.tutorial_should_run()
+    if tutorial_pending:
+        selected_biome = 0
     var biome_data: Dictionary = GameRules.biome(selected_biome)
     var weapon_id: String = str(GameState.data.get("selected_weapon", "axes"))
     var weapon: Dictionary = WeaponRules.profile(weapon_id)
@@ -56,6 +59,26 @@ func _show_home() -> void:
     chronicle.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
     chronicle.pressed.connect(_show_chronicle)
 
+    if tutorial_pending:
+        var tutorial_panel := _panel(body)
+        tutorial_panel.add_theme_stylebox_override("panel", VisualSystem.panel(Color("171d1a"), Color(VisualSystem.GOLD,0.48), 6, 10, 1))
+        var tutorial_box := VBoxContainer.new()
+        tutorial_panel.add_child(tutorial_box)
+        tutorial_box.add_theme_constant_override("separation",4)
+
+        var tutorial_title := Label.new()
+        tutorial_box.add_child(tutorial_title)
+        tutorial_title.text = "ПЕРВЫЙ ПУТЬ · ОБУЧЕНИЕ"
+        tutorial_title.add_theme_font_size_override("font_size",11)
+        tutorial_title.add_theme_color_override("font_color",VisualSystem.GOLD_BRIGHT)
+
+        var tutorial_copy := Label.new()
+        tutorial_box.add_child(tutorial_copy)
+        tutorial_copy.text = "За один короткий маршрут игра покажет главное: движение → добыча → разгрузка → постройка → первая ночь. События и охоты пока отключены."
+        tutorial_copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        tutorial_copy.add_theme_font_size_override("font_size",8)
+        tutorial_copy.add_theme_color_override("font_color",VisualSystem.TEXT_SOFT)
+
     # One departure surface contains the information needed to leave.
     var departure := _panel(body)
     var departure_box := VBoxContainer.new()
@@ -79,11 +102,14 @@ func _show_home() -> void:
 
     var route := Label.new()
     route_copy.add_child(route)
-    route.text = "%s · Угроза %d\n%s" % [
+    route.text = ("%s · УЧЕБНЫЙ МАРШРУТ\n%s" % [
+        str(biome_data.get("name", "Забытый лес")),
+        str(weapon.get("name", "Топоры Странника"))
+    ]) if tutorial_pending else ("%s · Угроза %d\n%s" % [
         str(biome_data.get("name", "Забытый лес")),
         GameState.selected_threat(),
         str(weapon.get("name", "Топоры Странника"))
-    ]
+    ])
     route.add_theme_font_size_override("font_size", 12)
     route.add_theme_color_override("font_color", VisualSystem.TEXT)
     route.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -134,7 +160,11 @@ func _show_home() -> void:
     contract_button.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
     contract_button.pressed.connect(_show_contracts)
 
-    var play := _button(departure_box, "В ЭКСПЕДИЦИЮ · УГРОЗА %d" % GameState.selected_threat(), true)
+    var play := _button(
+        departure_box,
+        "НАЧАТЬ ОБУЧЕНИЕ" if tutorial_pending else "В ЭКСПЕДИЦИЮ · УГРОЗА %d" % GameState.selected_threat(),
+        true
+    )
     play.custom_minimum_size = Vector2(0, 48)
     play.pressed.connect(_start_expedition)
 
@@ -398,10 +428,11 @@ func _show_map() -> void:
     var threat_spec: Dictionary = ThreatRules.spec(selected_threat)
     var threat_desc := Label.new()
     threat_box.add_child(threat_desc)
-    threat_desc.text = "%s · награда ×%.2f\n%s" % [
+    threat_desc.text = "%s · награда ×%.2f\n%s\n%s" % [
         str(threat_spec.get("name","")),
         float(threat_spec.get("reward",1.0)),
-        str(threat_spec.get("desc",""))
+        str(threat_spec.get("desc","")),
+        ThreatRules.readiness_text(selected_threat)
     ]
     threat_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     threat_desc.add_theme_font_size_override("font_size",8)
@@ -432,6 +463,10 @@ func _select_threat_from_map(level: int) -> void:
 
 func _start_expedition() -> void:
     GameState.data["run_mode"] = "expedition"
+    if GameState.tutorial_should_run():
+        selected_biome = 0
+        GameState.data["selected_biome"] = 0
+        GameState.data["selected_threat"] = 1
     GameState.save()
     _start_game()
 

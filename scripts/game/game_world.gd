@@ -14,6 +14,7 @@ var biome_index: int = 0
 var biome: Dictionary = {}
 var threat_level: int = 1
 var run_mode: String = "expedition"
+var tutorial_run: bool = false
 var endless_checkpoint_wave: int = 0
 var endless_chest_boosted: bool = false
 var relic_thorn_timer: float = 2.5
@@ -91,6 +92,7 @@ func configure(index: int, selected_threat: int = 1, mode: String = "expedition"
     biome_index = index
     threat_level = clampi(selected_threat, 1, ThreatRules.MAX_LEVEL)
     run_mode = mode if mode in ["expedition","endless"] else "expedition"
+    tutorial_run = run_mode == "expedition" and biome_index == 0 and threat_level == 1 and GameState.tutorial_should_run()
 
 func _ready() -> void:
     core_fx = CoreFX.new()
@@ -190,11 +192,15 @@ func _start_run() -> void:
         hud.set_status("Собирай добычу и возвращайся к Очагу.")
 
     var settings: Dictionary = GameState.data["settings"]
-    if bool(settings.get("hints", true)) and not bool(GameState.data.get("v1_tutorial_complete", false)):
+    if tutorial_run:
+        hud.show_banner("ПЕРВЫЙ ПУТЬ СТРАННИКА", Color("f3d58d"))
+        hud.set_run_objective("ОБУЧЕНИЕ · 1/5 · ОСВОЙ ДВИЖЕНИЕ")
+        hud.set_status("Проведи пальцем по экрану. Странник движется за твоим жестом.")
+    elif bool(settings.get("hints", true)) and not bool(GameState.data.get("v1_tutorial_complete", false)):
         GameState.data["v1_tutorial_complete"] = true
         GameState.save()
         hud.show_banner("РУБИ ДНЁМ. ДЕРЖИ ОБОРОНУ НОЧЬЮ.", Color("f3d58d"))
-        hud.set_status("Коснись свободного места и веди пальцем. Оружие работает само.")
+        hud.set_status("Оружие работает автоматически. Днём добывай ресурсы, ночью защищай Очаг.")
     _refresh_hud()
     queue_redraw()
 
@@ -653,20 +659,32 @@ func _start_night() -> void:
     if run_variation != null:
         run_variation.prepare_night(wave)
         base_spawn_count = run_variation.modify_spawn_count(base_spawn_count)
-    base_spawn_count = int(round(float(base_spawn_count) * float(ThreatRules.spec(threat_level).get("spawn",1.0))))
+    var first_night_relief: Dictionary = ThreatRules.first_night_relief(threat_level, wave)
+    base_spawn_count = int(round(
+        float(base_spawn_count)
+        * float(ThreatRules.spec(threat_level).get("spawn",1.0))
+        * float(first_night_relief.get("spawn",1.0))
+    ))
+    if tutorial_run and wave == 1:
+        base_spawn_count = mini(base_spawn_count, 7)
     if run_mode == "endless":
         base_spawn_count = int(round(float(base_spawn_count) * ThreatRules.endless_spawn_multiplier(wave)))
     spawn_left = maxi(1, base_spawn_count)
 
     if activity_director != null:
         var nest_extra: int = activity_director.night_extra_enemies()
+        nest_extra = mini(nest_extra, ThreatRules.first_night_nest_cap(threat_level, wave))
         spawn_left += nest_extra
         if nest_extra > 0:
             hud.set_status("%d активных гнёзд усиливают эту ночь." % activity_director.unresolved_nests())
     spawn_timer = 0.1
     boss_spawned = false
     hud.hide_build_context()
-    hud.show_banner("НОЧЬ %d" % wave, Color("d9e7ff"))
+    if tutorial_run and wave == 1:
+        hud.show_banner("ПЕРВАЯ НОЧЬ · ЗАЩИТИ ОЧАГ", Color("f2d98b"))
+        hud.set_run_objective("ОБУЧЕНИЕ · 5/5 · НЕ ДАЙ ТЬМЕ ДОЙТИ ДО ОЧАГА")
+    else:
+        hud.show_banner("НОЧЬ %d" % wave, Color("d9e7ff"))
     if core_fx != null:
         core_fx.hearth_flare(base_position, true)
     trigger_camera_shake(2.6, 0.22)
@@ -791,6 +809,9 @@ func _update_night(delta: float) -> void:
     spawn_timer -= delta
     if spawn_left > 0 and spawn_timer <= 0.0:
         var interval_mult: float = run_variation.spawn_interval_multiplier() if run_variation != null else 1.0
+        interval_mult *= float(ThreatRules.first_night_relief(threat_level, wave).get("interval",1.0))
+        if tutorial_run and wave == 1:
+            interval_mult *= 1.16
         spawn_timer = maxf(0.42, (1.55 - wave * 0.12) * interval_mult)
         _spawn_enemy()
         spawn_left -= 1
@@ -846,7 +867,10 @@ func _update_night(delta: float) -> void:
             elif dist_to_base < 53.0:
                 var wall_multiplier: float = wall_damage_multiplier if bool(built["wall"]) else 1.0
                 var night_damage_mult: float = run_variation.base_damage_multiplier() if run_variation != null else 1.0
-                var amount: float = enemy.contact_damage * wall_multiplier * night_damage_mult
+                var base_relief: float = float(ThreatRules.first_night_relief(threat_level, wave).get("base_damage",1.0))
+                if tutorial_run and wave == 1:
+                    base_relief *= 0.72
+                var amount: float = enemy.contact_damage * wall_multiplier * night_damage_mult * base_relief
                 base_hp -= amount
                 if core_fx != null:
                     core_fx.hearth_hit(base_position)
@@ -1200,10 +1224,15 @@ func _apply_threat_to_enemy(enemy: AxEnemy, is_boss: bool) -> void:
     if enemy == null or not is_instance_valid(enemy):
         return
     var spec: Dictionary = ThreatRules.spec(threat_level)
-    enemy.max_hp *= float(spec.get("enemy_hp",1.0))
+    var relief: Dictionary = ThreatRules.first_night_relief(threat_level, wave)
+    enemy.max_hp *= float(spec.get("enemy_hp",1.0)) * float(relief.get("hp",1.0))
     enemy.hp = enemy.max_hp
-    enemy.contact_damage *= float(spec.get("enemy_damage",1.0))
+    enemy.contact_damage *= float(spec.get("enemy_damage",1.0)) * float(relief.get("damage",1.0))
     enemy.move_speed *= float(spec.get("enemy_speed",1.0))
+    if tutorial_run and wave == 1:
+        enemy.max_hp *= 0.88
+        enemy.hp = enemy.max_hp
+        enemy.contact_damage *= 0.80
 
     if run_mode == "endless":
         enemy.max_hp *= ThreatRules.endless_enemy_hp(wave)

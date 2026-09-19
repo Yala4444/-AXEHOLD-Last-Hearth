@@ -1,7 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://axehold_save.json"
-const SAVE_VERSION := 13
+const SAVE_VERSION := 14
 
 var data: Dictionary = {}
 
@@ -20,6 +20,7 @@ func defaults() -> Dictionary:
         "selected_biome": 0,
         "tutorial_complete": false,
         "coach_complete": false,
+        "tutorial_replay_pending": false,
         "upgrades": {"damage": 0, "hp": 0, "bag": 0, "speed": 0},
         "biome_wins": [0, 0, 0],
         "biome_mastery": [0, 0, 0],
@@ -216,6 +217,8 @@ func _migrate_save() -> void:
         data["run_mode"] = "expedition"
         data["endless_stats"] = {"runs":0,"best_wave":0,"best_kills":0,"best_coins":0}
         data["relic_forge"] = {"power":0,"ward":0,"fortune":0}
+    if version < 14:
+        data["tutorial_replay_pending"] = false
     data["save_version"] = SAVE_VERSION
     save()
 
@@ -473,6 +476,29 @@ func biome_event_stats(index: int = -1) -> Dictionary:
     var biome_id: String = str(GameRules.biome(index).get("id", "forest"))
     var stats: Dictionary = all_stats.get(biome_id, {"events":0,"perfect":0,"hunts":0})
     return stats.duplicate(true)
+
+func tutorial_should_run() -> bool:
+    var settings: Dictionary = data.get("settings", {})
+    if not bool(settings.get("hints", true)):
+        return false
+    return not bool(data.get("coach_complete", false)) or bool(data.get("tutorial_replay_pending", false))
+
+func restart_tutorial() -> void:
+    var settings: Dictionary = data.get("settings", {})
+    settings["hints"] = true
+    data["settings"] = settings
+    data["tutorial_replay_pending"] = true
+    data["selected_biome"] = 0
+    data["selected_threat"] = 1
+    data["run_mode"] = "expedition"
+    save()
+    Analytics.event("tutorial_replay_requested")
+
+func complete_tutorial() -> void:
+    data["coach_complete"] = true
+    data["tutorial_replay_pending"] = false
+    save()
+    Analytics.event("coach_complete")
 
 func threat_unlocked_level(biome_index: int) -> int:
     var values: Array = data.get("threat_unlocked", [1,1,1])

@@ -16,7 +16,8 @@ func setup(world_ref: GameWorld, generator_ref: WorldGenerator) -> void:
     world = world_ref
     generator = generator_ref
     world.hud.action_requested.connect(_on_hud_action)
-    _spawn_initial_activities()
+    if not world.tutorial_run:
+        _spawn_initial_activities()
 
 func _spawn_initial_activities() -> void:
     var occupied: Array = []
@@ -94,6 +95,8 @@ func _spawn(kind: String, min_radius: float, max_radius: float, occupied: Array)
 
 func _process(delta: float) -> void:
     if world == null or not is_instance_valid(world) or world.player == null or world.finishing:
+        return
+    if world.tutorial_run:
         return
 
     if world.wave >= 1 and world.phase == "day" and not altar_spawned:

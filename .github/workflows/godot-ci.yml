@@ -290,6 +290,16 @@ jobs:
             exit 1
           fi
 
+      - name: V1.17 first-run + calibration regression
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_v117_first_run_smoke.tscn 2>&1 | tee /tmp/godot-v117-first-run.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v117-first-run.log; then
+            echo "GDScript parse errors detected during v1.17 first-run test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |
