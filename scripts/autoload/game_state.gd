@@ -1,7 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://axehold_save.json"
-const SAVE_VERSION := 11
+const SAVE_VERSION := 12
 
 var data: Dictionary = {}
 
@@ -59,6 +59,11 @@ func defaults() -> Dictionary:
             "forest":{"events":0,"perfect":0,"hunts":0},
             "frost":{"events":0,"perfect":0,"hunts":0},
             "ash":{"events":0,"perfect":0,"hunts":0}
+        },
+        "field_objective_stats": {
+            "completed":0,
+            "failed":0,
+            "perfect":0
         },
         "skins_owned": [true, false, false, false],
         "selected_skin": 0,
@@ -166,6 +171,12 @@ func _migrate_save() -> void:
             "forest":{"events":0,"perfect":0,"hunts":0},
             "frost":{"events":0,"perfect":0,"hunts":0},
             "ash":{"events":0,"perfect":0,"hunts":0}
+        }
+    if version < 12:
+        data["field_objective_stats"] = {
+            "completed":0,
+            "failed":0,
+            "perfect":0
         }
     data["save_version"] = SAVE_VERSION
     save()
@@ -393,6 +404,17 @@ func record_dynamic_world(delta_stats: Dictionary) -> void:
 func dynamic_world_stats() -> Dictionary:
     var stats: Dictionary = data.get("dynamic_world_stats", {})
     return stats.duplicate(true)
+
+func record_field_objective(delta_stats: Dictionary) -> void:
+    var stats: Dictionary = data.get("field_objective_stats", {"completed":0,"failed":0,"perfect":0})
+    for key_variant: Variant in delta_stats.keys():
+        var key: String = str(key_variant)
+        stats[key] = int(stats.get(key, 0)) + int(delta_stats.get(key_variant, 0))
+    data["field_objective_stats"] = stats
+    save()
+
+func field_objective_stats() -> Dictionary:
+    return (data.get("field_objective_stats", {"completed":0,"failed":0,"perfect":0}) as Dictionary).duplicate(true)
 
 func record_biome_event(biome_index: int, delta_stats: Dictionary) -> void:
     var biome_data: Dictionary = GameRules.biome(biome_index)
