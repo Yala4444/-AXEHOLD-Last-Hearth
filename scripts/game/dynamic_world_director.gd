@@ -148,6 +148,7 @@ func _start_event(event_type: String) -> void:
             world.hud.show_banner("ЗАСАДА!", Color("c392d9"))
             world.hud.set_status("Тьма вышла на твой след. Переживи короткую схватку.")
 
+    world.hud.set_run_objective("КРУПНОЕ СОБЫТИЕ · %s · %dс" % [title, int(ceil(duration))])
     Analytics.event("dynamic_event_started", {
         "type":event_type,
         "wave":world.wave,
@@ -190,6 +191,12 @@ func _update_active_event(delta: float) -> void:
 
     var event_type: String = str(active_event.get("type", ""))
     var stage: String = str(active_event.get("stage", "combat"))
+    if stage != "choice":
+        var marker_title: String = "СОБЫТИЕ"
+        var marker_ref: DynamicEventMarker = active_event.get("marker") as DynamicEventMarker
+        if marker_ref != null and is_instance_valid(marker_ref):
+            marker_title = marker_ref.title
+        world.hud.set_run_objective("КРУПНОЕ СОБЫТИЕ · %s · %dс" % [marker_title, int(ceil(maxf(0.0, time_left)))])
 
     if event_type == "trail_cache":
         _update_chain_cache(delta)
@@ -485,6 +492,8 @@ func _clear_active_event() -> void:
     if marker != null and is_instance_valid(marker):
         marker.queue_free()
     active_event.clear()
+    if world != null and world.hud != null:
+        world.hud.set_run_objective("")
 
 func _alive_event_enemies() -> int:
     var alive: int = 0
