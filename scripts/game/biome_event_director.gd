@@ -23,7 +23,6 @@ var perfect_events: int = 0
 
 func setup(world_ref: GameWorld) -> void:
     world = world_ref
-    world.enemy_defeated.connect(_on_enemy_defeated)
     set_process(true)
 
 func _process(delta: float) -> void:
