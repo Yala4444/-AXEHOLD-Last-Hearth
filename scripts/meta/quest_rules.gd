@@ -26,7 +26,9 @@ const DAILY_POOL: Array[Dictionary] = [
     {"id":"elite_hunter","category":"combat","event":"elite_kill","title":"РЕДКАЯ ЦЕЛЬ","desc":"Уничтожь 2 элитных врагов.","goal":2,"reward_type":"coins","reward":68},
     {"id":"field_rescue","category":"explore","event":"world_rescue","title":"НЕ БРОСАТЬ СВОИХ","desc":"Спаси выжившего во время динамического события.","goal":1,"reward_type":"coins","reward":62},
     {"id":"event_runner","category":"explore","event":"dynamic_event","title":"ЖИВОЙ МИР","desc":"Заверши 3 динамических события.","goal":3,"reward_type":"coins","reward":64},
-    {"id":"follow_the_clue","category":"risk","event":"event_chain","title":"ИДТИ ПО СЛЕДУ","desc":"Заверши цепочку события и найди тайник.","goal":1,"reward_type":"coins","reward":72}
+    {"id":"follow_the_clue","category":"risk","event":"event_chain","title":"ИДТИ ПО СЛЕДУ","desc":"Заверши цепочку события и найди тайник.","goal":1,"reward_type":"coins","reward":72},
+    {"id":"region_master","category":"biome","event":"biome_event","title":"УСМИРИТЬ РЕГИОН","desc":"Переживи 2 региональных события.","goal":2,"reward_type":"coins","reward":70},
+    {"id":"regional_hunter","category":"combat","event":"regional_hunt","title":"ОХОТА НА ВОЖАКА","desc":"Уничтожь региональную редкую цель.","goal":1,"reward_type":"coins","reward":82}
 ]
 
 static func spec(id: String) -> Dictionary:
