@@ -56,15 +56,28 @@ static func first_night_relief(level: int, wave: int) -> Dictionary:
         return {"spawn":1.0,"hp":1.0,"damage":1.0,"base_damage":1.0,"interval":1.0}
     match clampi(level,1,MAX_LEVEL):
         2:
-            return {"spawn":0.84,"hp":0.92,"damage":0.92,"base_damage":0.78,"interval":1.10}
+            return {"spawn":0.76,"hp":0.90,"damage":0.88,"base_damage":0.68,"interval":1.16}
         3:
-            return {"spawn":0.90,"hp":0.95,"damage":0.95,"base_damage":0.86,"interval":1.06}
+            return {"spawn":0.86,"hp":0.94,"damage":0.93,"base_damage":0.82,"interval":1.09}
         4:
             return {"spawn":0.95,"hp":0.97,"damage":0.98,"base_damage":0.92,"interval":1.03}
         5:
             return {"spawn":1.0,"hp":1.0,"damage":1.0,"base_damage":1.0,"interval":1.0}
         _:
             return {"spawn":1.0,"hp":1.0,"damage":1.0,"base_damage":1.0,"interval":1.0}
+
+static func first_night_nest_cap(level: int, wave: int) -> int:
+    if wave != 1:
+        return 99
+    match clampi(level,1,MAX_LEVEL):
+        2:
+            return 0
+        3:
+            return 1
+        4:
+            return 2
+        _:
+            return 99
 
 static func endless_enemy_hp(wave: int) -> float:
     return 1.0 + maxf(0.0,float(wave-1))*0.12 + floor(float(maxi(0,wave-1))/5.0)*0.14
