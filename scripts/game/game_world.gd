@@ -673,6 +673,7 @@ func _start_night() -> void:
 
     if activity_director != null:
         var nest_extra: int = activity_director.night_extra_enemies()
+        nest_extra = mini(nest_extra, ThreatRules.first_night_nest_cap(threat_level, wave))
         spawn_left += nest_extra
         if nest_extra > 0:
             hud.set_status("%d активных гнёзд усиливают эту ночь." % activity_director.unresolved_nests())
