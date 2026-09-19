@@ -61,6 +61,9 @@ var hearth_damage_bonus: float = 0.0
 var loaded_pack_damage_bonus: float = 0.0
 var kill_heal_every: int = 0
 var kill_heal_amount: float = 0.0
+var field_target: Vector2 = Vector2.ZERO
+var field_hint_active: bool = false
+var field_hint_color: Color = Color("d5a652")
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -229,6 +232,12 @@ func set_home_hint(value: bool) -> void:
     home_hint_active = value
     queue_redraw()
 
+func set_field_target(pos: Vector2, active: bool, color: Color) -> void:
+    field_target = pos
+    field_hint_active = active
+    field_hint_color = color
+    queue_redraw()
+
 func set_move_input(value: Vector2) -> void:
     move_input = value.limit_length(1.0)
     direct_control = true
@@ -345,7 +354,7 @@ func _draw() -> void:
             body_offset += Vector2(0, 2.0 + (1.0 - action_ratio) * 2.0)
 
     var shadow_scale: float = 1.0 + (0.08 if weapon_action_time > 0.0 else 0.0)
-    draw_rect(Rect2(-13 * shadow_scale, 15, 27 * shadow_scale, 5), Color(0.04, 0.06, 0.05, 0.24))
+    _draw_shadow_ellipse(Vector2(0, 18), Vector2(14.5 * shadow_scale, 4.8), Color(0.025, 0.035, 0.03, 0.30))
 
     var radius: float = orbit_radius + axes * 4.0
     if weapon_style == "axes" or weapon_style == "twin_blades":
@@ -360,9 +369,12 @@ func _draw() -> void:
         if weapon_action_time > 0.0:
             var spear_dir: Vector2 = weapon_action_direction.normalized()
             draw_line(spear_dir * 16.0, spear_dir * 112.0, Color(0.58, 0.82, 0.61, 0.20 + weapon_action_ratio() * 0.28), 5.0)
-    elif weapon_style == "hammer" and weapon_action_time > 0.0:
-        var slam_radius: float = 42.0 + (1.0 - weapon_action_ratio()) * 20.0
-        draw_arc(Vector2.ZERO, slam_radius, 0.0, TAU, 30, Color(0.62, 0.83, 0.94, weapon_action_ratio() * 0.42), 3.0)
+    elif weapon_style == "hammer":
+        var hammer_idle_angle: float = angle * 0.72
+        draw_arc(Vector2.ZERO, radius, hammer_idle_angle - 0.42, hammer_idle_angle - 0.08, 9, Color(0.62, 0.83, 0.94, 0.13), 5.0)
+        if weapon_action_time > 0.0:
+            var slam_radius: float = 42.0 + (1.0 - weapon_action_ratio()) * 20.0
+            draw_arc(Vector2.ZERO, slam_radius, 0.0, TAU, 30, Color(0.62, 0.83, 0.94, weapon_action_ratio() * 0.42), 3.0)
 
     # Production silhouette: hooded wanderer with readable cape, shoulders and satchel.
     var cape_shift: float = -facing_x * (4.0 if moving else 1.5)
@@ -555,6 +567,19 @@ func _draw_inventory_gauge() -> void:
                 anchor - dir * 4.0 - side * 4.5
             ]), Color("f1cb73"))
 
+    if field_hint_active and global_position.distance_to(field_target) > 62.0:
+        var field_dir: Vector2 = global_position.direction_to(field_target)
+        if field_dir.length_squared() > 0.01:
+            var field_anchor := field_dir * 33.0
+            var field_side := Vector2(-field_dir.y, field_dir.x)
+            draw_circle(field_anchor, 8.0, Color(field_hint_color, 0.15))
+            draw_arc(field_anchor, 8.0, 0.0, TAU, 16, Color(field_hint_color, 0.72), 1.5)
+            draw_colored_polygon(PackedVector2Array([
+                field_anchor + field_dir * 7.0,
+                field_anchor - field_dir * 3.0 + field_side * 4.0,
+                field_anchor - field_dir * 3.0 - field_side * 4.0
+            ]), field_hint_color)
+
 func _draw_weapon(pos: Vector2, weapon_angle: float) -> void:
     match weapon_style:
         "spear":
@@ -569,15 +594,15 @@ func _draw_weapon(pos: Vector2, weapon_angle: float) -> void:
 func _draw_axe(pos: Vector2, weapon_angle: float) -> void:
     var handle_a: Vector2 = pos + Vector2(-1, -8).rotated(weapon_angle)
     var handle_b: Vector2 = pos + Vector2(1, 8).rotated(weapon_angle)
-    draw_line(handle_a, handle_b, Color("68482f"), 4.0)
-    draw_line(pos + Vector2(-7, -9).rotated(weapon_angle), pos + Vector2(7, -9).rotated(weapon_angle), Color("b8bec1").lightened(perk_flash * 0.22), 6.0)
+    draw_line(handle_a, handle_b, Color("68482f"), 4.6)
+    draw_line(pos + Vector2(-7, -9).rotated(weapon_angle), pos + Vector2(7, -9).rotated(weapon_angle), Color("c6d0d2").lightened(perk_flash * 0.22), 7.0)
     draw_circle(pos, 2.2, Color(0.96, 0.97, 0.98, 0.55))
     draw_arc(pos, 9.0, weapon_angle - 0.9, weapon_angle + 0.3, 8, Color(0.82, 0.90, 0.95, 0.18), 1.5)
 
 func _draw_spear(pos: Vector2, weapon_angle: float) -> void:
     var shaft_a: Vector2 = pos + Vector2(0, 13).rotated(weapon_angle)
     var shaft_b: Vector2 = pos + Vector2(0, -16).rotated(weapon_angle)
-    draw_line(shaft_a, shaft_b, Color("725038"), 3.0)
+    draw_line(shaft_a, shaft_b, Color("725038"), 3.6)
     var tip: Vector2 = pos + Vector2(0, -21).rotated(weapon_angle)
     var left: Vector2 = pos + Vector2(-5, -14).rotated(weapon_angle)
     var right: Vector2 = pos + Vector2(5, -14).rotated(weapon_angle)
@@ -588,7 +613,7 @@ func _draw_spear(pos: Vector2, weapon_angle: float) -> void:
 func _draw_hammer(pos: Vector2, weapon_angle: float) -> void:
     var handle_a: Vector2 = pos + Vector2(0, 12).rotated(weapon_angle)
     var handle_b: Vector2 = pos + Vector2(0, -9).rotated(weapon_angle)
-    draw_line(handle_a, handle_b, Color("674832"), 5.0)
+    draw_line(handle_a, handle_b, Color("674832"), 5.6)
     var head_center: Vector2 = pos + Vector2(0, -13).rotated(weapon_angle)
     var side: Vector2 = Vector2(1, 0).rotated(weapon_angle)
     var up: Vector2 = Vector2(0, 1).rotated(weapon_angle)
@@ -604,7 +629,7 @@ func _draw_hammer(pos: Vector2, weapon_angle: float) -> void:
 func _draw_twin_blade(pos: Vector2, weapon_angle: float) -> void:
     var inner: Vector2 = pos + Vector2(0, 8).rotated(weapon_angle)
     var outer: Vector2 = pos + Vector2(0, -13).rotated(weapon_angle)
-    draw_line(inner, outer, Color("5b473b"), 3.0)
+    draw_line(inner, outer, Color("5b473b"), 3.5)
     var tip: Vector2 = pos + Vector2(0, -18).rotated(weapon_angle)
     var wing: Vector2 = pos + Vector2(5, -10).rotated(weapon_angle)
     draw_colored_polygon(PackedVector2Array([outer, tip, wing]), Color("e1a07c").lightened(perk_flash * 0.20))
