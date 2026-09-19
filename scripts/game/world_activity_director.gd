@@ -91,7 +91,7 @@ func _process(delta: float) -> void:
                 occupied.append(item.global_position)
         _spawn("altar", 620.0, 1250.0, occupied)
 
-    if world.wave >= 1 and world.phase == "day" and not old_hearth_spawned:
+    if world.wave >= 2 and world.phase == "day" and not old_hearth_spawned:
         old_hearth_spawned = true
         var occupied_hearth: Array = []
         for item: WorldActivity in activities:
