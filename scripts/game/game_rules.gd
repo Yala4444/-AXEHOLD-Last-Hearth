@@ -85,7 +85,11 @@ const PERKS := [
     {"id":"harvest_heal","icon":"SAP","name":"Живой запас","desc":"Каждая полностью добытая точка лечит 3 HP","category":"survival"},
     {"id":"hearth_aura","icon":"FIRE","name":"Клятва Очага","desc":"+35% урона вблизи Последнего Очага","category":"offense"},
     {"id":"loaded_pack","icon":"LOAD","name":"Тяжёлая ноша","desc":"+25% урона при рюкзаке 75%+","category":"offense"},
-    {"id":"hunter_rhythm","icon":"HUNT","name":"Ритм охоты","desc":"Каждые 10 убийств лечат 12 HP","category":"survival"}
+    {"id":"hunter_rhythm","icon":"HUNT","name":"Ритм охоты","desc":"Каждые 10 убийств лечат 12 HP","category":"survival"},
+    {"id":"fire_orb","icon":"ORB","name":"Огненная сфера","desc":"Вокруг героя вращается сфера, обжигающая ближайших врагов","category":"relic"},
+    {"id":"frost_aura","icon":"ICE","name":"Холодный круг","desc":"Ледяная аура замедляет врагов рядом с героем","category":"relic"},
+    {"id":"thorn_ring","icon":"THR","name":"Кольцо шипов","desc":"Периодически выпускает поражающую волну вокруг героя","category":"relic"},
+    {"id":"guardian_spirit","icon":"SPT","name":"Дух Хранителя","desc":"Летающий дух периодически восстанавливает защитный заряд","category":"relic"}
 ]
 
 const WEAPON_PERKS := [
