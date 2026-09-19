@@ -4,11 +4,11 @@ extends RefCounted
 const MAX_LEVEL := 5
 
 const LEVELS: Array[Dictionary] = [
-    {"level":1,"name":"ПУТЬ СТРАННИКА","enemy_hp":1.00,"enemy_damage":1.00,"enemy_speed":1.00,"spawn":1.00,"boss_hp":1.00,"reward":1.00,"desc":"Базовая экспедиция. Изучи регион и Хранителя."},
-    {"level":2,"name":"ТЬМА ПРОСЫПАЕТСЯ","enemy_hp":1.18,"enemy_damage":1.10,"enemy_speed":1.04,"spawn":1.12,"boss_hp":1.20,"reward":1.30,"desc":"Больше врагов и элит. Хранитель становится опаснее."},
-    {"level":3,"name":"ЗЕМЛЯ СОПРОТИВЛЯЕТСЯ","enemy_hp":1.38,"enemy_damage":1.22,"enemy_speed":1.08,"spawn":1.24,"boss_hp":1.45,"reward":1.62,"desc":"Региональные угрозы усиливаются. Ошибки заметно дороже."},
-    {"level":4,"name":"ОСАДА","enemy_hp":1.64,"enemy_damage":1.38,"enemy_speed":1.13,"spawn":1.38,"boss_hp":1.78,"reward":2.05,"desc":"Элиты, плотные ночи и серьёзное давление на постройки."},
-    {"level":5,"name":"КОШМАР РЕГИОНА","enemy_hp":1.95,"enemy_damage":1.58,"enemy_speed":1.18,"spawn":1.55,"boss_hp":2.20,"reward":2.55,"desc":"Максимальная ручная сложность. Редкие награды и усиленный Хранитель."}
+    {"level":1,"name":"ПУТЬ СТРАННИКА","enemy_hp":1.00,"enemy_damage":1.00,"enemy_speed":1.00,"spawn":1.00,"boss_hp":1.00,"reward":1.00,"tower":1.00,"day":1.00,"desc":"Базовая экспедиция. Изучи регион и Хранителя."},
+    {"level":2,"name":"ТЬМА ПРОСЫПАЕТСЯ","enemy_hp":1.18,"enemy_damage":1.10,"enemy_speed":1.04,"spawn":1.12,"boss_hp":1.20,"reward":1.30,"tower":0.94,"day":0.97,"desc":"Больше врагов и элит. Хранитель становится опаснее."},
+    {"level":3,"name":"ЗЕМЛЯ СОПРОТИВЛЯЕТСЯ","enemy_hp":1.38,"enemy_damage":1.22,"enemy_speed":1.08,"spawn":1.24,"boss_hp":1.45,"reward":1.62,"tower":0.86,"day":0.94,"desc":"Региональные угрозы усиливаются. Ошибки заметно дороже."},
+    {"level":4,"name":"ОСАДА","enemy_hp":1.64,"enemy_damage":1.38,"enemy_speed":1.13,"spawn":1.38,"boss_hp":1.78,"reward":2.05,"tower":0.76,"day":0.91,"desc":"Элиты, плотные ночи и серьёзное давление на постройки."},
+    {"level":5,"name":"КОШМАР РЕГИОНА","enemy_hp":1.95,"enemy_damage":1.58,"enemy_speed":1.18,"spawn":1.55,"boss_hp":2.20,"reward":2.55,"tower":0.66,"day":0.88,"desc":"Максимальная ручная сложность. Редкие награды и усиленный Хранитель."}
 ]
 
 static func spec(level: int) -> Dictionary:
