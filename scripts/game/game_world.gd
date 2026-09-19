@@ -1354,15 +1354,25 @@ func _show_endless_checkpoint(boosted: bool = false) -> void:
             if str(perk.get("id","")) == perk_id:
                 spec = perk
                 break
+        var chest_rarity: String = "epic" if boosted else "rare"
+        var family: String = GameRules.perk_family(perk_id)
+        var family_note: String = ""
+        if not family.is_empty():
+            family_note = "\n%s %d/3 → эволюция" % [GameRules.family_name(family), mini(3, player.family_count(family) + 1)]
         buttons.append({
-            "text":"%s\n%s" % [str(spec.get("name",perk_id)),str(spec.get("desc",""))],
+            "text":"%s · %s\n%s%s" % [
+                buildcraft.rarity_name(chest_rarity) if buildcraft != null else "РЕЛИКВИЯ",
+                str(spec.get("name",perk_id)),
+                str(spec.get("desc","")),
+                family_note
+            ],
             "action":"endless_relic:" + perk_id
         })
 
     if not boosted:
         buttons.append({"text":"УЛУЧШИТЬ СУНДУК · РЕКЛАМА","action":"endless_chest_ad"})
     buttons.append({"text":"ЗАБРАТЬ НАГРАДУ И ВЕРНУТЬСЯ","action":"endless_cashout"})
-    hud.show_modal("", "СУНДУК НОЧИ %d" % wave, "Хранитель пал. Выбери силу и продолжай или зафиксируй рекорд.", buttons)
+    hud.show_modal("", "СУНДУК НОЧИ %d · BUILDCRAFT" % wave, "Хранитель пал. Сундук может закрыть синергию или открыть новый путь билда.", buttons)
 
 func _on_endless_chest_ad(_placement: String) -> void:
     hud.hide_modal()
