@@ -4,6 +4,7 @@ extends CharacterBody2D
 signal died
 signal damaged(amount: float, blocked: bool)
 signal level_up_requested(level: int)
+signal build_evolved(evolution_id: String, title: String, description: String)
 
 var target_position: Vector2 = Vector2.ZERO
 var move_input: Vector2 = Vector2.ZERO
@@ -69,6 +70,12 @@ var fire_orb_level: int = 0
 var frost_aura_level: int = 0
 var thorn_ring_level: int = 0
 var guardian_spirit_level: int = 0
+var crit_multiplier: float = 2.0
+var phoenix_charges: int = 0
+var perk_counts: Dictionary = {}
+var family_counts: Dictionary = {}
+var evolutions: Dictionary = {}
+var legendary_traits: Dictionary = {}
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -114,6 +121,16 @@ func apply_weapon_profile(id: String) -> void:
     loaded_pack_damage_bonus = 0.0
     kill_heal_every = 0
     kill_heal_amount = 0.0
+    fire_orb_level = 0
+    frost_aura_level = 0
+    thorn_ring_level = 0
+    guardian_spirit_level = 0
+    crit_multiplier = 2.0
+    phoenix_charges = 0
+    perk_counts.clear()
+    family_counts.clear()
+    evolutions.clear()
+    legendary_traits.clear()
     _apply_weapon_mastery(GameState.weapon_mastery_level(weapon_id))
 
     perk_flash = 1.0
@@ -288,6 +305,15 @@ func take_damage(amount: float) -> void:
     Feedback.play("hit", 38)
     damaged.emit(amount, false)
     if hp <= 0.0:
+        if phoenix_charges > 0:
+            phoenix_charges -= 1
+            hp = maxf(1.0, max_hp * 0.38)
+            shield_hits = mini(5, shield_hits + 2)
+            damage_grace_time = 1.15
+            perk_flash = 1.0
+            Feedback.play("level", 28)
+            queue_redraw()
+            return
         died.emit()
 
 func heal(amount: float) -> void:
@@ -319,14 +345,14 @@ func apply_perk(id: String) -> void:
         "bag":
             capacity += 8
         "crit":
-            crit_chance = minf(0.50, crit_chance + 0.12)
+            crit_chance = minf(0.60, crit_chance + 0.12)
         "shield":
             shield_hits += 3
         "axes_whirl":
             axes_dps_bonus *= 1.18
         "axes_edge":
             orbit_radius += 8.0
-            crit_chance = minf(0.65, crit_chance + 0.05)
+            crit_chance = minf(0.70, crit_chance + 0.05)
         "spear_pierce":
             spear_pierce_bonus += 1
         "spear_impale":
@@ -346,7 +372,7 @@ func apply_perk(id: String) -> void:
         "loaded_pack":
             loaded_pack_damage_bonus += 0.25
         "hunter_rhythm":
-            kill_heal_every = 10
+            kill_heal_every = 10 if kill_heal_every == 0 else mini(kill_heal_every, 10)
             kill_heal_amount += 12.0
         "fire_orb":
             fire_orb_level = mini(3, fire_orb_level + 1)
@@ -357,8 +383,130 @@ func apply_perk(id: String) -> void:
         "guardian_spirit":
             guardian_spirit_level = mini(3, guardian_spirit_level + 1)
             shield_hits += 1
+        "phoenix_oath":
+            phoenix_charges += 1
+            fire_orb_level = maxi(1, fire_orb_level)
+            legendary_traits[id] = true
+        "storm_crown":
+            axes = mini(8, axes + 2)
+            axes_dps_bonus *= 1.35
+            orbit_radius += 10.0
+            legendary_traits[id] = true
+        "eternal_winter":
+            frost_aura_level = 3
+            move_speed *= 1.08
+            legendary_traits[id] = true
+        "hearthbound":
+            max_hp += 40.0
+            hp = minf(max_hp, hp + 40.0)
+            hearth_damage_bonus += 0.65
+            guardian_spirit_level = maxi(1, guardian_spirit_level)
+            legendary_traits[id] = true
+        "blood_moon":
+            crit_chance = minf(0.72, crit_chance + 0.15)
+            crit_multiplier += 0.65
+            kill_heal_every = 6 if kill_heal_every == 0 else mini(kill_heal_every, 6)
+            kill_heal_amount = maxf(kill_heal_amount, 10.0)
+            legendary_traits[id] = true
+        "worldroot":
+            thorn_ring_level = 3
+            harvest_heal_per_node += 4.0
+            capacity += 8
+            legendary_traits[id] = true
+        _:
+            return
+
+    _register_buildcraft(id)
     perk_flash = 1.0
     queue_redraw()
+
+func has_perk(id: String) -> bool:
+    return int(perk_counts.get(id,0)) > 0
+
+func perk_count(id: String) -> int:
+    return int(perk_counts.get(id,0))
+
+func family_count(family: String) -> int:
+    return int(family_counts.get(family,0))
+
+func has_evolution(family: String) -> bool:
+    return bool(evolutions.get(family,false))
+
+func _register_buildcraft(id: String) -> void:
+    perk_counts[id] = int(perk_counts.get(id,0)) + 1
+    var family: String = GameRules.perk_family(id)
+    if family.is_empty():
+        return
+    family_counts[family] = int(family_counts.get(family,0)) + 1
+    if int(family_counts[family]) >= 3 and not has_evolution(family):
+        _activate_evolution(family)
+
+func _activate_evolution(family: String) -> void:
+    var spec: Dictionary = GameRules.evolution_for_family(family)
+    if spec.is_empty():
+        return
+    evolutions[family] = true
+    match family:
+        "flame":
+            fire_orb_level = maxi(3, fire_orb_level)
+            damage *= 1.10
+        "steel":
+            axes = mini(8, axes + 1)
+            orbit_radius += 8.0
+            axes_dps_bonus *= 1.16
+        "frost":
+            frost_aura_level = maxi(3, frost_aura_level)
+            move_speed *= 1.06
+        "guardian":
+            max_hp += 30.0
+            hp = minf(max_hp, hp + 30.0)
+            guardian_spirit_level = maxi(2, guardian_spirit_level)
+            shield_hits = mini(5, shield_hits + 2)
+        "hunt":
+            crit_chance = minf(0.72, crit_chance + 0.10)
+            crit_multiplier += 0.40
+            kill_heal_every = 6 if kill_heal_every == 0 else mini(kill_heal_every, 6)
+            kill_heal_amount = maxf(kill_heal_amount, 8.0)
+        "roots":
+            thorn_ring_level = maxi(3, thorn_ring_level)
+            harvest_heal_per_node += 2.0
+            max_hp += 18.0
+            hp = minf(max_hp, hp + 18.0)
+    build_evolved.emit(str(spec.get("id","")), str(spec.get("name","ЭВОЛЮЦИЯ")), str(spec.get("desc","")))
+
+func buildcraft_snapshot() -> Dictionary:
+    var evolution_list: Array[Dictionary] = []
+    for family: String in ["flame","steel","frost","guardian","hunt","roots"]:
+        if not has_evolution(family):
+            continue
+        var spec: Dictionary = GameRules.evolution_for_family(family)
+        if not spec.is_empty():
+            evolution_list.append(spec)
+
+    var legendary_list: Array[Dictionary] = []
+    for perk_id: String in legendary_traits.keys():
+        if not bool(legendary_traits.get(perk_id,false)):
+            continue
+        var spec: Dictionary = GameRules.perk_spec(perk_id)
+        if not spec.is_empty():
+            legendary_list.append(spec)
+
+    var top_family: String = ""
+    var top_count: int = 0
+    for family: String in ["flame","steel","frost","guardian","hunt","roots"]:
+        var count: int = family_count(family)
+        if count > top_count:
+            top_count = count
+            top_family = family
+
+    return {
+        "perk_counts":perk_counts.duplicate(true),
+        "families":family_counts.duplicate(true),
+        "evolutions":evolution_list,
+        "legendaries":legendary_list,
+        "top_family":top_family,
+        "top_count":top_count
+    }
 
 func _draw() -> void:
     var moving: bool = velocity.length_squared() > 36.0
@@ -602,38 +750,60 @@ func _draw_inventory_gauge() -> void:
 
 func _draw_relic_auras() -> void:
     if frost_aura_level > 0:
-        var frost_radius: float = 58.0 + float(frost_aura_level) * 7.0
+        var frost_evolved: bool = has_evolution("frost")
+        var frost_radius: float = 58.0 + float(frost_aura_level) * 7.0 + (12.0 if frost_evolved else 0.0)
         draw_circle(Vector2.ZERO, frost_radius, Color(0.48,0.78,0.88,0.035 + float(frost_aura_level)*0.01))
-        draw_arc(Vector2.ZERO, frost_radius, 0.0, TAU, 32, Color(0.60,0.88,0.96,0.18), 1.5)
+        draw_arc(Vector2.ZERO, frost_radius, 0.0, TAU, 36, Color(0.60,0.88,0.96,0.30 if frost_evolved else 0.18), 2.4 if frost_evolved else 1.5)
+        if frost_evolved:
+            draw_arc(Vector2.ZERO, frost_radius - 8.0, motion_time*0.18, motion_time*0.18 + PI*1.35, 28, Color(0.78,0.94,1.0,0.22), 1.4)
 
     if thorn_ring_level > 0:
-        var thorn_radius: float = 50.0 + float(thorn_ring_level) * 6.0
-        for i: int in range(10):
-            var a: float = TAU*float(i)/10.0 + motion_time*0.18
+        var roots_evolved: bool = has_evolution("roots")
+        var thorn_radius: float = 50.0 + float(thorn_ring_level) * 6.0 + (10.0 if roots_evolved else 0.0)
+        var thorn_count: int = 14 if roots_evolved else 10
+        for i: int in range(thorn_count):
+            var a: float = TAU*float(i)/float(thorn_count) + motion_time*(0.28 if roots_evolved else 0.18)
             var p := Vector2(cos(a),sin(a))*thorn_radius
             var dir := p.normalized()
             var side := Vector2(-dir.y,dir.x)
             draw_colored_polygon(PackedVector2Array([
-                p + dir*5.0,
+                p + dir*(7.0 if roots_evolved else 5.0),
                 p - dir*3.0 + side*2.5,
                 p - dir*3.0 - side*2.5
-            ]),Color(0.47,0.72,0.40,0.60))
+            ]),Color(0.52,0.79,0.42,0.76 if roots_evolved else 0.60))
 
     if fire_orb_level > 0:
-        var orb_count: int = fire_orb_level
+        var flame_evolved: bool = has_evolution("flame")
+        var orb_count: int = fire_orb_level + (2 if flame_evolved else 0)
         for i: int in range(orb_count):
-            var a: float = -motion_time*2.2 + TAU*float(i)/float(maxi(1,orb_count))
-            var p := Vector2(cos(a),sin(a))*(48.0 + float(fire_orb_level)*4.0)
-            draw_circle(p,7.5,Color(0.95,0.36,0.12,0.10))
-            draw_circle(p,4.5,Color("e96b35"))
-            draw_circle(p+Vector2(0,-1),2.2,Color("ffd46f"))
+            var a: float = -motion_time*(2.8 if flame_evolved else 2.2) + TAU*float(i)/float(maxi(1,orb_count))
+            var p := Vector2(cos(a),sin(a))*(56.0 if flame_evolved else (48.0 + float(fire_orb_level)*4.0))
+            draw_circle(p,9.5 if flame_evolved else 7.5,Color(0.95,0.36,0.12,0.13))
+            draw_circle(p,5.2 if flame_evolved else 4.5,Color("e96b35"))
+            draw_circle(p+Vector2(0,-1),2.5 if flame_evolved else 2.2,Color("ffd46f"))
+        if flame_evolved:
+            draw_arc(Vector2.ZERO, 56.0, 0.0, TAU, 40, Color(1.0,0.47,0.16,0.20), 1.6)
 
     if guardian_spirit_level > 0:
-        var a: float = motion_time*1.25
-        var p := Vector2(cos(a),sin(a))*36.0 + Vector2(0,-8)
-        draw_circle(p,6.0,Color(0.42,0.76,0.92,0.10))
-        draw_circle(p,3.2,Color("8fd5e8"))
-        draw_line(p, p + Vector2(0,-8), Color(0.74,0.93,1.0,0.42), 1.4)
+        var guardian_evolved: bool = has_evolution("guardian")
+        var spirit_count: int = 2 if guardian_evolved else 1
+        for i: int in range(spirit_count):
+            var a: float = motion_time*(1.55 if guardian_evolved else 1.25) + TAU*float(i)/float(spirit_count)
+            var p := Vector2(cos(a),sin(a))*(43.0 if guardian_evolved else 36.0) + Vector2(0,-8)
+            draw_circle(p,7.0 if guardian_evolved else 6.0,Color(0.42,0.76,0.92,0.13))
+            draw_circle(p,3.6 if guardian_evolved else 3.2,Color("8fd5e8"))
+            draw_line(p, p + Vector2(0,-9), Color(0.74,0.93,1.0,0.55 if guardian_evolved else 0.42), 1.6)
+
+    if has_evolution("steel"):
+        var steel_angle: float = motion_time * 1.8
+        draw_arc(Vector2.ZERO, orbit_radius + 20.0, steel_angle, steel_angle + PI*0.8, 20, Color(0.78,0.88,0.94,0.28), 2.0)
+        draw_arc(Vector2.ZERO, orbit_radius + 20.0, steel_angle + PI, steel_angle + PI*1.8, 20, Color(0.78,0.88,0.94,0.22), 2.0)
+
+    if has_evolution("hunt"):
+        for i: int in range(3):
+            var a: float = motion_time*0.75 + TAU*float(i)/3.0
+            var p := Vector2(cos(a),sin(a))*31.0
+            draw_circle(p,2.3,Color(0.88,0.24,0.22,0.72))
 
 func _draw_weapon(pos: Vector2, weapon_angle: float) -> void:
     match weapon_style:
