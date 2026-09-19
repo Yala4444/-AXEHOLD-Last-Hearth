@@ -56,6 +56,45 @@ func _show_result() -> void:
     stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     stats.add_theme_color_override("font_color", Color(0.78, 0.81, 0.83))
 
+    var memory_result: Dictionary = result_data.get("expedition_memory", {})
+    var memories: Array = memory_result.get("moments", [])
+    if not memories.is_empty():
+        var memory_panel := _panel(box)
+        var memory_box := VBoxContainer.new()
+        memory_panel.add_child(memory_box)
+        memory_box.add_theme_constant_override("separation", 6)
+
+        var memory_title := Label.new()
+        memory_box.add_child(memory_title)
+        memory_title.text = "ЭТА ЭКСПЕДИЦИЯ ЗАПОМНИТСЯ"
+        memory_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        memory_title.add_theme_font_size_override("font_size", 10)
+        memory_title.add_theme_color_override("font_color", VisualSystem.GOLD_BRIGHT)
+
+        for moment_variant: Variant in memories:
+            var moment: Dictionary = moment_variant
+            var memory_line := Label.new()
+            memory_box.add_child(memory_line)
+            memory_line.text = "%s\n%s" % [
+                str(moment.get("title", "СОБЫТИЕ")),
+                str(moment.get("detail", ""))
+            ]
+            memory_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+            memory_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+            memory_line.add_theme_font_size_override("font_size", 8)
+            memory_line.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
+
+        var memory_meta := Label.new()
+        memory_box.add_child(memory_meta)
+        memory_meta.text = "Крупных событий: %d · решений: %d · последствий: %d" % [
+            int(memory_result.get("major_events", 0)),
+            int(memory_result.get("choices", 0)),
+            int(memory_result.get("consequences", 0))
+        ]
+        memory_meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        memory_meta.add_theme_font_size_override("font_size", 7)
+        memory_meta.add_theme_color_override("font_color", VisualSystem.TEXT_MUTED)
+
     var contract_result: Dictionary = result_data.get("contract", {}) as Dictionary
     if not contract_result.is_empty():
         var contract_note := Label.new()
@@ -75,7 +114,8 @@ func _show_result() -> void:
         contract_note.add_theme_font_size_override("font_size", 9)
 
     var dynamic_result: Dictionary = result_data.get("dynamic_world", {})
-    if not dynamic_result.is_empty():
+    var dynamic_total: int = int(dynamic_result.get("completed",0)) + int(dynamic_result.get("failed",0)) + int(dynamic_result.get("elites",0))
+    if not dynamic_result.is_empty() and dynamic_total > 0:
         var dynamic_note := Label.new()
         box.add_child(dynamic_note)
         dynamic_note.text = "СОБЫТИЯ МИРА · %d завершено · %d упущено · %d элит · %d спасений" % [
@@ -92,7 +132,8 @@ func _show_result() -> void:
         dynamic_note.add_theme_color_override("font_color", Color("b8c7c1"))
 
     var biome_result: Dictionary = result_data.get("biome_events", {})
-    if not biome_result.is_empty():
+    var biome_total: int = int(biome_result.get("completed",0)) + int(biome_result.get("failed",0)) + int(biome_result.get("hunts",0))
+    if not biome_result.is_empty() and biome_total > 0:
         var region_note := Label.new()
         box.add_child(region_note)
         region_note.text = "РЕГИОН · %d событий · %d охот · %d идеальных прохождений" % [
@@ -108,7 +149,8 @@ func _show_result() -> void:
         region_note.add_theme_color_override("font_color", VisualSystem.GOLD)
 
     var field_result: Dictionary = result_data.get("field_objectives", {})
-    if not field_result.is_empty():
+    var field_total: int = int(field_result.get("completed",0)) + int(field_result.get("failed",0))
+    if not field_result.is_empty() and field_total > 0:
         var field_note := Label.new()
         box.add_child(field_note)
         field_note.text = "ПОЛЕВЫЕ ЦЕЛИ · %d выполнено · %d идеально · %d упущено" % [
