@@ -14,10 +14,12 @@ var events_failed: int = 0
 var elites_killed: int = 0
 var rescues_completed: int = 0
 var chains_completed: int = 0
+var major_events_completed: int = 0
 
 func setup(world_ref: GameWorld) -> void:
     world = world_ref
     world.enemy_defeated.connect(_on_enemy_defeated)
+    world.hud.action_requested.connect(_on_hud_action)
     last_day_wave = world.wave
     event_timer = 18.0
     set_process(true)
@@ -26,6 +28,8 @@ func _process(delta: float) -> void:
     if world != null and world.tutorial_run:
         return
     if world == null or not is_instance_valid(world) or world.player == null or world.finishing:
+        return
+    if world.hud.modal_open():
         return
 
     if world.phase != "day":
@@ -55,18 +59,22 @@ func _start_for_wave(wave: int) -> void:
     started_waves[wave] = true
     var event_type: String = ""
 
+    # v1.18 pacing: one memorable encounter per day, with a named hunt
+    # guaranteed before the Guardian if it has not appeared yet.
     if wave == 0:
-        var pool: Array[String] = ["caravan_defense", "survivor_rescue", "ambush"]
-        event_type = pool[randi() % pool.size()]
+        event_type = "caravan_defense" if randf() < 0.58 else "survivor_rescue"
     elif wave == 1:
-        var pool: Array[String] = ["elite_hunt", "caravan_defense", "survivor_rescue", "ambush"]
-        event_type = pool[randi() % pool.size()]
+        if not seen_types.has("elite_hunt") and randf() < 0.72:
+            event_type = "elite_hunt"
+        else:
+            event_type = "caravan_defense" if not seen_types.has("caravan_defense") else "ambush"
     else:
         if not seen_types.has("elite_hunt"):
             event_type = "elite_hunt"
+        elif not seen_types.has("survivor_rescue"):
+            event_type = "survivor_rescue"
         else:
-            var pool: Array[String] = ["elite_hunt", "survivor_rescue", "caravan_defense"]
-            event_type = pool[randi() % pool.size()]
+            event_type = "ambush"
 
     _start_event(event_type)
 
@@ -90,8 +98,8 @@ func _start_event(event_type: String) -> void:
             title = "ВЫЖИВШИЙ В ОКРУЖЕНИИ"
             point = _event_point(165.0, 230.0)
         "elite_hunt":
-            duration = 38.0
-            title = "РЕДКАЯ ЦЕЛЬ"
+            duration = 42.0
+            title = "ОХОТА: %s" % GameRules.named_hunt_name(world.biome_index)
             point = _event_point(190.0, 260.0)
         "ambush":
             duration = 24.0
@@ -131,8 +139,8 @@ func _start_event(event_type: String) -> void:
             var kind: String = "guardian" if world.biome_index != 2 else "brute"
             var elite_trait_id: String = ["warlord", "volatile", "armored"][world.biome_index]
             _spawn_elite(point, event_id, kind, elite_trait_id, "hunt")
-            world.hud.show_banner("МИРА ОТМЕТИЛА РЕДКУЮ ЦЕЛЬ", Color("dd8068"))
-            world.hud.set_status("Элита находится рядом. Убей её до наступления ночи.")
+            world.hud.show_banner("ОХОТА · %s" % GameRules.named_hunt_name(world.biome_index), Color("dd8068"))
+            world.hud.set_status("Это именная цель. Победа даст реликвию, которая останется с тобой до конца забега.")
         "ambush":
             _spawn_ambush(point, event_id)
             if world.run_variation != null:
@@ -209,7 +217,9 @@ func _resolve_cleared_combat() -> void:
     if active_event.is_empty() or str(active_event.get("stage", "")) != "combat":
         return
     var event_type: String = str(active_event.get("type", ""))
-    if event_type == "survivor_rescue":
+    if event_type == "caravan_defense":
+        _show_caravan_choice()
+    elif event_type == "survivor_rescue":
         var time_left: float = float(active_event.get("time", 0.0))
         active_event["stage"] = "secure"
         active_event["time"] = minf(15.0, maxf(8.0, time_left))
@@ -220,9 +230,38 @@ func _resolve_cleared_combat() -> void:
             marker.duration = 15.0
             marker.set_state("secure")
         world.hud.show_banner("МЕСТО ОЧИЩЕНО", Color("a8d0b1"))
-        world.hud.set_status("Подойди к выжившему и задержись рядом.")
+        world.hud.set_status("Подойди к выжившему и задержись рядом. Если спасёшь его, он поможет у Очагa.")
     else:
         _complete_event()
+
+func _show_caravan_choice() -> void:
+    active_event["stage"] = "choice"
+    active_event["time"] = 999.0
+    world.hud.show_modal(
+        "",
+        "КАРАВАН СПАСЁН",
+        "Торговцы готовы идти к Последнему Очагу. Можно сопроводить их и получать припасы после каждой ночи — или забрать груз сейчас, зная, что хозяева груза придут за ним.",
+        [
+            {"text":"СОПРОВОДИТЬ К ОЧАГУ · припасы на каждом рассвете", "action":"event:caravan_escort"},
+            {"text":"ЗАБРАТЬ ГРУЗ · много ресурсов сейчас · месть ночью", "action":"event:caravan_take"}
+        ]
+    )
+
+func _on_hud_action(action: String) -> void:
+    if not action.begins_with("event:"):
+        return
+    if active_event.is_empty() or str(active_event.get("type", "")) != "caravan_defense":
+        return
+    if str(active_event.get("stage", "")) != "choice":
+        return
+    if action == "event:caravan_escort":
+        active_event["choice"] = "escort"
+    elif action == "event:caravan_take":
+        active_event["choice"] = "take"
+    else:
+        return
+    world.hud.hide_modal()
+    _complete_event()
 
 func _update_chain_cache(delta: float) -> void:
     var point: Vector2 = active_event.get("point", world.player.global_position)
@@ -256,37 +295,97 @@ func _complete_event() -> void:
     var point: Vector2 = active_event.get("point", world.player.global_position)
 
     events_completed += 1
+    if event_type in ["caravan_defense", "survivor_rescue", "elite_hunt"]:
+        major_events_completed += 1
     QuestDirector.record("dynamic_event", 1, {"type":event_type,"biome":world.biome_index})
 
     match event_type:
         "caravan_defense":
-            world.run_coins += 14
-            _give_resource("wood", 6, point)
-            _give_resource("stone", 3, point)
-            if world.run_variation != null:
-                world.run_variation.reduce_threat(0.8, "caravan_saved")
-            world.hud.show_banner("КАРАВАН СПАСЁН", Color("e2bd72"))
-            world.hud.set_status("+14 мон. · припасы спасены. На ящиках найден след тайника.")
+            var choice: String = str(active_event.get("choice", "escort"))
+            if choice == "take":
+                world.run_coins += 26
+                world.storage["wood"] = int(world.storage.get("wood",0)) + 10
+                world.storage["stone"] = int(world.storage.get("stone",0)) + 6
+                world.storage["ore"] = int(world.storage.get("ore",0)) + 2
+                if world.run_variation != null:
+                    world.run_variation.add_threat(1.6, "caravan_taken")
+                if world.expedition_memory != null:
+                    world.expedition_memory.set_flag("caravan_taken", true)
+                    world.expedition_memory.add_night_spawn_delta(world.wave + 1, 4)
+                    world.expedition_memory.choose(
+                        "caravan_choice",
+                        "ГРУЗ КАРАВАНА ПРИСВОЕН",
+                        "Ты получил крупный запас сразу, но следующей ночью за грузом придут охотники.",
+                        "danger"
+                    )
+                world.hud.show_banner("ГРУЗ ПРИСВОЕН", Color("d6906d"))
+                world.hud.set_status("+26 мон. · крупные припасы в складе · следующая ночь усилена.")
+            else:
+                world.run_coins += 10
+                world.storage["wood"] = int(world.storage.get("wood",0)) + 6
+                world.storage["stone"] = int(world.storage.get("stone",0)) + 4
+                if world.run_variation != null:
+                    world.run_variation.reduce_threat(0.8, "caravan_escorted")
+                if world.expedition_memory != null:
+                    world.expedition_memory.set_flag("caravan_escorted", true)
+                    world.expedition_memory.choose(
+                        "caravan_choice",
+                        "КАРАВАН ДОШЁЛ ДО ОЧАГА",
+                        "Торговцы закрепились у базы и после каждой пережитой ночи будут подвозить дерево, камень и ремонтировать Очаг.",
+                        "gold"
+                    )
+                world.hud.show_banner("КАРАВАН У ОЧАГА", Color("e2bd72"))
+                world.hud.set_status("Теперь каждый рассвет караван будет приносить припасы и ремонт.")
         "survivor_rescue":
             rescues_completed += 1
             world.run_coins += 12
-            world.player.heal(22.0)
-            world.player.shield_hits = mini(5, world.player.shield_hits + 1)
+            world.player.heal(24.0)
+            world.player.shield_hits = mini(5, world.player.shield_hits + 2)
+            world.base_max_hp += 25.0
+            world.base_hp = minf(world.base_max_hp, world.base_hp + 25.0)
             QuestDirector.record("world_rescue", 1, {"biome":world.biome_index})
-            world.hud.show_banner("ВЫЖИВШИЙ СПАСЁН", Color("a7d0b2"))
-            world.hud.set_status("+12 мон. · лечение · защитный заряд.")
+            if world.expedition_memory != null:
+                world.expedition_memory.set_flag("rescued_watcher", true)
+                world.expedition_memory.remember(
+                    "rescued_watcher",
+                    "ДОЗОРНЫЙ СПАСЁН",
+                    "Спасённый Странник присоединился к обороне: Очаг стал прочнее, а на каждом рассвете он помогает с ремонтом.",
+                    "green",
+                    true
+                )
+            world.hud.show_banner("ДОЗОРНЫЙ У ОЧАГА", Color("a7d0b2"))
+            world.hud.set_status("+25 прочности Очагa · +2 защиты · помощь на каждом рассвете.")
         "elite_hunt":
-            world.run_coins += 18
+            world.run_coins += 20
             world.add_mechanism_parts(1, point)
+            var relic: Dictionary = GameRules.event_relic_for_biome(world.biome_index)
+            var relic_id: String = str(relic.get("id", "guardian_spirit"))
+            world.player.apply_perk(relic_id)
             if world.run_variation != null:
-                world.run_variation.reduce_threat(0.6, "elite_hunted")
-            world.hud.show_banner("РЕДКАЯ ЦЕЛЬ УНИЧТОЖЕНА", Color("df8a68"))
-            world.hud.set_status("+18 мон. · деталь механизма · Угроза снижена.")
+                world.run_variation.reduce_threat(0.7, "named_hunt")
+            if world.expedition_memory != null:
+                world.expedition_memory.remember(
+                    "named_hunt_%d" % world.biome_index,
+                    "%s ПОВЕРЖЕН" % GameRules.named_hunt_name(world.biome_index),
+                    "Именная охота дала реликвию «%s». Её эффект останется видимым и активным до конца забега." % str(relic.get("name","Реликвия")),
+                    "violet",
+                    true
+                )
+            world.hud.show_banner("%s ПОВЕРЖЕН" % GameRules.named_hunt_name(world.biome_index), Color("df8a68"))
+            world.hud.set_status("Реликвия «%s» изменила твой билд. +20 мон. · +1 деталь." % str(relic.get("name","Реликвия")))
         "ambush":
-            world.run_coins += 10
-            world.player.gain_xp(8)
+            world.run_coins += 12
+            world.player.gain_xp(10)
+            if world.expedition_memory != null:
+                world.expedition_memory.remember(
+                    "ambush_%d" % world.wave,
+                    "ЗАСАДА СОРВАНА",
+                    "Тьма попыталась перехватить Странника днём, но потеряла ударный отряд.",
+                    "neutral",
+                    false
+                )
             world.hud.show_banner("ЗАСАДА СОРВАНА", Color("c7a0d9"))
-            world.hud.set_status("+10 мон. · +8 опыта.")
+            world.hud.set_status("+12 мон. · +10 опыта.")
 
     GameState.record_dynamic_world({
         "events":1,
@@ -298,11 +397,7 @@ func _complete_event() -> void:
         "biome":world.biome_index
     })
 
-    var should_chain: bool = event_type == "caravan_defense"
-    var origin: Vector2 = point
     _clear_active_event()
-    if should_chain and world.phase == "day":
-        _start_chain_cache(origin)
 
 func _start_chain_cache(origin: Vector2) -> void:
     event_counter += 1
@@ -341,6 +436,34 @@ func _fail_event(reason: String) -> void:
         var threat: float = 1.4 if event_type == "caravan_defense" or event_type == "ambush" else 0.8
         world.run_variation.add_threat(threat, "dynamic_event_failed")
 
+    if world.expedition_memory != null:
+        match event_type:
+            "caravan_defense":
+                world.expedition_memory.add_night_spawn_delta(world.wave + 1, 2)
+                world.expedition_memory.remember(
+                    "caravan_lost_%d" % world.wave,
+                    "КАРАВАН ПОТЕРЯН",
+                    "Груз достался Тьме. Следующая ночь получит дополнительное подкрепление.",
+                    "danger",
+                    true
+                )
+            "survivor_rescue":
+                world.expedition_memory.remember(
+                    "survivor_lost_%d" % world.wave,
+                    "КРИК ЗАТИХ",
+                    "Спасти окружённого дозорного не удалось.",
+                    "danger",
+                    true
+                )
+            "elite_hunt":
+                world.expedition_memory.remember(
+                    "hunt_escaped_%d" % world.wave,
+                    "%s УШЁЛ" % GameRules.named_hunt_name(world.biome_index),
+                    "Именная цель пережила день и усилила давление Тьмы.",
+                    "danger",
+                    true
+                )
+
     for enemy_variant: Variant in active_event.get("enemies", []):
         var enemy: AxEnemy = enemy_variant as AxEnemy
         if enemy != null and is_instance_valid(enemy) and not enemy.dying:
@@ -354,7 +477,7 @@ func _fail_event(reason: String) -> void:
         "biome":world.biome_index
     })
     world.hud.show_banner("СОБЫТИЕ УПУЩЕНО", Color("c98075"))
-    world.hud.set_status(reason + " Угроза следующей ночи выросла.")
+    world.hud.set_status(reason + " Последствие останется в этом забеге.")
     _clear_active_event()
 
 func _clear_active_event() -> void:
@@ -414,5 +537,6 @@ func result_summary() -> Dictionary:
         "failed":events_failed,
         "elites":elites_killed,
         "rescues":rescues_completed,
-        "chains":chains_completed
+        "chains":chains_completed,
+        "major":major_events_completed
     }
