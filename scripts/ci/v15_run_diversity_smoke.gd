@@ -41,7 +41,9 @@ func _run() -> void:
     if int(tower_cost.get("wood", 0)) < 22 or int(tower_cost.get("ore", 0)) < 5:
         _fail("Tower cost no longer enforces an early-run tradeoff")
 
-    world.wave = 1
+    # v1.18 staggers the Old Hearth to the final preparation day so the
+    # first two days are not overloaded with simultaneous systems.
+    world.wave = 2
     world.phase = "day"
     world.phase_time = 40.0
     await _wait_frames(3)
@@ -51,7 +53,7 @@ func _run() -> void:
             found_old_hearth = true
             break
     if not found_old_hearth:
-        _fail("Extinguished Hearth activity did not enter post-night world pool")
+        _fail("Extinguished Hearth activity did not enter the final preparation world pool")
 
     var swarm: Dictionary = {}
     for spec_variant: Variant in GameRules.NIGHT_MODIFIERS:
