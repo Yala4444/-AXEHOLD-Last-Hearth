@@ -4,6 +4,7 @@ extends Node
 var world: GameWorld
 var threat: float = 0.0
 var current_modifier: Dictionary = {}
+var current_biome_pressure: Dictionary = {}
 var previewed_modifier: Dictionary = {}
 var preview_wave: int = 0
 var contract: Dictionary = {}
@@ -110,6 +111,10 @@ func prepare_night(wave: int) -> Dictionary:
         current_modifier = GameRules.random_night_modifier(wave, effective_threat)
     previewed_modifier.clear()
 
+    current_biome_pressure = {}
+    if world.biome_events != null:
+        current_biome_pressure = world.biome_events.penalty_for_night(wave)
+
     var modifier_name: String = str(current_modifier.get("name", "НОЧЬ"))
     var modifier_desc: String = str(current_modifier.get("desc", ""))
     world.hud.set_status("%s: %s" % [modifier_name, modifier_desc])
@@ -118,8 +123,14 @@ func prepare_night(wave: int) -> Dictionary:
         "id": str(current_modifier.get("id", "")),
         "wave": wave,
         "threat": effective_threat,
-        "biome": world.biome_index
+        "biome": world.biome_index,
+        "regional_pressure": str(current_biome_pressure.get("name", ""))
     })
+    if not current_biome_pressure.is_empty():
+        world.hud.set_run_objective("%s · %s" % [
+            str(current_biome_pressure.get("name", "РЕГИОНАЛЬНОЕ ДАВЛЕНИЕ")),
+            modifier_name
+        ])
 
     if wave >= 2:
         var rift_chance: float = clampf(0.28 + effective_threat * 0.035 + float(wave - 2) * 0.12, 0.28, 0.72)
@@ -154,28 +165,32 @@ func on_run_finished(won: bool) -> void:
             _complete_contract()
 
 func modify_spawn_count(base_count: int) -> int:
-    if current_modifier.is_empty():
-        return base_count
-    return maxi(1, int(round(float(base_count) * float(current_modifier.get("enemy_mult", 1.0)))))
+    var result: float = float(base_count)
+    result *= float(current_modifier.get("enemy_mult", 1.0))
+    result *= float(current_biome_pressure.get("enemy_mult", 1.0))
+    return maxi(1, int(round(result)))
 
 func spawn_interval_multiplier() -> float:
-    return float(current_modifier.get("spawn_interval_mult", 1.0))
+    return float(current_modifier.get("spawn_interval_mult", 1.0)) * float(current_biome_pressure.get("spawn_interval_mult", 1.0))
 
 func turret_damage_multiplier() -> float:
-    return float(current_modifier.get("tower_damage_mult", 1.0))
+    return float(current_modifier.get("tower_damage_mult", 1.0)) * float(current_biome_pressure.get("tower_damage_mult", 1.0))
 
 func turret_fire_multiplier() -> float:
-    return float(current_modifier.get("tower_fire_mult", 1.0))
+    return float(current_modifier.get("tower_fire_mult", 1.0)) * float(current_biome_pressure.get("tower_fire_mult", 1.0))
 
 func base_damage_multiplier() -> float:
-    return float(current_modifier.get("base_damage_mult", 1.0))
+    return float(current_modifier.get("base_damage_mult", 1.0)) * float(current_biome_pressure.get("base_damage_mult", 1.0))
 
 func reward_multiplier() -> float:
     return float(current_modifier.get("reward_mult", 1.0))
 
 func pick_enemy_kind(default_kind: String, is_boss: bool = false) -> String:
-    if is_boss or current_modifier.is_empty():
+    if is_boss:
         return default_kind
+    var regional_bias: String = str(current_biome_pressure.get("bias", ""))
+    if not regional_bias.is_empty() and randf() < 0.44:
+        return regional_bias
     var bias: String = str(current_modifier.get("bias", ""))
     if not bias.is_empty() and randf() < 0.36:
         return bias
@@ -184,10 +199,10 @@ func pick_enemy_kind(default_kind: String, is_boss: bool = false) -> String:
 func tune_enemy(enemy: AxEnemy) -> void:
     if enemy == null or not is_instance_valid(enemy) or enemy.boss:
         return
-    enemy.max_hp *= float(current_modifier.get("enemy_hp_mult", 1.0))
+    enemy.max_hp *= float(current_modifier.get("enemy_hp_mult", 1.0)) * float(current_biome_pressure.get("enemy_hp_mult", 1.0))
     enemy.hp = enemy.max_hp
-    enemy.contact_damage *= float(current_modifier.get("enemy_damage_mult", 1.0))
-    enemy.move_speed *= float(current_modifier.get("enemy_speed_mult", 1.0))
+    enemy.contact_damage *= float(current_modifier.get("enemy_damage_mult", 1.0)) * float(current_biome_pressure.get("enemy_damage_mult", 1.0))
+    enemy.move_speed *= float(current_modifier.get("enemy_speed_mult", 1.0)) * float(current_biome_pressure.get("enemy_speed_mult", 1.0))
     enemy.set_meta("variation_tuned", true)
 
 func blocks_night_end() -> bool:
