@@ -123,7 +123,7 @@ func _victory_trophy_line(biome_index: int) -> String:
     if count <= 1:
         var weapon_id: String = WeaponRules.unlock_for_biome(biome_index)
         var profile: Dictionary = WeaponRules.profile(weapon_id)
-        return "Новый трофей для лагеря · открыто: %s %s" % [str(profile.get("icon", "⚔️")), str(profile.get("name", weapon_id))]
+        return "Новый трофей для лагеря · открыто оружие: %s" % str(profile.get("name", weapon_id))
     return "Мастерство биома: %s" % WeaponRules.mastery_bonus_text(count)
 
 func _grant_result(multiplier: int) -> void:
