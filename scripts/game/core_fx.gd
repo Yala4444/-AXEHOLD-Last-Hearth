@@ -244,6 +244,30 @@ func enemy_down(pos: Vector2, enemy_type: String, boss: bool, biome_index: int, 
         _pulse(pos, 12.0, 58.0, Color(0.93, 0.67, 0.29, 0.52), 0.46)
         _popup(pos + Vector2(0, -34), "ЭЛИТА ПОВЕРЖЕНА", Color("f0c47d"), 0.84)
 
+func environment_hit(kind_id: String, pos: Vector2) -> void:
+    var color: Color = Color("a9cf78")
+    var count: int = 10
+    if kind_id == "ice":
+        color = Color("a9e5f2")
+        count = 12
+    elif kind_id == "ember":
+        color = Color("f08a52")
+        count = 14
+
+    _pulse(pos, 10.0, 44.0 if kind_id != "ember" else 52.0, Color(color.r, color.g, color.b, 0.50), 0.34)
+    for i: int in range(count):
+        var angle: float = TAU * float(i) / float(maxi(1, count)) + randf_range(-0.18, 0.18)
+        var direction := Vector2(cos(angle), sin(angle))
+        _particle(
+            pos + direction * randf_range(2.0, 8.0),
+            direction * randf_range(34.0, 76.0) + Vector2(0, randf_range(-24.0, 8.0)),
+            color.lightened(randf_range(0.0, 0.16)),
+            randf_range(0.22, 0.42),
+            randf_range(1.6, 3.2),
+            58.0 if kind_id != "ice" else 32.0,
+            3.0
+        )
+
 func player_hit(pos: Vector2) -> void:
     _pulse(pos, 12.0, 34.0, Color(0.94, 0.28, 0.22, 0.34), 0.20)
     for i: int in range(8):

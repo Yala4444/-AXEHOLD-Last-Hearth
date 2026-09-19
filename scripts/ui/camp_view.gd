@@ -108,9 +108,9 @@ func _make_action_button(action: String, text: String) -> void:
     button.text = ""
     button.tooltip_text = text
     button.focus_mode = Control.FOCUS_NONE
-    button.add_theme_stylebox_override("normal", VisualSystem.panel(Color(0.03,0.05,0.05,0.50), Color(0.55,0.66,0.60,0.22), 14, 0, 1))
-    button.add_theme_stylebox_override("hover", VisualSystem.panel(Color(0.08,0.13,0.12,0.82), Color(VisualSystem.GOLD,0.70), 14, 0, 1))
-    button.add_theme_stylebox_override("pressed", VisualSystem.panel(Color(0.08,0.13,0.12,0.94), VisualSystem.GOLD, 14, 0, 1))
+    button.add_theme_stylebox_override("normal", VisualSystem.panel(Color(0.025,0.045,0.045,0.74), Color(0.61,0.67,0.59,0.34), 6, 0, 1))
+    button.add_theme_stylebox_override("hover", VisualSystem.panel(Color(0.07,0.11,0.10,0.92), Color(VisualSystem.GOLD,0.76), 6, 0, 1))
+    button.add_theme_stylebox_override("pressed", VisualSystem.panel(Color(0.10,0.13,0.11,0.96), VisualSystem.GOLD, 6, 0, 1))
 
     var icon := UiIcon.new()
     button.add_child(icon)
@@ -131,8 +131,23 @@ func _make_action_button(action: String, text: String) -> void:
             icon_kind = "star"
         "map":
             icon_kind = "map"
-    icon.configure(icon_kind, VisualSystem.TEXT_SOFT, 0.70)
-    icon.position = Vector2(7, 6)
+    icon.configure(icon_kind, VisualSystem.GOLD_BRIGHT, 0.72)
+    icon.set_anchors_preset(Control.PRESET_CENTER_TOP)
+    icon.position = Vector2(-7, 5)
+
+    var label := Label.new()
+    button.add_child(label)
+    label.name = "ActionLabel"
+    label.text = text
+    label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+    label.offset_top = -18
+    label.offset_bottom = -3
+    label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    label.add_theme_font_size_override("font_size", 7)
+    label.add_theme_color_override("font_color", VisualSystem.TEXT)
+    label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
     button.pressed.connect(_emit_action.bind(action))
 
 func _button_style(bg: Color, border: Color) -> StyleBoxFlat:
@@ -160,40 +175,42 @@ func _layout_overlay() -> void:
     weapon_label.position = Vector2(width * 0.5 - 80.0, height - 28.0)
     weapon_label.size = Vector2(160, 15)
 
+    var chip_size := Vector2(72, 48)
+
     var chronicle: Button = action_buttons.get("chronicle") as Button
     if chronicle != null:
-        chronicle.position = Vector2(width * 0.50 - 14.0, 48.0)
-        chronicle.size = Vector2(28, 28)
-
-    var forge: Button = action_buttons.get("forge") as Button
-    if forge != null:
-        forge.position = Vector2(width * 0.27 - 14.0, height - 116.0)
-        forge.size = Vector2(28, 28)
-
-    var arsenal: Button = action_buttons.get("arsenal") as Button
-    if arsenal != null:
-        arsenal.position = Vector2(width * 0.73 - 14.0, height - 116.0)
-        arsenal.size = Vector2(28, 28)
+        chronicle.position = Vector2(width * 0.50 - chip_size.x * 0.5, 46.0)
+        chronicle.size = chip_size
 
     var goals: Button = action_buttons.get("goals") as Button
     if goals != null:
-        goals.position = Vector2(width * 0.50 - 14.0, 155.0)
-        goals.size = Vector2(28, 28)
+        goals.position = Vector2(width * 0.50 - chip_size.x * 0.5, 142.0)
+        goals.size = chip_size
 
     var quests: Button = action_buttons.get("quests") as Button
     if quests != null:
-        quests.position = Vector2(width * 0.14 - 14.0, height - 166.0)
-        quests.size = Vector2(28, 28)
+        quests.position = Vector2(width * 0.14 - chip_size.x * 0.5, height - 184.0)
+        quests.size = chip_size
 
     var contracts: Button = action_buttons.get("contracts") as Button
     if contracts != null:
-        contracts.position = Vector2(width * 0.86 - 14.0, height - 166.0)
-        contracts.size = Vector2(28, 28)
+        contracts.position = Vector2(width * 0.86 - chip_size.x * 0.5, height - 184.0)
+        contracts.size = chip_size
+
+    var forge: Button = action_buttons.get("forge") as Button
+    if forge != null:
+        forge.position = Vector2(width * 0.27 - chip_size.x * 0.5, height - 126.0)
+        forge.size = chip_size
+
+    var arsenal: Button = action_buttons.get("arsenal") as Button
+    if arsenal != null:
+        arsenal.position = Vector2(width * 0.73 - chip_size.x * 0.5, height - 126.0)
+        arsenal.size = chip_size
 
     var map: Button = action_buttons.get("map") as Button
     if map != null:
-        map.position = Vector2(width * 0.88 - 14.0, height - 100.0)
-        map.size = Vector2(28, 28)
+        map.position = Vector2(width * 0.88 - chip_size.x * 0.5, height - 70.0)
+        map.size = chip_size
 
 func _draw() -> void:
     var width: float = maxf(size.x, 320.0)

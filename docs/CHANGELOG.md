@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.14.0-alpha.1 — Reforged
+- Added a screen-space biome fallback and removed large chunk base fills to target the recurring iOS/WebGL black-quadrant artifact.
+- Restored visible idle orbit for the Root Spear; all weapon styles now visibly animate around the Wanderer.
+- Enlarged Camp destinations to labeled 72×48 touch targets while keeping them attached to physical world objects.
+- Redrew trees, stone and ore with layered/faceted silhouettes and biome-specific detail.
+- Added Forgotten Forest root hazards, Frost white-storm ice hazards and Ash heat-rift hazards.
+- Added named regional hunts: Root Alpha, White Hunter and Ash Seeder.
+- Added biome enemy behaviors: Forest pack acceleration, Frost chill contact and Ash death-ground pressure.
+- Failed regional events can now reshape the following night.
+- Added four conditional run perks: Living Supply, Hearth Oath, Heavy Load and Hunter Rhythm.
+- Removed prototype-style perk prefix codes from level-up choices.
+- Added persistent regional event/mastery statistics and two new regional daily quest types.
+- Added regional-event performance to expedition results.
+- Added dedicated v1.14 regression coverage and updated previous visual affordance checks.
+- Save version bumped to 11.
+- Bumped Android/iOS metadata to 1.14.0-alpha.1 / build 28.
+
 ## 1.13.0-alpha.1 — Visual Reboot
 - Rebuilt the mobile shell around a lighter header and icon-driven bottom navigation.
 - Added a unified VisualSystem for colors, surfaces, buttons and spacing.

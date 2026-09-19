@@ -260,6 +260,16 @@ jobs:
             exit 1
           fi
 
+      - name: V1.14 full upgrade regression
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_v114_full_upgrade_smoke.tscn 2>&1 | tee /tmp/godot-v114-full.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v114-full.log; then
+            echo "GDScript parse errors detected during v1.14 full-upgrade test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |

@@ -651,6 +651,26 @@ func _show_goals() -> void:
     field_text.add_theme_font_size_override("font_size", 9)
     field_text.add_theme_color_override("font_color", Color("a9b6b2"))
 
+    var region_stats: Dictionary = GameState.biome_event_stats()
+    var region_lines: Array[String] = []
+    for i: int in range(3):
+        var biome_data: Dictionary = GameRules.biome(i)
+        var biome_id: String = str(biome_data.get("id", "forest"))
+        var stats_for_region: Dictionary = region_stats.get(biome_id, {})
+        region_lines.append("%s · события %d · охоты %d · чисто %d" % [
+            str(biome_data.get("name", "Регион")),
+            int(stats_for_region.get("events", 0)),
+            int(stats_for_region.get("hunts", 0)),
+            int(stats_for_region.get("perfect", 0))
+        ])
+
+    var region_text := Label.new()
+    field_box.add_child(region_text)
+    region_text.text = "\n".join(PackedStringArray(region_lines))
+    region_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    region_text.add_theme_font_size_override("font_size", 8)
+    region_text.add_theme_color_override("font_color", VisualSystem.TEXT_MUTED)
+
     var relics: Array = GameState.data.get("boss_relics", [false, false, false])
     for i: int in range(3):
         if i >= relics.size() or not bool(relics[i]):

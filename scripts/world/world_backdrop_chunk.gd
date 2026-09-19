@@ -40,7 +40,8 @@ func _draw() -> void:
     if chunk_rect.size.x <= 0.0 or chunk_rect.size.y <= 0.0:
         return
 
-    _draw_gradient()
+    # The base biome wash is screen-space in GameWorld. Avoiding large chunk
+    # background rectangles prevents iOS/WebGL black-quadrant artifacts.
     _draw_ground_detail()
     _draw_path_segment()
     _draw_clearing_segment()
