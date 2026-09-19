@@ -56,6 +56,11 @@ var weapon_cooldown_mult: float = 1.0
 var environment_speed_mult: float = 1.0
 var environment_speed_time: float = 0.0
 var orbit_visual_boost: float = 1.0
+var harvest_heal_per_node: float = 0.0
+var hearth_damage_bonus: float = 0.0
+var loaded_pack_damage_bonus: float = 0.0
+var kill_heal_every: int = 0
+var kill_heal_amount: float = 0.0
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -96,6 +101,11 @@ func apply_weapon_profile(id: String) -> void:
     blades_combo_step_bonus = 0.0
     blades_combo_timeout_bonus = 0.0
     weapon_cooldown_mult = 1.0
+    harvest_heal_per_node = 0.0
+    hearth_damage_bonus = 0.0
+    loaded_pack_damage_bonus = 0.0
+    kill_heal_every = 0
+    kill_heal_amount = 0.0
     _apply_weapon_mastery(GameState.weapon_mastery_level(weapon_id))
 
     perk_flash = 1.0
@@ -310,6 +320,15 @@ func apply_perk(id: String) -> void:
             blades_combo_cap_bonus += 2
         "blades_fury":
             blades_combo_step_bonus += 0.03
+        "harvest_heal":
+            harvest_heal_per_node += 3.0
+        "hearth_aura":
+            hearth_damage_bonus += 0.35
+        "loaded_pack":
+            loaded_pack_damage_bonus += 0.25
+        "hunter_rhythm":
+            kill_heal_every = 10
+            kill_heal_amount += 12.0
     perk_flash = 1.0
     queue_redraw()
 
