@@ -275,7 +275,9 @@ func _start_game() -> void:
     GameState.save()
     shell.visible = false
     active_game = GameScene.instantiate() as GameWorld
-    active_game.configure(selected_biome)
+    var selected_threat: int = GameState.selected_threat()
+    var mode: String = str(GameState.data.get("run_mode","expedition"))
+    active_game.configure(selected_biome, selected_threat, mode)
     add_child(active_game)
     active_game.run_finished.connect(_on_run_finished)
     active_game.quit_requested.connect(_on_game_quit)
