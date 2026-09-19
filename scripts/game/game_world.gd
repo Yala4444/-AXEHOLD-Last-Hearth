@@ -59,6 +59,9 @@ var world_generator: WorldGenerator
 var activity_director: WorldActivityDirector
 var run_variation: RunVariationDirector
 var dynamic_world: DynamicWorldDirector
+var biome_events: BiomeEventDirector
+var world_fill_layer: CanvasLayer
+var world_fill: ColorRect
 
 var resource_yield_multiplier: float = 1.0
 var turret_global_damage_mult: float = 1.0
@@ -98,6 +101,7 @@ func _start_run() -> void:
     )
     world_rect = Rect2(Vector2.ZERO, world_size)
     base_position = world_size * 0.5
+    _install_screen_fill()
 
     backdrop = WorldBackdrop.new()
     add_child(backdrop)
@@ -139,6 +143,10 @@ func _start_run() -> void:
     add_child(dynamic_world)
     dynamic_world.setup(self)
 
+    biome_events = BiomeEventDirector.new()
+    add_child(biome_events)
+    biome_events.setup(self)
+
     _create_pads()
     for _i in range(52):
         _spawn_resource("tree")
@@ -166,6 +174,22 @@ func _start_run() -> void:
         hud.set_status("Коснись свободного места и веди пальцем. Оружие работает само.")
     _refresh_hud()
     queue_redraw()
+
+func _install_screen_fill() -> void:
+    # iOS/WebGL occasionally exposes an undrawn world chunk as a black quadrant.
+    # This screen-space biome fill lives behind all world CanvasItems, so even if
+    # a chunk is culled or briefly misses a frame the player never sees black.
+    if world_fill_layer != null and is_instance_valid(world_fill_layer):
+        world_fill_layer.queue_free()
+    world_fill_layer = CanvasLayer.new()
+    world_fill_layer.layer = -100
+    add_child(world_fill_layer)
+    world_fill = ColorRect.new()
+    world_fill_layer.add_child(world_fill)
+    world_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    var ground_color := Color(str(biome.get("ground", "5e795c")))
+    world_fill.color = ground_color.darkened(0.04)
+    world_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _setup_camera() -> void:
     camera = Camera2D.new()
@@ -355,6 +379,8 @@ func _harvest(delta: float) -> void:
                 GameState.mission_add("trees")
             player.gain_xp(2)
             if actual > 0:
+                if player.harvest_heal_per_node > 0.0:
+                    player.heal(player.harvest_heal_per_node)
                 QuestDirector.record("harvest_" + kind, actual, {"biome":biome_index})
                 var resource_name: String = "дерево" if kind == "wood" else ("камень" if kind == "stone" else "руда")
                 hud.set_status("+%d %s в рюкзак" % [actual, resource_name])
@@ -641,6 +667,8 @@ func _spawn_enemy(is_boss: bool = false, forced_kind: String = "") -> void:
     enemy.configure(kind, float(biome["difficulty"]), wave, Color(str(biome["enemy"])), is_boss, biome_index)
     if run_variation != null:
         run_variation.tune_enemy(enemy)
+    if biome_events != null:
+        biome_events.apply_enemy_behavior(enemy)
     if is_boss:
         enemy.max_hp *= 1.0 + biome_index * 0.28
         enemy.hp = enemy.max_hp
@@ -662,6 +690,8 @@ func spawn_event_enemy(kind: String, position: Vector2, elite_trait: String = ""
     enemy.configure(kind, float(biome["difficulty"]) * (1.0 + float(wave) * 0.06), wave, Color(str(biome["enemy"])), false, biome_index)
     if not elite_trait.is_empty():
         enemy.configure_elite(elite_trait)
+    if biome_events != null:
+        biome_events.apply_enemy_behavior(enemy)
     enemy.set_meta("dynamic_event_id", event_id)
     enemy.set_meta("day_anchor", anchor)
     enemy.set_meta("day_behavior", behavior)
@@ -689,6 +719,9 @@ func _update_day_enemies(delta: float) -> void:
         if not is_instance_valid(enemy) or enemy.dying:
             continue
 
+        if biome_events != null:
+            biome_events.update_enemy_behavior(enemy)
+
         var player_distance: float = enemy.global_position.distance_to(player.global_position)
         var behavior: String = str(enemy.get_meta("day_behavior", "hunt"))
         var target: Vector2 = player.global_position
@@ -702,6 +735,8 @@ func _update_day_enemies(delta: float) -> void:
         var contact_distance: float = 27.0 if enemy.elite else 23.0
         if enemy.hit_cooldown <= 0.0 and player_distance < contact_distance:
             player.take_damage(enemy.contact_damage)
+            if biome_events != null:
+                biome_events.on_enemy_contact(enemy)
             enemy.hit_cooldown = 0.78
 
     _update_turret(delta)
@@ -725,6 +760,8 @@ func _update_night(delta: float) -> void:
             continue
 
         _update_boss_special(enemy, delta)
+        if biome_events != null:
+            biome_events.update_enemy_behavior(enemy)
 
         var dist_to_base: float = enemy.global_position.distance_to(base_position)
         enemy.movement_multiplier = wall_slow_multiplier if bool(built["wall"]) and dist_to_base < 102.0 else 1.0
@@ -756,6 +793,8 @@ func _update_night(delta: float) -> void:
             var player_contact: float = 34.0 if enemy.boss else 23.0
             if enemy.global_position.distance_to(player.global_position) < player_contact:
                 player.take_damage(enemy.contact_damage)
+                if biome_events != null:
+                    biome_events.on_enemy_contact(enemy)
                 enemy.hit_cooldown = 0.78
             elif dist_to_base < 53.0:
                 var wall_multiplier: float = wall_damage_multiplier if bool(built["wall"]) else 1.0
@@ -975,7 +1014,13 @@ func _weapon_twin_blades(enemy_snapshot: Array[AxEnemy]) -> void:
 
 func _deal_weapon_damage(enemy: AxEnemy, raw_damage: float) -> bool:
     var critical: bool = randf() < player.crit_chance
-    var amount: float = raw_damage * (2.0 if critical else 1.0)
+    var tactical_mult: float = 1.0
+    if player.hearth_damage_bonus > 0.0 and player.global_position.distance_to(base_position) <= 190.0:
+        tactical_mult += player.hearth_damage_bonus
+    var bag_ratio: float = float(player.inventory_total()) / float(maxi(1, player.capacity))
+    if player.loaded_pack_damage_bonus > 0.0 and bag_ratio >= 0.75:
+        tactical_mult += player.loaded_pack_damage_bonus
+    var amount: float = raw_damage * tactical_mult * (2.0 if critical else 1.0)
     enemy.take_damage(amount)
     return critical
 
@@ -1064,6 +1109,12 @@ func _on_enemy_killed(enemy: AxEnemy) -> void:
             if core_fx != null:
                 core_fx.hammer_slam(enemy.global_position, 54.0)
     kills += 1
+    if player.kill_heal_every > 0 and kills % player.kill_heal_every == 0:
+        player.heal(player.kill_heal_amount)
+        hud.show_banner("РИТМ ОХОТЫ", Color("a8d0b1"))
+        hud.set_status("+%d HP за серию убийств." % int(player.kill_heal_amount))
+    if biome_events != null:
+        biome_events.on_enemy_defeated(enemy)
     GameState.mission_add("kills")
     QuestDirector.record("kill_enemy", 1, {"enemy":enemy.enemy_type, "biome":biome_index})
     if enemy.elite and not enemy.boss:
@@ -1140,7 +1191,8 @@ func _finish_run(won: bool) -> void:
         "parts_unused": unused_parts,
         "parts_bonus": unused_parts * 8,
         "contract": run_variation.contract_result() if run_variation != null else {},
-        "dynamic_world": dynamic_world.result_summary() if dynamic_world != null else {}
+        "dynamic_world": dynamic_world.result_summary() if dynamic_world != null else {},
+        "biome_events": biome_events.result_summary() if biome_events != null else {}
     })
 
 func _refresh_hud() -> void:
