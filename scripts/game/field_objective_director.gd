@@ -39,7 +39,7 @@ func _process(delta: float) -> void:
         _update_active(delta)
         return
 
-    if started_waves.has(world.wave) or world.wave > 2:
+    if started_waves.has(world.wave) or world.wave > 1:
         return
 
     if world.hud.modal_open():
@@ -217,16 +217,27 @@ func _complete() -> void:
 
     match kind:
         "survey":
-            world.run_coins += 8
-            world.player.move_speed *= 1.04
+            world.run_coins += 10
+            world.player.move_speed *= 1.06
             if world.run_variation != null:
-                world.run_variation.reduce_threat(0.55, "field_survey")
+                world.run_variation.reduce_threat(0.70, "field_survey")
+            if world.expedition_memory != null:
+                if was_perfect:
+                    world.expedition_memory.add_night_spawn_delta(world.wave + 1, -1)
+                world.expedition_memory.remember(
+                    "survey_%d" % world.wave,
+                    "МАРШРУТ РАЗВЕДАН",
+                    "Странник движется быстрее%s." % ("; идеальная разведка дополнительно ослабила следующую ночь" if was_perfect else ""),
+                    "neutral",
+                    false
+                )
             world.hud.show_banner("МАРШРУТ ПРОВЕРЕН", Color("dfbd72"))
-            world.hud.set_status("+8 мон. · скорость +4% · Угроза снижена.")
+            world.hud.set_status("+10 мон. · скорость +6%% до конца забега%s." % (" · следующая ночь ослаблена" if was_perfect else ""))
         "salvage":
             salvage_done += 1
-            world.run_coins += 7
+            world.run_coins += 9
             world.add_mechanism_parts(1, active.get("point", world.player.global_position))
+            world.player.capacity += 3
             var resource: String = "wood"
             if world.biome_index == 1:
                 resource = "stone"
@@ -236,16 +247,33 @@ func _complete() -> void:
             var actual: int = world.player.add_resource(resource, amount)
             if actual > 0 and world.core_fx != null:
                 world.core_fx.harvest(resource, active.get("point",world.player.global_position), actual, world.player.global_position)
+            if world.expedition_memory != null:
+                world.expedition_memory.remember(
+                    "salvage_%d" % world.wave,
+                    "ПОЛЕВОЙ ТАЙНИК РАЗОБРАН",
+                    "Найдена деталь механизма, а снаряжение увеличило вместимость рюкзака на 3 до конца забега.",
+                    "neutral",
+                    false
+                )
             world.hud.show_banner("ТАЙНИК РАЗОБРАН", Color("a9c5b4"))
-            world.hud.set_status("+1 деталь · припасы отправлены в рюкзак.")
+            world.hud.set_status("+1 деталь · рюкзак +3 · припасы получены.")
         "purge":
             purge_done += 1
-            world.run_coins += 12
-            world.player.gain_xp(8)
+            world.run_coins += 14
+            world.player.gain_xp(10)
             if world.run_variation != null:
-                world.run_variation.reduce_threat(0.80, "field_purge")
+                world.run_variation.reduce_threat(0.95, "field_purge")
+            if world.expedition_memory != null:
+                world.expedition_memory.add_night_spawn_delta(world.wave + 1, -2)
+                world.expedition_memory.remember(
+                    "purge_%d" % world.wave,
+                    "СКОПЛЕНИЕ ТЬМЫ УНИЧТОЖЕНО",
+                    "Зачистка заранее сняла часть давления со следующей ночи.",
+                    "neutral",
+                    false
+                )
             world.hud.show_banner("УЧАСТОК ОЧИЩЕН", Color("d18c72"))
-            world.hud.set_status("+12 мон. · Угроза следующей ночи снижена.")
+            world.hud.set_status("+14 мон. · +10 опыта · следующая ночь заметно слабее.")
 
     QuestDirector.record("field_objective",1,{"type":kind,"biome":world.biome_index})
     if was_perfect:
