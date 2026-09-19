@@ -103,8 +103,9 @@ func _test_encounter_pool() -> void:
     if world.activity_director == null:
         _fail("Activity Director missing")
     else:
-        if world.activity_director.activities.size() < 7:
-            _fail("Activity Director 2.0 populated too few encounters")
+        # v1.18 intentionally reduces initial map clutter while preserving a mixed set.
+        if world.activity_director.activities.size() < 4:
+            _fail("Activity Director populated too few meaningful encounters")
         var unique: Dictionary = {}
         var new_count: int = 0
         for activity: WorldActivity in world.activity_director.activities:
@@ -113,7 +114,7 @@ func _test_encounter_pool() -> void:
             unique[activity.activity_type] = true
             if expected.has(activity.activity_type):
                 new_count += 1
-        if unique.size() < 5:
+        if unique.size() < 4:
             _fail("Run encounter mix is not diverse enough")
         if new_count < 1:
             _fail("Expanded encounter pool did not place any new activity")
