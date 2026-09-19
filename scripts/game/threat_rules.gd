@@ -37,6 +37,35 @@ static func stars(level: int) -> String:
         out += "★" if i < clampi(level,0,MAX_LEVEL) else "☆"
     return out
 
+static func readiness_text(level: int) -> String:
+    match clampi(level,1,MAX_LEVEL):
+        1:
+            return "Подходит для знакомства с регионом."
+        2:
+            return "Совет: успей построить хотя бы одну защиту до первой ночи."
+        3:
+            return "Желательно: освоенное оружие, 1–2 постройки и запас на ремонт."
+        4:
+            return "Рассчитано на развитую Кузницу, специализации построек и уверенный маршрут."
+        5:
+            return "Эндгейм: готовь билд заранее и рассчитывай каждый риск."
+    return ""
+
+static func first_night_relief(level: int, wave: int) -> Dictionary:
+    if wave != 1:
+        return {"spawn":1.0,"hp":1.0,"damage":1.0,"base_damage":1.0,"interval":1.0}
+    match clampi(level,1,MAX_LEVEL):
+        2:
+            return {"spawn":0.84,"hp":0.92,"damage":0.92,"base_damage":0.78,"interval":1.10}
+        3:
+            return {"spawn":0.90,"hp":0.95,"damage":0.95,"base_damage":0.86,"interval":1.06}
+        4:
+            return {"spawn":0.95,"hp":0.97,"damage":0.98,"base_damage":0.92,"interval":1.03}
+        5:
+            return {"spawn":1.0,"hp":1.0,"damage":1.0,"base_damage":1.0,"interval":1.0}
+        _:
+            return {"spawn":1.0,"hp":1.0,"damage":1.0,"base_damage":1.0,"interval":1.0}
+
 static func endless_enemy_hp(wave: int) -> float:
     return 1.0 + maxf(0.0,float(wave-1))*0.12 + floor(float(maxi(0,wave-1))/5.0)*0.14
 
