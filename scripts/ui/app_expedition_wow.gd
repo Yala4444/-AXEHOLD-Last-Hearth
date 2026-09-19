@@ -7,6 +7,9 @@ func _show_result() -> void:
     nav.visible = false
 
     var won: bool = bool(result_data.get("won", false))
+    var run_mode: String = str(result_data.get("run_mode","expedition"))
+    var threat_level: int = int(result_data.get("threat",1))
+    var endless: bool = run_mode == "endless"
     var biome_index: int = clampi(int(result_data.get("biome", 0)), 0, GameRules.BIOMES.size() - 1)
     var biome_data: Dictionary = GameRules.biome(biome_index)
 
@@ -17,19 +20,22 @@ func _show_result() -> void:
 
     var eyebrow := Label.new()
     box.add_child(eyebrow)
-    eyebrow.text = "ТРОФЕЙ ЭКСПЕДИЦИИ" if won else "ЭКСПЕДИЦИЯ ЗАВЕРШЕНА"
+    eyebrow.text = "ПОСЛЕДНИЙ РУБЕЖ" if endless else ("ТРОФЕЙ ЭКСПЕДИЦИИ" if won else "ЭКСПЕДИЦИЯ ЗАВЕРШЕНА")
     eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     eyebrow.add_theme_font_size_override("font_size", 10)
     eyebrow.add_theme_color_override("font_color", Color("d5b675"))
 
     var title := Label.new()
     box.add_child(title)
-    title.text = "%s повержен" % str(biome_data.get("boss_name", "Хранитель")) if won else "Герой отступает к Очагу"
+    if endless:
+        title.text = ("Рубеж удержан до ночи %d" if won else "Тьма прорвалась на ночи %d") % int(result_data.get("wave",0))
+    else:
+        title.text = "%s повержен" % str(biome_data.get("boss_name", "Хранитель")) if won else "Герой отступает к Очагу"
     title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     title.add_theme_font_size_override("font_size", 22)
     title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
-    if won:
+    if won and not endless:
         var trophy := Label.new()
         box.add_child(trophy)
         trophy.text = "%s\n%s" % [WeaponRules.relic_name(biome_index), _victory_trophy_line(biome_index)]
@@ -40,7 +46,8 @@ func _show_result() -> void:
 
     var stats := Label.new()
     box.add_child(stats)
-    stats.text = "Ночь %d · Убийства %d\n%d мон. · %d оск." % [
+    stats.text = "%s\nНочь %d · Убийства %d\n%d мон. · %d оск." % [
+        "БЕСКОНЕЧНЫЙ ЗАБЕГ" if endless else "УГРОЗА %d" % threat_level,
         int(result_data.get("wave", 0)),
         int(result_data.get("kills", 0)),
         int(result_data.get("coins", 0)),
@@ -129,7 +136,23 @@ func _show_result() -> void:
         parts_note.add_theme_font_size_override("font_size", 9)
         parts_note.add_theme_color_override("font_color", Color("b9c4c3"))
 
-    var claim_text: String = "Забрать трофей и вернуться" if won else "Вернуться в лагерь"
+    if endless and bool(result_data.get("new_record",false)):
+        var record_note := Label.new()
+        box.add_child(record_note)
+        record_note.text = "НОВЫЙ ЛИЧНЫЙ РЕКОРД"
+        record_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        record_note.add_theme_font_size_override("font_size",11)
+        record_note.add_theme_color_override("font_color",VisualSystem.GOLD_BRIGHT)
+    elif not endless and won and bool(result_data.get("first_clear",false)):
+        var clear_note := Label.new()
+        box.add_child(clear_note)
+        clear_note.text = "ПЕРВОЕ ПРОХОЖДЕНИЕ УГРОЗЫ %d · следующий уровень открыт" % threat_level
+        clear_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        clear_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        clear_note.add_theme_font_size_override("font_size",9)
+        clear_note.add_theme_color_override("font_color",Color("9fd2a9"))
+
+    var claim_text: String = ("Забрать награду и вернуться" if endless else ("Забрать трофей и вернуться" if won else "Вернуться в лагерь"))
     var claim := _button(box, claim_text, true)
     claim.pressed.connect(_grant_result.bind(1))
 
@@ -154,7 +177,10 @@ func _grant_result(multiplier: int) -> void:
     GameState.add_shards(int(snapshot.get("shards", 0)))
     result_data = {}
 
-    if bool(snapshot.get("won", false)):
+    if str(snapshot.get("run_mode","expedition")) == "endless":
+        nav.visible = true
+        _show_home()
+    elif bool(snapshot.get("won", false)):
         _show_homecoming(snapshot)
     else:
         nav.visible = true
