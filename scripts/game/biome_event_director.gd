@@ -48,7 +48,11 @@ func _process(delta: float) -> void:
         _update_environment(delta)
 
     if world.wave == 2 and not started_hunt and not active_environment and world.phase_time <= 29.0:
-        if (world.dynamic_world == null or world.dynamic_world.active_event.is_empty()) and (world.field_objectives == null or world.field_objectives.active.is_empty()):
+        # Only one named hunt should define a run. If Events 2.0 already
+        # produced one, the regional director yields instead of stacking noise.
+        if world.dynamic_world != null and world.dynamic_world.seen_types.has("elite_hunt"):
+            started_hunt = true
+        elif (world.dynamic_world == null or world.dynamic_world.active_event.is_empty()) and (world.field_objectives == null or world.field_objectives.active.is_empty()):
             _start_regional_hunt()
 
     if mini_boss != null and is_instance_valid(mini_boss) and not mini_boss.dying:
@@ -169,16 +173,44 @@ func _finish_environment(success: bool, reason: String) -> void:
         _give_biome_resource(4)
         if world.run_variation != null:
             world.run_variation.reduce_threat(0.8, "biome_event_mastered")
+        var regional_boon: String = ""
+        if environment_hits == 0:
+            match world.biome_index:
+                1:
+                    world.player.shield_hits = mini(5, world.player.shield_hits + 2)
+                    regional_boon = "идеальное прохождение дало +2 защитных заряда"
+                2:
+                    world.player.damage *= 1.12
+                    regional_boon = "идеальное прохождение дало +12% урона до конца забега"
+                _:
+                    world.resource_yield_multiplier *= 1.15
+                    regional_boon = "идеальное прохождение дало +15% добычи до конца забега"
+        if world.expedition_memory != null:
+            world.expedition_memory.remember(
+                "region_event_%d" % world.biome_index,
+                "%s ПРЕОДОЛЕНО" % GameRules.biome_event_name(world.biome_index),
+                regional_boon if not regional_boon.is_empty() else "Региональное испытание пройдено, давление Тьмы снизилось.",
+                "green" if environment_hits == 0 else "neutral",
+                environment_hits == 0
+            )
         QuestDirector.record("biome_event", 1, {"biome":world.biome_index})
         GameState.record_biome_event(world.biome_index, {"events":1,"perfect":1 if environment_hits == 0 else 0})
         world.hud.show_banner("РЕГИОН УСМИРЁН", Color("d8cc91"))
-        world.hud.set_status("+%d мон. · ресурс биома · Угроза снижена." % reward)
+        world.hud.set_status(("+%d мон. · %s" % [reward, regional_boon]) if not regional_boon.is_empty() else "+%d мон. · ресурс биома · Угроза снижена." % reward)
         Analytics.event("biome_event_completed", {"biome":world.biome_index,"hits":environment_hits})
     else:
         events_failed += 1
         if world.run_variation != null:
             world.run_variation.add_threat(1.0, "biome_event_failed")
         _apply_night_penalty(world.wave + 1, false)
+        if world.expedition_memory != null:
+            world.expedition_memory.remember(
+                "region_event_failed_%d" % world.biome_index,
+                "%s ВЗЯЛО СВОЁ" % GameRules.biome_event_name(world.biome_index),
+                "Региональное испытание сорвано. Его эффект перешёл в следующую ночь.",
+                "danger",
+                true
+            )
         world.hud.show_banner("РЕГИОН ВЗЯЛ СВОЁ", Color("d27868"))
         world.hud.set_status((reason + " " if not reason.is_empty() else "") + "Следующая ночь получила региональное усиление.")
         Analytics.event("biome_event_failed", {"biome":world.biome_index,"hits":environment_hits})
@@ -232,12 +264,22 @@ func _complete_regional_hunt() -> void:
     hunts_completed += 1
     world.run_coins += 20 + world.biome_index * 3
     world.add_mechanism_parts(1, mini_boss.global_position if is_instance_valid(mini_boss) else world.player.global_position)
+    var relic: Dictionary = GameRules.event_relic_for_biome(world.biome_index)
+    world.player.apply_perk(str(relic.get("id","guardian_spirit")))
     if world.run_variation != null:
         world.run_variation.reduce_threat(1.0, "regional_hunt_complete")
+    if world.expedition_memory != null:
+        world.expedition_memory.remember(
+            "regional_hunt_%d" % world.biome_index,
+            "%s ПОВЕРЖЕН" % GameRules.regional_target_name(world.biome_index),
+            "Охота принесла реликвию «%s», которая останется с тобой до конца экспедиции." % str(relic.get("name","Реликвия")),
+            "violet",
+            true
+        )
     QuestDirector.record("regional_hunt", 1, {"biome":world.biome_index})
     GameState.record_biome_event(world.biome_index, {"hunts":1})
     world.hud.show_banner("РЕГИОНАЛЬНАЯ ЦЕЛЬ ПОВЕРЖЕНА", Color("e6c779"))
-    world.hud.set_status("+20 мон. · деталь механизма · давление следующей ночи снижено.")
+    world.hud.set_status("Реликвия «%s» получена · деталь механизма · давление следующей ночи снижено." % str(relic.get("name","Реликвия")))
     Analytics.event("regional_hunt_completed", {"biome":world.biome_index,"wave":world.wave})
     mini_boss = null
 
@@ -250,6 +292,14 @@ func _fail_regional_hunt() -> void:
     _apply_night_penalty(world.wave + 1, true)
     if world.run_variation != null:
         world.run_variation.add_threat(1.2, "regional_hunt_failed")
+    if world.expedition_memory != null:
+        world.expedition_memory.remember(
+            "regional_hunt_failed_%d" % world.biome_index,
+            "%s УШЁЛ В ТЕМНОТУ" % GameRules.regional_target_name(world.biome_index),
+            "Региональная элита пережила охоту и усилила следующую ночь.",
+            "danger",
+            true
+        )
     world.hud.show_banner("ЦЕЛЬ УШЛА В ТЕМНОТУ", Color("d27868"))
     world.hud.set_status("Региональная элита усилит следующую ночь и останется на карте.")
     Analytics.event("regional_hunt_failed", {"biome":world.biome_index,"wave":world.wave})

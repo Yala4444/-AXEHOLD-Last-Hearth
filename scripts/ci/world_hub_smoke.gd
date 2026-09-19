@@ -40,12 +40,14 @@ func _run() -> void:
         for activity: WorldActivity in game.activity_director.activities:
             if is_instance_valid(activity):
                 counts[activity.activity_type] = int(counts.get(activity.activity_type, 0)) + 1
-        if game.activity_director.activities.size() < 7:
+        # v1.18 intentionally trades map clutter for fewer, higher-impact points.
+        # Keep the legacy regression focused on variety and at least one strategic nest.
+        if game.activity_director.activities.size() < 4:
             _fail("Core exploration activities were not populated")
-        if int(counts.get("nest", 0)) < 2:
-            _fail("Strategic Dark Nests were not guaranteed")
+        if int(counts.get("nest", 0)) < 1:
+            _fail("Strategic Dark Nest was not guaranteed")
         if counts.size() < 4:
-            _fail("Activity Director 2.0 did not create a mixed encounter set")
+            _fail("Activity Director did not create a mixed encounter set")
 
         var threat_before: int = game.activity_director.night_extra_enemies()
         for activity: WorldActivity in game.activity_director.activities:

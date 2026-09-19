@@ -22,7 +22,7 @@ func _run() -> void:
     await _test_dynamic_runtime()
 
     if failures.is_empty():
-        print("[V1.12 WORLD] elites, daytime combat and dynamic event chains passed")
+        print("[V1.12 WORLD] elites, daytime combat and meaningful dynamic-event branches passed")
     _finish()
 
 func _test_elite_profiles() -> void:
@@ -90,17 +90,13 @@ func _test_dynamic_runtime() -> void:
         if enemy != null and is_instance_valid(enemy):
             enemy.take_damage(99999.0)
     world.dynamic_world._update_active_event(0.1)
-    if str(world.dynamic_world.active_event.get("type", "")) != "trail_cache":
-        _fail("Saved caravan did not open a chained trail cache")
-
+    if str(world.dynamic_world.active_event.get("stage", "")) != "choice":
+        _fail("Saved caravan did not become a meaningful branch choice")
+    world.dynamic_world._on_hud_action("event:caravan_escort")
     if not world.dynamic_world.active_event.is_empty():
-        var cache_point: Vector2 = world.dynamic_world.active_event.get("point", world.player.global_position)
-        world.player.global_position = cache_point
-        world.dynamic_world._update_active_event(0.9)
-    if world.dynamic_world.chains_completed != 1:
-        _fail("Trail cache chain could not be completed")
-    if not world.dynamic_world.active_event.is_empty():
-        _fail("Trail cache stayed active after completion")
+        _fail("Caravan choice did not resolve the event")
+    if world.expedition_memory == null or not world.expedition_memory.has_flag("caravan_escorted"):
+        _fail("Caravan escort did not persist into expedition memory")
 
     world.dynamic_world._start_event("survivor_rescue")
     var rescue_enemies: Array = world.dynamic_world.active_event.get("enemies", []).duplicate()
@@ -149,8 +145,8 @@ func _test_dynamic_runtime() -> void:
     var summary: Dictionary = world.dynamic_world.result_summary()
     if int(summary.get("completed", 0)) < 3:
         _fail("Dynamic event result summary lost completed events")
-    if int(summary.get("chains", 0)) != 1 or int(summary.get("rescues", 0)) != 1:
-        _fail("Dynamic event result summary lost chain/rescue detail")
+    if int(summary.get("rescues", 0)) != 1 or int(summary.get("major", 0)) < 3:
+        _fail("Dynamic event result summary lost major/rescue detail")
 
     var saved_stats: Dictionary = GameState.dynamic_world_stats()
     if int(saved_stats.get("events", 0)) < 3 or int(saved_stats.get("elites", 0)) < 2:

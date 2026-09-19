@@ -23,34 +23,27 @@ func _spawn_initial_activities() -> void:
     var occupied: Array = []
     var selected: Dictionary = {}
 
-    # Every run receives a readable mix: strategic pressure, a clean reward,
-    # a risk/reward choice and at least one story/utility hook.
-    for _i: int in range(2):
-        _spawn("nest", 560.0, 1320.0, occupied)
+    # v1.18 deliberately reduces map clutter. A run gets fewer points,
+    # but each one is allowed to matter to the build or the coming night.
+    _spawn("nest", 600.0, 1320.0, occupied)
     selected["nest"] = true
 
-    var positive: Array[String] = ["caravan", "rare_ore", "wind_shrine"]
+    var positive: Array[String] = ["rare_ore", "wind_shrine"]
     var risk: Array[String] = ["chest", "wanderer_grave", "infected_cache"]
     var story: Array[String] = ["wounded_scout", "memory_rift", "signal_fire"]
-    var utility: Array[String] = ["broken_tower", "rare_ore", "signal_fire", "caravan"]
+    var utility: Array[String] = ["broken_tower", "signal_fire", "rare_ore"]
 
     var residents: Dictionary = GameState.data.get("residents", {})
     var mira: Dictionary = residents.get("mira", {})
     var thorn: Dictionary = residents.get("thorn", {})
 
-    var story_pick: String = ""
-    if not bool(mira.get("unlocked", false)):
-        story_pick = "wounded_scout"
+    var story_pick: String = "wounded_scout" if not bool(mira.get("unlocked", false)) else _pick_unique(story, selected)
+    if not story_pick.is_empty():
         selected[story_pick] = true
-    else:
-        story_pick = _pick_unique(story, selected)
 
-    var utility_pick: String = ""
-    if not bool(thorn.get("unlocked", false)):
-        utility_pick = "broken_tower"
+    var utility_pick: String = "broken_tower" if not bool(thorn.get("unlocked", false)) else _pick_unique(utility, selected)
+    if not utility_pick.is_empty():
         selected[utility_pick] = true
-    else:
-        utility_pick = _pick_unique(utility, selected)
 
     var picks: Array[String] = [
         _pick_unique(positive, selected),
@@ -59,17 +52,8 @@ func _spawn_initial_activities() -> void:
         utility_pick
     ]
     for kind: String in picks:
-        if kind.is_empty():
-            continue
-        _spawn(kind, 390.0, 1280.0, occupied)
-
-    var bonus_pool: Array[String] = [
-        "caravan", "chest", "rare_ore", "broken_tower", "wind_shrine",
-        "wanderer_grave", "signal_fire", "infected_cache", "memory_rift", "wounded_scout"
-    ]
-    var bonus: String = _pick_unique(bonus_pool, selected)
-    if not bonus.is_empty():
-        _spawn(bonus, 520.0, 1340.0, occupied)
+        if not kind.is_empty():
+            _spawn(kind, 430.0, 1280.0, occupied)
 
 func _pick_unique(pool: Array[String], selected: Dictionary) -> String:
     var candidates: Array[String] = []
@@ -107,7 +91,7 @@ func _process(delta: float) -> void:
                 occupied.append(item.global_position)
         _spawn("altar", 620.0, 1250.0, occupied)
 
-    if world.wave >= 1 and world.phase == "day" and not old_hearth_spawned:
+    if world.wave >= 2 and world.phase == "day" and not old_hearth_spawned:
         old_hearth_spawned = true
         var occupied_hearth: Array = []
         for item: WorldActivity in activities:
@@ -232,11 +216,11 @@ func _show_altar(activity: WorldActivity) -> void:
     world.hud.show_modal(
         "",
         "ДРЕВНИЙ АЛТАРЬ",
-        "Огонь предлагает силу. Выбери цену — или оставь алтарь нетронутым.",
+        "Это не сундук. Выбор изменит весь оставшийся забег и будет виден на Страннике.",
         [
-            {"text":"КЛЯТВА ОГНЯ  -20% HP  +25% УРОНА", "action":"activity:altar_power"},
-            {"text":"ПУТЬ  +15% СКОРОСТЬ  -10% MAX HP", "action":"activity:altar_speed"},
-            {"text":"УЙТИ", "action":"activity:altar_leave"}
+            {"text":"КЛЯТВА ОГНЯ · -25% MAX HP · +20% урона · Огненная сфера", "action":"activity:altar_power"},
+            {"text":"КЛЯТВА СТРАЖА · -12% урона · +45 HP · Дух Хранителя", "action":"activity:altar_guard"},
+            {"text":"УЙТИ · ничего не менять", "action":"activity:altar_leave"}
         ]
     )
 
@@ -249,19 +233,38 @@ func _on_hud_action(action: String) -> void:
         return
 
     if action == "activity:altar_power":
-        world.player.hp = maxf(1.0, world.player.hp - world.player.max_hp * 0.20)
-        world.player.damage *= 1.25
+        world.player.max_hp = maxf(50.0, world.player.max_hp * 0.75)
+        world.player.hp = minf(world.player.max_hp, maxf(1.0, world.player.hp))
+        world.player.damage *= 1.20
+        world.player.apply_perk("fire_orb")
         if world.run_variation != null:
-            world.run_variation.add_threat(1.0, "altar_power")
+            world.run_variation.add_threat(1.4, "altar_fire_oath")
+        if world.expedition_memory != null:
+            world.expedition_memory.set_flag("altar_oath", "fire")
+            world.expedition_memory.choose(
+                "altar_oath",
+                "КЛЯТВА ОГНЯ ПРИНЯТА",
+                "Странник отдал четверть максимального здоровья, но получил +20% урона и Огненную сферу до конца забега.",
+                "violet"
+            )
         world.hud.show_banner("ОГОНЬ ПРИНЯЛ КЛЯТВУ", Color("f1b36d"))
         altar_pending.finish()
-    elif action == "activity:altar_speed":
-        world.player.max_hp = maxf(50.0, world.player.max_hp * 0.90)
-        world.player.hp = minf(world.player.hp, world.player.max_hp)
-        world.player.move_speed *= 1.15
+    elif action == "activity:altar_guard":
+        world.player.damage *= 0.88
+        world.player.max_hp += 45.0
+        world.player.hp = minf(world.player.max_hp, world.player.hp + 45.0)
+        world.player.apply_perk("guardian_spirit")
         if world.run_variation != null:
-            world.run_variation.add_threat(0.6, "altar_speed")
-        world.hud.show_banner("ПУТЬ ОТКРЫТ", Color("c8dfb6"))
+            world.run_variation.add_threat(0.7, "altar_guard_oath")
+        if world.expedition_memory != null:
+            world.expedition_memory.set_flag("altar_oath", "guard")
+            world.expedition_memory.choose(
+                "altar_oath",
+                "КЛЯТВА СТРАЖА ПРИНЯТА",
+                "Урон снижен на 12%, зато Странник получил +45 HP и Духа Хранителя до конца забега.",
+                "green"
+            )
+        world.hud.show_banner("СТРАЖ ПРИНЯЛ КЛЯТВУ", Color("b8d2c0"))
         altar_pending.finish()
     else:
         altar_pending.set_focus(false)
@@ -299,8 +302,17 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
         world.run_coins += 7
         if world.run_variation != null:
             world.run_variation.reduce_threat(2.2, "old_hearth_relit")
+        if world.expedition_memory != null:
+            world.expedition_memory.set_flag("old_hearth_relit", true)
+            world.expedition_memory.remember(
+                "old_hearth",
+                "СТАРЫЙ ОЧАГ СНОВА ГОРИТ",
+                "Его тепло теперь отвечает на каждом рассвете: герой и Последний Очаг будут получать дополнительное восстановление.",
+                "gold",
+                true
+            )
         world.hud.show_banner("СТАРЫЙ ОЧАГ ЗАЖЖЁН", Color("f0bd71"))
-        world.hud.set_status("Тьма отступила. +7 мон. · герой исцелён.")
+        world.hud.set_status("Эффект сохранён до конца забега: дополнительное восстановление на каждом рассвете.")
     elif activity.activity_type == "rare_ore":
         _give_resource("ore", 6, activity.global_position)
         world.add_mechanism_parts(1, activity.global_position)
@@ -405,28 +417,47 @@ func _grant_activity_reward(activity: WorldActivity) -> void:
             _give_resource("ore", 4, activity.global_position)
             world.run_coins += 16
             world.player.gain_xp(9)
-            world.player.shield_hits = mini(5, world.player.shield_hits + 1)
+            var relic: Dictionary = GameRules.random_event_relic()
+            world.player.apply_perk(str(relic.get("id","guardian_spirit")))
             if world.run_variation != null:
                 world.run_variation.add_threat(2.2, "cursed_cache")
+            if world.expedition_memory != null:
+                world.expedition_memory.add_night_spawn_delta(world.wave + 1, 2)
+                world.expedition_memory.remember(
+                    "cursed_cache_%d" % world.wave,
+                    "ПРОКЛЯТЫЙ ТАЙНИК ОТКРЫТ",
+                    "Получена реликвия «%s», но следующая ночь получила дополнительное подкрепление." % str(relic.get("name","Реликвия")),
+                    "violet",
+                    true
+                )
             world.hud.show_banner("ТЬМА ОТВЕТИЛА", Color("d99abb"))
-            world.hud.set_status("Ценная добыча получена, но следующая ночь станет опаснее.")
+            world.hud.set_status("Реликвия «%s» активна до конца забега. Следующая ночь усилена." % str(relic.get("name","Реликвия")))
         else:
             _give_resource("stone", 3, activity.global_position)
             _give_resource("ore", 2, activity.global_position)
             world.run_coins += 9
-            world.player.gain_xp(6)
+            world.player.gain_xp(8)
             world.player.shield_hits = mini(5, world.player.shield_hits + 1)
             world.hud.show_banner("ТАЙНИК ОТКРЫТ", Color("d6bb78"))
     Feedback.play("level", 6)
 
 func _grant_nest_reward(activity: WorldActivity) -> void:
-    world.run_coins += 8
+    world.run_coins += 10
     if world.run_variation != null:
-        world.run_variation.reduce_threat(1.25, "nest_destroyed")
-    world.player.gain_xp(8)
+        world.run_variation.reduce_threat(1.6, "nest_destroyed")
+    world.player.gain_xp(12)
     _give_resource("ore", 2, activity.global_position)
+    if world.expedition_memory != null:
+        world.expedition_memory.add_night_spawn_delta(world.wave + 1, -2)
+        world.expedition_memory.remember(
+            "nest_destroyed_%d" % world.wave,
+            "ГНЕЗДО ТЬМЫ ВЫЖЖЕНО",
+            "Уничтожение гнезда ослабило следующую ночь. Игнорирование такого гнезда, наоборот, усиливает волну.",
+            "green",
+            false
+        )
     world.hud.show_banner("ГНЕЗДО УНИЧТОЖЕНО", Color("d7d094"))
-    world.hud.set_status("Этой ночью к Очагу придёт меньше врагов.")
+    world.hud.set_status("Следующая ночь ослаблена · +10 мон. · +12 опыта.")
     Feedback.play("kill", 7)
 
 func _give_resource(kind: String, amount: int, source: Vector2) -> void:
@@ -439,7 +470,7 @@ func night_extra_enemies() -> int:
     for activity: WorldActivity in activities:
         if is_instance_valid(activity) and activity.activity_type == "nest" and not activity.finished:
             active_nests += 1
-    return active_nests * 2
+    return active_nests * 4
 
 func unresolved_nests() -> int:
     return int(night_extra_enemies() / 2)

@@ -68,6 +68,7 @@ var run_variation: RunVariationDirector
 var dynamic_world: DynamicWorldDirector
 var biome_events: BiomeEventDirector
 var field_objectives: FieldObjectiveDirector
+var expedition_memory: ExpeditionMemoryDirector
 var world_fill_layer: CanvasLayer
 var world_fill: ColorRect
 
@@ -121,6 +122,10 @@ func _start_run() -> void:
     world_generator = WorldGenerator.new()
     add_child(world_generator)
     world_generator.setup(self)
+
+    expedition_memory = ExpeditionMemoryDirector.new()
+    add_child(expedition_memory)
+    expedition_memory.setup(self)
 
     activity_director = WorldActivityDirector.new()
     add_child(activity_director)
@@ -677,6 +682,12 @@ func _start_night() -> void:
         spawn_left += nest_extra
         if nest_extra > 0:
             hud.set_status("%d активных гнёзд усиливают эту ночь." % activity_director.unresolved_nests())
+
+    if expedition_memory != null:
+        var memory_delta: int = expedition_memory.consume_night_spawn_delta(wave)
+        spawn_left = maxi(1, spawn_left + memory_delta)
+        expedition_memory.on_night_started(wave)
+
     spawn_timer = 0.1
     boss_spawned = false
     hud.hide_build_context()
@@ -719,6 +730,10 @@ func _start_day() -> void:
     if core_fx != null:
         core_fx.hearth_flare(base_position, false)
     hud.set_status("Укрепи слабое место лагеря до следующей ночи.")
+    if expedition_memory != null:
+        var consequence_note: String = expedition_memory.on_dawn(wave)
+        if not consequence_note.is_empty():
+            hud.set_status(consequence_note)
 
 func _spawn_enemy(is_boss: bool = false, forced_kind: String = "") -> void:
     var enemy: AxEnemy = EnemyScene.instantiate() as AxEnemy
@@ -1395,7 +1410,8 @@ func _finish_run(won: bool) -> void:
         "contract": run_variation.contract_result() if run_variation != null else {},
         "dynamic_world": dynamic_world.result_summary() if dynamic_world != null else {},
         "biome_events": biome_events.result_summary() if biome_events != null else {},
-        "field_objectives": field_objectives.result_summary() if field_objectives != null else {}
+        "field_objectives": field_objectives.result_summary() if field_objectives != null else {},
+        "expedition_memory": expedition_memory.result_summary() if expedition_memory != null else {}
     })
 
 func _refresh_hud() -> void:

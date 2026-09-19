@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.18.0-alpha.1 — Events 2.0 & Expedition Memory
+- Rebuilt expedition pacing around fewer, higher-impact encounters instead of dense low-value event clutter.
+- Added Expedition Memory: major choices, victories and failures are remembered for the rest of the run and surfaced on the result screen.
+- Caravan Defense now branches after victory: escort traders to the Last Hearth for recurring dawn supplies, or take the cargo immediately and face a stronger revenge wave.
+- Survivor Rescue now creates a temporary Watcher ally effect that strengthens the Hearth and helps repair/heal on later dawns.
+- Named hunts now have biome identities and grant visible run-defining relics: Thorn Ring, Frost Aura or Fire Orb.
+- Failed major events now leave explicit consequences instead of simply disappearing.
+- Reworked the Ancient Altar into real run-shaping oaths with visible relics and meaningful tradeoffs.
+- Cursed caches now grant a visible relic while strengthening the next night.
+- Old Hearth restoration now persists as a dawn recovery effect for the rest of the expedition.
+- Reduced initial world-activity clutter and staggered the Ancient Altar / Old Hearth into later days.
+- Unresolved Nests now matter more at night; destroying one gives a stronger preparation advantage.
+- Reduced field objectives to the first two preparation days and upgraded their lasting run effects.
+- Regional events now grant biome-specific boons on perfect clears and create remembered penalties on failure.
+- The regional hunt yields to Events 2.0 if a named hunt has already defined the run, preventing duplicate late-run boss noise.
+- Result screens now prioritize “This expedition will be remembered” moments and hide empty zero-value activity summaries.
+- Added explicit major-event run objectives and timers.
+- Added v1.18 regression coverage for branching choices, consequences, relic rewards, expedition memory and reduced event clutter.
+- Bumped Android/iOS metadata to 1.18.0-alpha.1 / build 33.
+
 ## 1.17.1-alpha.1 — Tutorial Finish & Mobile UI Cleanup
 - Added a proper first-run handoff after Night 1 instead of ending onboarding abruptly.
 - The first doctrine choice now explains the real expedition goal: protect the Last Hearth, keep developing the Wanderer and reach the Guardian on Night 3.
