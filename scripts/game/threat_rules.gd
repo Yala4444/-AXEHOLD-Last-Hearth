@@ -32,10 +32,7 @@ static func first_clear_reward(level: int) -> Dictionary:
             return {"coins":45,"shards":0}
 
 static func stars(level: int) -> String:
-    var out := ""
-    for i: int in range(MAX_LEVEL):
-        out += "★" if i < clampi(level,0,MAX_LEVEL) else "☆"
-    return out
+    return "%d/%d" % [clampi(level,0,MAX_LEVEL), MAX_LEVEL]
 
 static func readiness_text(level: int) -> String:
     match clampi(level,1,MAX_LEVEL):
