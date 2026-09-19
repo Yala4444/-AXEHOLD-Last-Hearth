@@ -39,14 +39,14 @@ func _process(delta: float) -> void:
         return
 
     if world.wave == 1 and not started_environment and world.phase_time <= 34.0:
-        if world.dynamic_world == null or world.dynamic_world.active_event.is_empty():
+        if (world.dynamic_world == null or world.dynamic_world.active_event.is_empty()) and (world.field_objectives == null or world.field_objectives.active.is_empty()):
             _start_environment_event()
 
     if active_environment:
         _update_environment(delta)
 
     if world.wave == 2 and not started_hunt and not active_environment and world.phase_time <= 29.0:
-        if world.dynamic_world == null or world.dynamic_world.active_event.is_empty():
+        if (world.dynamic_world == null or world.dynamic_world.active_event.is_empty()) and (world.field_objectives == null or world.field_objectives.active.is_empty()):
             _start_regional_hunt()
 
     if mini_boss != null and is_instance_valid(mini_boss) and not mini_boss.dying:
