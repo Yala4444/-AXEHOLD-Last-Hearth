@@ -53,6 +53,9 @@ var blades_combo_cap_bonus: int = 0
 var blades_combo_step_bonus: float = 0.0
 var blades_combo_timeout_bonus: float = 0.0
 var weapon_cooldown_mult: float = 1.0
+var environment_speed_mult: float = 1.0
+var environment_speed_time: float = 0.0
+var orbit_visual_boost: float = 1.0
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -130,6 +133,9 @@ func _physics_process(delta: float) -> void:
     block_flash = maxf(0.0, block_flash - delta * 3.6)
     perk_flash = maxf(0.0, perk_flash - delta * 2.0)
     weapon_action_time = maxf(0.0, weapon_action_time - delta)
+    environment_speed_time = maxf(0.0, environment_speed_time - delta)
+    if environment_speed_time <= 0.0:
+        environment_speed_mult = move_toward(environment_speed_mult, 1.0, delta * 2.8)
 
     var movement: Vector2 = Vector2.ZERO
     var analog_strength: float = 1.0
@@ -146,7 +152,7 @@ func _physics_process(delta: float) -> void:
         var direction: Vector2 = movement.normalized()
         if absf(direction.x) > 0.08:
             facing_x = signf(direction.x)
-        velocity = direction * move_speed * analog_strength
+        velocity = direction * move_speed * environment_speed_mult * analog_strength
         move_and_slide()
         if has_movement_bounds:
             global_position = Vector2(
@@ -167,6 +173,14 @@ func _physics_process(delta: float) -> void:
         rotation_speed *= 0.88
     angle += delta * rotation_speed
     queue_redraw()
+
+func apply_environment_slow(multiplier: float, duration: float) -> void:
+    environment_speed_mult = minf(environment_speed_mult, clampf(multiplier, 0.45, 1.0))
+    environment_speed_time = maxf(environment_speed_time, maxf(0.1, duration))
+
+func clear_environment_slow() -> void:
+    environment_speed_mult = 1.0
+    environment_speed_time = 0.0
 
 func trigger_weapon_action(direction: Vector2, duration: float = 0.24) -> void:
     if direction.length_squared() > 0.001:
@@ -320,9 +334,13 @@ func _draw() -> void:
             var weapon_angle: float = angle + float(i) * TAU / float(maxi(1, axes))
             var trail_color: Color = Color(0.95, 0.58, 0.36, 0.17) if weapon_style == "twin_blades" else Color(0.82, 0.90, 0.95, 0.13)
             draw_arc(Vector2.ZERO, radius, weapon_angle - 0.34, weapon_angle - 0.08, 7, trail_color, 4.0)
-    elif weapon_style == "spear" and weapon_action_time > 0.0:
-        var spear_dir: Vector2 = weapon_action_direction.normalized()
-        draw_line(spear_dir * 16.0, spear_dir * 112.0, Color(0.58, 0.82, 0.61, 0.18 + weapon_action_ratio() * 0.22), 5.0)
+    elif weapon_style == "spear":
+        var idle_spear_angle: float = angle
+        var idle_spear_dir := Vector2(cos(idle_spear_angle), sin(idle_spear_angle))
+        draw_arc(Vector2.ZERO, radius, idle_spear_angle - 0.28, idle_spear_angle + 0.04, 9, Color(0.58, 0.82, 0.61, 0.16), 3.0)
+        if weapon_action_time > 0.0:
+            var spear_dir: Vector2 = weapon_action_direction.normalized()
+            draw_line(spear_dir * 16.0, spear_dir * 112.0, Color(0.58, 0.82, 0.61, 0.20 + weapon_action_ratio() * 0.28), 5.0)
     elif weapon_style == "hammer" and weapon_action_time > 0.0:
         var slam_radius: float = 42.0 + (1.0 - weapon_action_ratio()) * 20.0
         draw_arc(Vector2.ZERO, slam_radius, 0.0, TAU, 30, Color(0.62, 0.83, 0.94, weapon_action_ratio() * 0.42), 3.0)
@@ -443,11 +461,16 @@ func _draw() -> void:
         draw_line(body_offset + Vector2(bag_x - 3, 7), body_offset + Vector2(bag_x + 3, 7), leather.lightened(0.16), 1.0)
 
     if weapon_style == "spear":
-        var spear_dir: Vector2 = weapon_action_direction if weapon_action_time > 0.0 else Vector2(facing_x, 0.0)
+        var spear_dir: Vector2
+        if weapon_action_time > 0.0:
+            spear_dir = weapon_action_direction
+        else:
+            spear_dir = Vector2(cos(angle), sin(angle))
         if spear_dir.length_squared() < 0.01:
             spear_dir = Vector2.RIGHT
         spear_dir = spear_dir.normalized()
-        var spear_pos: Vector2 = spear_dir * (54.0 + weapon_action_ratio() * 12.0)
+        var spear_distance: float = radius if weapon_action_time <= 0.0 else (54.0 + weapon_action_ratio() * 12.0)
+        var spear_pos: Vector2 = spear_dir * spear_distance
         _draw_weapon(spear_pos, spear_dir.angle() + PI * 0.5)
     elif weapon_style == "hammer":
         var hammer_angle: float = angle * 0.72
