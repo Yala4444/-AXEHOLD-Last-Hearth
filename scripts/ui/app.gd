@@ -267,6 +267,17 @@ func _show_settings() -> void:
         label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         var toggle := _button(row, "Вкл" if bool(settings_data.get(key, true)) else "Выкл", false)
         toggle.pressed.connect(_toggle_setting.bind(key))
+
+    var tutorial_panel := _panel(body)
+    var tutorial_box := VBoxContainer.new()
+    tutorial_panel.add_child(tutorial_box)
+    var tutorial_copy := Label.new()
+    tutorial_box.add_child(tutorial_copy)
+    tutorial_copy.text = "Обучение можно пройти заново без сброса прогресса. Следующая экспедиция временно запустится в Забытом лесу на Угрозе I."
+    tutorial_copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    var replay := _button(tutorial_box, "ПОВТОРИТЬ ОБУЧЕНИЕ", false)
+    replay.pressed.connect(_restart_tutorial)
+
     var back := _button(body, "← В лагерь", false)
     back.pressed.connect(_show_home)
 
@@ -418,6 +429,11 @@ func _skin_action(index: int, price: int) -> void:
     GameState.data["selected_skin"] = index
     GameState.save()
     _show_collection()
+
+func _restart_tutorial() -> void:
+    GameState.restart_tutorial()
+    selected_biome = 0
+    _show_home()
 
 func _toggle_setting(key: String) -> void:
     var settings_data: Dictionary = GameState.data["settings"]
