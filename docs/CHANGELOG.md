@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.19.0-alpha.1 — BUILDCRAFT
+- Rebuilt level-up choices around six build families: Fire, Steel, Frost, Ward, Hunt and Roots.
+- Added visible 3/3 family evolutions that change combat rules, not just stats.
+- Added six legendary run-defining perks, including Last Spark, Steel Storm, Eternal Winter, Blood of the Hearth, Red Hunt and Heart of the Worldroot.
+- Added rarity to level-up choices: Common, Rare, Epic and Legendary.
+- Added intelligent choice bias so a run can naturally finish a developing synergy instead of offering unrelated upgrades forever.
+- Weapon-specific perks now contribute to the same build families as relics and general upgrades.
+- Fire evolution creates a denser damaging orb crown; Frost evolution greatly strengthens the slowing aura and adds damage; Roots evolution accelerates thorn waves and adds healing; Ward evolution restores multiple shields and repairs the Hearth; Hunt evolution increases critical damage and sustain; Steel evolution expands the weapon storm.
+- Critical damage is now a real build stat and can be increased by Hunt effects.
+- Last Spark can prevent one lethal hit and visibly announces its legendary trigger.
+- Existing event relics from Events 2.0 now feed directly into Buildcraft family progress and can trigger evolutions.
+- Endless-mode relic rewards now feed through the same Buildcraft system.
+- Added a run-result Buildcraft card showing dominant family, family counts, evolutions, legendary rules and rarity distribution.
+- Added dedicated v1.19 regression coverage for rarity choices, evolution thresholds, legendary survival rules and build snapshots.
+- Bumped Android/iOS metadata to 1.19.0-alpha.1 / build 34.
+
 ## 1.18.0-alpha.1 — Events 2.0 & Expedition Memory
 - Rebuilt expedition pacing around fewer, higher-impact encounters instead of dense low-value event clutter.
 - Added Expedition Memory: major choices, victories and failures are remembered for the rest of the run and surfaced on the result screen.
