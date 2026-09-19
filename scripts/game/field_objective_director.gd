@@ -61,6 +61,12 @@ func _other_event_busy() -> bool:
             return true
     return false
 
+func start_objective_for_test(kind: String, wave: int = 0) -> void:
+    if not active.is_empty():
+        _clear()
+    started_waves[wave] = true
+    _start_kind(kind, wave)
+
 func _start_objective(wave: int) -> void:
     started_waves[wave] = true
 
@@ -72,6 +78,9 @@ func _start_objective(wave: int) -> void:
     else:
         kind = "purge" if randf() < 0.58 else "survey"
 
+    _start_kind(kind, wave)
+
+func _start_kind(kind: String, wave: int) -> void:
     var occupied: Array = []
     if world.activity_director != null:
         for activity: WorldActivity in world.activity_director.activities:
@@ -109,7 +118,7 @@ func _start_objective(wave: int) -> void:
         "required":required,
         "progress":0.0,
         "marker":marker,
-        "enemies":Array[AxEnemy]()
+        "enemies":[]
     }
 
     world.player.set_field_target(point, true, accent)
