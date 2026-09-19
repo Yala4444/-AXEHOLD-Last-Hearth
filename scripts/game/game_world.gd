@@ -191,6 +191,18 @@ func _install_screen_fill() -> void:
     world_fill.color = ground_color.darkened(0.04)
     world_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+func _update_world_fill(delta: float) -> void:
+    if world_fill == null or player == null:
+        return
+    var top := Color(str(biome.get("sky", "80936c")))
+    var bottom := Color(str(biome.get("ground", "5e795c")))
+    var world_t: float = clampf(player.global_position.y / maxf(1.0, world_size.y), 0.0, 1.0)
+    var target: Color = top.lerp(bottom, 0.30 + world_t * 0.50)
+    if phase == "night":
+        var night_color := Color("24363b") if biome_index < 2 else Color("432b2c")
+        target = target.lerp(night_color, 0.58)
+    world_fill.color = world_fill.color.lerp(target, clampf(delta * 2.6, 0.0, 1.0))
+
 func _setup_camera() -> void:
     camera = Camera2D.new()
     player.add_child(camera)
@@ -243,6 +255,7 @@ func _process(delta: float) -> void:
     _maintain_resources()
     _update_building_passives(delta)
     _update_camera_lookahead(delta)
+    _update_world_fill(delta)
     var bag_ratio: float = float(player.inventory_total()) / float(maxi(1, player.capacity))
     var return_soon: bool = phase == "night" or bag_ratio >= 0.82 or (phase == "day" and phase_time <= 12.0)
     player.set_home_hint(return_soon and player.global_position.distance_to(base_position) > 110.0)
