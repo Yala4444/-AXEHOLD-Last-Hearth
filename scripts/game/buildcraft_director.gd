@@ -61,8 +61,6 @@ func roll_choices(count: int, level: int) -> Array[Dictionary]:
                 result[result.size() - 1] = legendary
             else:
                 result.append(legendary)
-            legendary_offered = true
-
     while result.size() > count:
         result.remove_at(result.size() - 1)
     return result
@@ -144,6 +142,8 @@ func apply_choice(perk_id: String, rarity: String = "common", source: String = "
 
     choices_taken += 1
     rarity_counts[rarity] = int(rarity_counts.get(rarity,0)) + 1
+    if rarity == "legendary":
+        legendary_offered = true
 
     var after: Dictionary = world.player.buildcraft_snapshot()
     Analytics.event("buildcraft_pick", {
