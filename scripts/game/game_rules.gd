@@ -103,6 +103,13 @@ const WEAPON_PERKS := [
     {"id":"blades_fury","icon":"TWN","name":"Жар серии","desc":"+3% урона за каждый уровень комбо","category":"weapon","weapon":"twin_blades"}
 ]
 
+const EVENT_RELICS := [
+    {"id":"thorn_ring","name":"Кольцо Корней"},
+    {"id":"frost_aura","name":"Сердце Инея"},
+    {"id":"fire_orb","name":"Пепельное Око"},
+    {"id":"guardian_spirit","name":"Осколок Хранителя"}
+]
+
 const NIGHT_MODIFIERS := [
     {
         "id":"swarm","name":"ГОЛОДНАЯ НОЧЬ",
@@ -193,6 +200,27 @@ const DAWN_DOCTRINES := [
     {"id":"embers","name":"ХРАНИТЕЛЬ ОГНЯ","desc":"Лечение героя и сильный ремонт Очагa"},
     {"id":"overwatch","name":"ДОЗОР","desc":"Башня стреляет быстрее и сильнее"}
 ]
+
+static func named_hunt_name(index: int) -> String:
+    match clampi(index, 0, 2):
+        1:
+            return "БЕЛЫЙ КЛЫК"
+        2:
+            return "ПЕПЕЛЬНЫЙ ГЛАШАТАЙ"
+        _:
+            return "КОСТОЛОМ"
+
+static func event_relic_for_biome(index: int) -> Dictionary:
+    match clampi(index, 0, 2):
+        1:
+            return EVENT_RELICS[1].duplicate(true)
+        2:
+            return EVENT_RELICS[2].duplicate(true)
+        _:
+            return EVENT_RELICS[0].duplicate(true)
+
+static func random_event_relic() -> Dictionary:
+    return EVENT_RELICS[randi() % EVENT_RELICS.size()].duplicate(true)
 
 static func random_night_modifier(wave: int, threat: float = 0.0) -> Dictionary:
     var pool: Array[Dictionary] = []
