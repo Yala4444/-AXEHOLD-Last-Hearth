@@ -60,6 +60,7 @@ var activity_director: WorldActivityDirector
 var run_variation: RunVariationDirector
 var dynamic_world: DynamicWorldDirector
 var biome_events: BiomeEventDirector
+var field_objectives: FieldObjectiveDirector
 var world_fill_layer: CanvasLayer
 var world_fill: ColorRect
 
@@ -146,6 +147,10 @@ func _start_run() -> void:
     biome_events = BiomeEventDirector.new()
     add_child(biome_events)
     biome_events.setup(self)
+
+    field_objectives = FieldObjectiveDirector.new()
+    add_child(field_objectives)
+    field_objectives.setup(self)
 
     _create_pads()
     for _i in range(52):
@@ -1208,7 +1213,8 @@ func _finish_run(won: bool) -> void:
         "parts_bonus": unused_parts * 8,
         "contract": run_variation.contract_result() if run_variation != null else {},
         "dynamic_world": dynamic_world.result_summary() if dynamic_world != null else {},
-        "biome_events": biome_events.result_summary() if biome_events != null else {}
+        "biome_events": biome_events.result_summary() if biome_events != null else {},
+        "field_objectives": field_objectives.result_summary() if field_objectives != null else {}
     })
 
 func _refresh_hud() -> void:
