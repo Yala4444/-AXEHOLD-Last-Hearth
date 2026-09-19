@@ -110,6 +110,24 @@ const EVENT_RELICS := [
     {"id":"guardian_spirit","name":"Осколок Хранителя"}
 ]
 
+const LEGENDARY_PERKS := [
+    {"id":"phoenix_oath","name":"ПОСЛЕДНЯЯ ИСКРА","desc":"Один раз вместо смерти Странник возвращается с 38% HP и 2 зарядами щита.","category":"legendary","family":"flame"},
+    {"id":"storm_crown","name":"СТАЛЬНАЯ БУРЯ","desc":"+2 оружия, +35% урона вращения и больший боевой радиус.","category":"legendary","family":"steel"},
+    {"id":"eternal_winter","name":"ВЕЧНАЯ ЗИМА","desc":"Холодный круг сразу достигает максимума, замедляет сильнее и начинает ранить врагов.","category":"legendary","family":"frost"},
+    {"id":"hearthbound","name":"КРОВЬ ОЧАГА","desc":"+40 HP. Рядом с Очагом урон резко возрастает, а Дух Хранителя пробуждается.","category":"legendary","family":"guardian"},
+    {"id":"blood_moon","name":"КРАСНАЯ ОХОТА","desc":"Криты становятся разрушительнее, шанс крита растёт, серии убийств лечат чаще.","category":"legendary","family":"hunt"},
+    {"id":"worldroot","name":"СЕРДЦЕ МИРОКОРНЯ","desc":"Кольцо шипов достигает максимума, сбор лечит сильнее, рюкзак расширяется.","category":"legendary","family":"roots"}
+]
+
+const BUILD_EVOLUTIONS := [
+    {"id":"inferno_crown","family":"flame","name":"КОРОНА ПЕПЛА","desc":"Огненные сферы множатся, расширяют орбиту и наносят значительно больше урона."},
+    {"id":"steel_tempest","family":"steel","name":"ВИХРЬ БЕЗ КОНЦА","desc":"Оружие ускоряет темп боя: +1 клинок, больше радиус и постоянный прирост урона."},
+    {"id":"white_silence","family":"frost","name":"БЕЛАЯ ТИШИНА","desc":"Холодный круг становится шире, сильнее замедляет и постепенно ранит врагов."},
+    {"id":"last_ward","family":"guardian","name":"ПОСЛЕДНИЙ ОБЕРЕГ","desc":"Дух Хранителя чаще восстанавливает защиту, а максимальное здоровье растёт."},
+    {"id":"predator_mark","family":"hunt","name":"МЕТКА ХИЩНИКА","desc":"Критический урон возрастает, а каждая короткая серия убийств восстанавливает здоровье."},
+    {"id":"wild_crown","family":"roots","name":"ДИКАЯ КОРОНА","desc":"Шипы бьют чаще и дальше, а каждая волна возвращает часть здоровья."}
+]
+
 const NIGHT_MODIFIERS := [
     {
         "id":"swarm","name":"ГОЛОДНАЯ НОЧЬ",
@@ -221,6 +239,68 @@ static func event_relic_for_biome(index: int) -> Dictionary:
 
 static func random_event_relic() -> Dictionary:
     return EVENT_RELICS[randi() % EVENT_RELICS.size()].duplicate(true)
+
+static func perk_spec(perk_id: String) -> Dictionary:
+    for spec_variant: Variant in PERKS:
+        var spec: Dictionary = spec_variant
+        if str(spec.get("id","")) == perk_id:
+            return spec.duplicate(true)
+    for spec_variant: Variant in WEAPON_PERKS:
+        var spec: Dictionary = spec_variant
+        if str(spec.get("id","")) == perk_id:
+            return spec.duplicate(true)
+    for spec_variant: Variant in LEGENDARY_PERKS:
+        var spec: Dictionary = spec_variant
+        if str(spec.get("id","")) == perk_id:
+            return spec.duplicate(true)
+    return {}
+
+static func perk_family(perk_id: String) -> String:
+    match perk_id:
+        "fire_orb", "damage", "phoenix_oath":
+            return "flame"
+        "axe", "orbit", "axes_whirl", "axes_edge", "storm_crown":
+            return "steel"
+        "frost_aura", "speed", "hammer_crater", "hammer_force", "eternal_winter":
+            return "frost"
+        "hp", "shield", "hearth_aura", "guardian_spirit", "hearthbound":
+            return "guardian"
+        "crit", "loaded_pack", "hunter_rhythm", "blades_chain", "blades_fury", "blood_moon":
+            return "hunt"
+        "bag", "harvest_heal", "thorn_ring", "spear_pierce", "spear_impale", "worldroot":
+            return "roots"
+        _:
+            return ""
+
+static func family_name(family: String) -> String:
+    match family:
+        "flame":
+            return "ОГОНЬ"
+        "steel":
+            return "СТАЛЬ"
+        "frost":
+            return "МОРОЗ"
+        "guardian":
+            return "ОБЕРЕГ"
+        "hunt":
+            return "ОХОТА"
+        "roots":
+            return "КОРНИ"
+        _:
+            return "СВОБОДНЫЙ"
+
+static func evolution_for_family(family: String) -> Dictionary:
+    for spec_variant: Variant in BUILD_EVOLUTIONS:
+        var spec: Dictionary = spec_variant
+        if str(spec.get("family","")) == family:
+            return spec.duplicate(true)
+    return {}
+
+static func legendary_pool() -> Array[Dictionary]:
+    var result: Array[Dictionary] = []
+    for spec_variant: Variant in LEGENDARY_PERKS:
+        result.append((spec_variant as Dictionary).duplicate(true))
+    return result
 
 static func random_night_modifier(wave: int, threat: float = 0.0) -> Dictionary:
     var pool: Array[Dictionary] = []

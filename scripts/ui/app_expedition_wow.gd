@@ -56,6 +56,86 @@ func _show_result() -> void:
     stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     stats.add_theme_color_override("font_color", Color(0.78, 0.81, 0.83))
 
+    var build_result: Dictionary = result_data.get("buildcraft", {})
+    if not build_result.is_empty():
+        var build_panel := _panel(box)
+        var build_box := VBoxContainer.new()
+        build_panel.add_child(build_box)
+        build_box.add_theme_constant_override("separation", 6)
+
+        var build_title := Label.new()
+        build_box.add_child(build_title)
+        build_title.text = "БИЛД ЗАБЕГА · %s" % str(build_result.get("identity","БИЛД СТРАННИКА"))
+        build_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        build_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        build_title.add_theme_font_size_override("font_size", 11)
+        build_title.add_theme_color_override("font_color", VisualSystem.GOLD_BRIGHT)
+
+        var families: Dictionary = build_result.get("families", {})
+        var family_parts: Array[String] = []
+        for family: String in ["flame","steel","frost","guardian","hunt","roots"]:
+            var count: int = int(families.get(family,0))
+            if count > 0:
+                family_parts.append("%s %d" % [GameRules.family_name(family), count])
+        if not family_parts.is_empty():
+            var family_line := Label.new()
+            build_box.add_child(family_line)
+            family_line.text = " · ".join(family_parts)
+            family_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+            family_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+            family_line.add_theme_font_size_override("font_size", 8)
+            family_line.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
+
+        var evolutions: Array = build_result.get("evolutions", [])
+        if not evolutions.is_empty():
+            var evo_title := Label.new()
+            build_box.add_child(evo_title)
+            evo_title.text = "ЭВОЛЮЦИИ"
+            evo_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+            evo_title.add_theme_font_size_override("font_size", 8)
+            evo_title.add_theme_color_override("font_color", Color("f0c778"))
+            for evo_variant: Variant in evolutions:
+                var evo: Dictionary = evo_variant
+                var evo_line := Label.new()
+                build_box.add_child(evo_line)
+                evo_line.text = "%s\n%s" % [str(evo.get("name","ЭВОЛЮЦИЯ")),str(evo.get("desc",""))]
+                evo_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+                evo_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+                evo_line.add_theme_font_size_override("font_size", 8)
+                evo_line.add_theme_color_override("font_color", Color("d8e3dd"))
+
+        var legendaries: Array = build_result.get("legendaries", [])
+        if not legendaries.is_empty():
+            var legendary_title := Label.new()
+            build_box.add_child(legendary_title)
+            legendary_title.text = "ЛЕГЕНДАРНЫЕ ПРАВИЛА"
+            legendary_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+            legendary_title.add_theme_font_size_override("font_size", 8)
+            legendary_title.add_theme_color_override("font_color", Color("e5b1e8"))
+            for legendary_variant: Variant in legendaries:
+                var legendary: Dictionary = legendary_variant
+                var legendary_line := Label.new()
+                build_box.add_child(legendary_line)
+                legendary_line.text = "%s · %s" % [str(legendary.get("name","ЛЕГЕНДАРНОЕ")),str(legendary.get("desc",""))]
+                legendary_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+                legendary_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+                legendary_line.add_theme_font_size_override("font_size", 8)
+                legendary_line.add_theme_color_override("font_color", Color("d7c4dd"))
+
+        var rarity_data: Dictionary = build_result.get("rarities", {})
+        var build_meta := Label.new()
+        build_box.add_child(build_meta)
+        build_meta.text = "Выборов: %d · редких %d · эпических %d · легендарных %d" % [
+            int(build_result.get("choices",0)),
+            int(rarity_data.get("rare",0)),
+            int(rarity_data.get("epic",0)),
+            int(rarity_data.get("legendary",0))
+        ]
+        build_meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        build_meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        build_meta.add_theme_font_size_override("font_size", 7)
+        build_meta.add_theme_color_override("font_color", VisualSystem.TEXT_MUTED)
+
     var memory_result: Dictionary = result_data.get("expedition_memory", {})
     var memories: Array = memory_result.get("moments", [])
     if not memories.is_empty():

@@ -69,6 +69,7 @@ var dynamic_world: DynamicWorldDirector
 var biome_events: BiomeEventDirector
 var field_objectives: FieldObjectiveDirector
 var expedition_memory: ExpeditionMemoryDirector
+var buildcraft: BuildcraftDirector
 var world_fill_layer: CanvasLayer
 var world_fill: ColorRect
 
@@ -127,6 +128,10 @@ func _start_run() -> void:
     add_child(expedition_memory)
     expedition_memory.setup(self)
 
+    buildcraft = BuildcraftDirector.new()
+    add_child(buildcraft)
+    buildcraft.setup(self)
+
     activity_director = WorldActivityDirector.new()
     add_child(activity_director)
     activity_director.setup(self, world_generator)
@@ -160,6 +165,8 @@ func _start_run() -> void:
     player.died.connect(_on_player_died)
     player.damaged.connect(_on_player_damaged)
     player.level_up_requested.connect(_show_perks)
+    player.build_evolved.connect(_on_build_evolved)
+    player.legendary_triggered.connect(_on_legendary_triggered)
 
     dynamic_world = DynamicWorldDirector.new()
     add_child(dynamic_world)
@@ -676,6 +683,13 @@ func _start_night() -> void:
         base_spawn_count = int(round(float(base_spawn_count) * ThreatRules.endless_spawn_multiplier(wave)))
     spawn_left = maxi(1, base_spawn_count)
 
+    # First-night calibration is a hard promise: a random night modifier must
+    # never silently erase the v1.17 relief ramp on Threat II-IV.
+    if run_mode == "expedition" and wave == 1 and threat_level >= 2 and threat_level <= 4:
+        var raw_first_night: int = GameRules.wave_count(1, float(biome["difficulty"]))
+        var old_full_pressure: int = int(round(float(raw_first_night) * float(ThreatRules.spec(threat_level).get("spawn",1.0))))
+        spawn_left = mini(spawn_left, maxi(1, old_full_pressure - 1))
+
     if activity_director != null:
         var nest_extra: int = activity_director.night_extra_enemies()
         nest_extra = mini(nest_extra, ThreatRules.first_night_nest_cap(threat_level, wave))
@@ -1114,7 +1128,7 @@ func _deal_weapon_damage(enemy: AxEnemy, raw_damage: float) -> bool:
     var bag_ratio: float = float(player.inventory_total()) / float(maxi(1, player.capacity))
     if player.loaded_pack_damage_bonus > 0.0 and bag_ratio >= 0.75:
         tactical_mult += player.loaded_pack_damage_bonus
-    var amount: float = raw_damage * tactical_mult * (2.0 if critical else 1.0)
+    var amount: float = raw_damage * tactical_mult * (player.crit_multiplier if critical else 1.0)
     enemy.take_damage(amount)
     return critical
 
@@ -1267,38 +1281,58 @@ func _update_relic_perks(delta: float) -> void:
         return
 
     if player.fire_orb_level > 0:
-        var fire_radius: float = 58.0 + float(player.fire_orb_level) * 5.0
+        var fire_evolved: bool = player.has_evolution("flame")
+        var fire_radius: float = 58.0 + float(player.fire_orb_level) * 5.0 + (18.0 if fire_evolved else 0.0)
+        var fire_dps: float = 0.10 + 0.05 * float(player.fire_orb_level)
+        if fire_evolved:
+            fire_dps *= 1.75
         for enemy: AxEnemy in enemies:
             if is_instance_valid(enemy) and not enemy.dying and player.global_position.distance_to(enemy.global_position) <= fire_radius:
-                enemy.take_damage(player.damage * delta * (0.10 + 0.05 * float(player.fire_orb_level)))
+                enemy.take_damage(player.damage * delta * fire_dps)
 
     if player.frost_aura_level > 0:
-        var frost_radius: float = 66.0 + float(player.frost_aura_level) * 8.0
+        var frost_evolved: bool = player.has_evolution("frost")
+        var frost_radius: float = 66.0 + float(player.frost_aura_level) * 8.0 + (18.0 if frost_evolved else 0.0)
         for enemy: AxEnemy in enemies:
             if is_instance_valid(enemy) and not enemy.dying:
                 if player.global_position.distance_to(enemy.global_position) <= frost_radius:
-                    enemy.behavior_speed_multiplier = minf(enemy.behavior_speed_multiplier, 0.80 - 0.07 * float(player.frost_aura_level - 1))
+                    var slow_target: float = 0.80 - 0.07 * float(player.frost_aura_level - 1)
+                    if frost_evolved:
+                        slow_target = minf(slow_target, 0.48)
+                        enemy.take_damage(player.damage * delta * 0.055)
+                    enemy.behavior_speed_multiplier = minf(enemy.behavior_speed_multiplier, slow_target)
                 else:
                     enemy.behavior_speed_multiplier = move_toward(enemy.behavior_speed_multiplier, 1.0, delta * 1.8)
 
     if player.thorn_ring_level > 0:
         relic_thorn_timer -= delta
         if relic_thorn_timer <= 0.0:
-            relic_thorn_timer = maxf(2.4, 4.2 - float(player.thorn_ring_level) * 0.45)
-            var radius: float = 92.0 + float(player.thorn_ring_level) * 8.0
+            var roots_evolved: bool = player.has_evolution("roots")
+            relic_thorn_timer = maxf(1.65 if roots_evolved else 2.4, 4.2 - float(player.thorn_ring_level) * (0.62 if roots_evolved else 0.45))
+            var radius: float = 92.0 + float(player.thorn_ring_level) * 8.0 + (22.0 if roots_evolved else 0.0)
+            var hits: int = 0
             for enemy: AxEnemy in enemies.duplicate():
                 if is_instance_valid(enemy) and not enemy.dying and player.global_position.distance_to(enemy.global_position) <= radius:
-                    enemy.take_damage(player.damage * (0.65 + 0.22 * float(player.thorn_ring_level)))
+                    enemy.take_damage(player.damage * ((0.82 if roots_evolved else 0.65) + 0.22 * float(player.thorn_ring_level)))
+                    hits += 1
                     if core_fx != null:
                         core_fx.enemy_hit(enemy.global_position, false)
-            trigger_camera_shake(1.2,0.08)
+            if roots_evolved and hits > 0:
+                player.heal(minf(8.0, float(hits) * 1.5))
+            trigger_camera_shake(1.5 if roots_evolved else 1.2,0.08)
 
     if player.guardian_spirit_level > 0:
         relic_spirit_timer -= delta
         if relic_spirit_timer <= 0.0:
-            relic_spirit_timer = maxf(11.0, 22.0 - float(player.guardian_spirit_level) * 3.0)
-            player.shield_hits = mini(5, player.shield_hits + 1)
-            hud.set_status("Дух Хранителя восстановил защитный заряд.")
+            var guardian_evolved: bool = player.has_evolution("guardian")
+            relic_spirit_timer = maxf(6.5 if guardian_evolved else 11.0, 22.0 - float(player.guardian_spirit_level) * (4.0 if guardian_evolved else 3.0))
+            player.shield_hits = mini(5, player.shield_hits + (2 if guardian_evolved else 1))
+            if guardian_evolved:
+                player.heal(8.0)
+                base_hp = minf(base_max_hp, base_hp + 12.0)
+                hud.set_status("Последний Оберег восстановил 2 заряда, здоровье и часть Очагa.")
+            else:
+                hud.set_status("Дух Хранителя восстановил защитный заряд.")
 
 func _endless_relic_choices(boosted: bool) -> Array[String]:
     var relics: Array[String] = ["fire_orb","frost_aura","thorn_ring","guardian_spirit"]
@@ -1327,15 +1361,25 @@ func _show_endless_checkpoint(boosted: bool = false) -> void:
             if str(perk.get("id","")) == perk_id:
                 spec = perk
                 break
+        var chest_rarity: String = "epic" if boosted else "rare"
+        var family: String = GameRules.perk_family(perk_id)
+        var family_note: String = ""
+        if not family.is_empty():
+            family_note = "\n%s %d/3 → эволюция" % [GameRules.family_name(family), mini(3, player.family_count(family) + 1)]
         buttons.append({
-            "text":"%s\n%s" % [str(spec.get("name",perk_id)),str(spec.get("desc",""))],
+            "text":"%s · %s\n%s%s" % [
+                buildcraft.rarity_name(chest_rarity) if buildcraft != null else "РЕЛИКВИЯ",
+                str(spec.get("name",perk_id)),
+                str(spec.get("desc","")),
+                family_note
+            ],
             "action":"endless_relic:" + perk_id
         })
 
     if not boosted:
         buttons.append({"text":"УЛУЧШИТЬ СУНДУК · РЕКЛАМА","action":"endless_chest_ad"})
     buttons.append({"text":"ЗАБРАТЬ НАГРАДУ И ВЕРНУТЬСЯ","action":"endless_cashout"})
-    hud.show_modal("", "СУНДУК НОЧИ %d" % wave, "Хранитель пал. Выбери силу и продолжай или зафиксируй рекорд.", buttons)
+    hud.show_modal("", "СУНДУК НОЧИ %d · BUILDCRAFT" % wave, "Хранитель пал. Сундук может закрыть синергию или открыть новый путь билда.", buttons)
 
 func _on_endless_chest_ad(_placement: String) -> void:
     hud.hide_modal()
@@ -1343,14 +1387,27 @@ func _on_endless_chest_ad(_placement: String) -> void:
 
 func _show_perks(level: int) -> void:
     var buttons: Array = []
-    var choices: Array = GameRules.random_perks(3, player.weapon_id)
-    for perk_variant: Variant in choices:
-        var perk: Dictionary = perk_variant
+    var choices: Array[Dictionary] = buildcraft.roll_choices(3, level) if buildcraft != null else []
+    if choices.is_empty():
+        for perk_variant: Variant in GameRules.random_perks(3, player.weapon_id):
+            var perk: Dictionary = perk_variant
+            perk["rarity"] = "common"
+            choices.append(perk)
+
+    for perk: Dictionary in choices:
+        var rarity: String = str(perk.get("rarity","common"))
         buttons.append({
-            "text": "%s\n%s" % [str(perk.get("name", "УСИЛЕНИЕ")), str(perk.get("desc", ""))],
-            "action": "perk:" + str(perk.get("id", ""))
+            "text": buildcraft.choice_text(perk) if buildcraft != null else ("%s\n%s" % [str(perk.get("name","УСИЛЕНИЕ")),str(perk.get("desc",""))]),
+            "action": "buildcraft:%s:%s" % [str(perk.get("id","")),rarity]
         })
-    hud.show_modal("", "УРОВЕНЬ %d" % level, "Выбери усиление на этот забег.", buttons)
+
+    var identity: String = buildcraft.short_identity() if buildcraft != null else "БИЛД ФОРМИРУЕТСЯ"
+    hud.show_modal(
+        "",
+        "УРОВЕНЬ %d · BUILDCRAFT" % level,
+        "Текущий путь: %s\nСобери 3 усиления одной школы, чтобы открыть эволюцию." % identity,
+        buttons
+    )
 
 func _on_player_died() -> void:
     if finishing:
@@ -1370,6 +1427,19 @@ func _on_player_damaged(_amount: float, blocked: bool) -> void:
         if core_fx != null:
             core_fx.player_hit(player.global_position)
     hud.set_status("Щит поглотил удар." if blocked else "Герой получил урон.")
+
+func _on_build_evolved(_evolution_id: String, title: String, description: String) -> void:
+    hud.show_banner("ЭВОЛЮЦИЯ · " + title, Color("f4c66f"))
+    hud.set_status(description)
+    trigger_camera_shake(3.8, 0.18)
+    Feedback.play("level", 28)
+    Analytics.event("build_evolution", {"title":title,"wave":wave,"level":player.level,"biome":biome_index})
+
+func _on_legendary_triggered(title: String, description: String) -> void:
+    hud.show_banner("ЛЕГЕНДАРНОЕ · " + title, Color("e6b7ee"))
+    hud.set_status(description)
+    trigger_camera_shake(5.0, 0.22)
+    Analytics.event("legendary_triggered", {"title":title,"wave":wave,"biome":biome_index})
 
 func _finish_run(won: bool) -> void:
     if finishing and player.hp > 0.0:
@@ -1411,7 +1481,8 @@ func _finish_run(won: bool) -> void:
         "dynamic_world": dynamic_world.result_summary() if dynamic_world != null else {},
         "biome_events": biome_events.result_summary() if biome_events != null else {},
         "field_objectives": field_objectives.result_summary() if field_objectives != null else {},
-        "expedition_memory": expedition_memory.result_summary() if expedition_memory != null else {}
+        "expedition_memory": expedition_memory.result_summary() if expedition_memory != null else {},
+        "buildcraft": buildcraft.result_summary() if buildcraft != null else {}
     })
 
 func _refresh_hud() -> void:
@@ -1467,7 +1538,10 @@ func _on_hud_action(action: String) -> void:
         AdService.show_rewarded("endless_chest")
     elif action.begins_with("endless_relic:"):
         var relic_id: String = action.trim_prefix("endless_relic:")
-        player.apply_perk(relic_id)
+        if buildcraft != null:
+            buildcraft.apply_choice(relic_id, "epic" if endless_chest_boosted else "rare", "endless_chest")
+        else:
+            player.apply_perk(relic_id)
         hud.hide_modal()
         endless_chest_boosted = false
         _start_day()
@@ -1480,6 +1554,26 @@ func _on_hud_action(action: String) -> void:
         var parts: PackedStringArray = action.split(":")
         if parts.size() >= 3:
             _apply_build_upgrade(parts[1], parts[2])
+    elif action.begins_with("buildcraft:"):
+        var parts: PackedStringArray = action.split(":")
+        if parts.size() >= 3:
+            var perk_id: String = parts[1]
+            var rarity: String = parts[2]
+            var outcome: Dictionary = buildcraft.apply_choice(perk_id, rarity, "level") if buildcraft != null else {}
+            hud.hide_modal()
+            var spec: Dictionary = GameRules.perk_spec(perk_id)
+            var family: String = GameRules.perk_family(perk_id)
+            var progress: int = player.family_count(family) if not family.is_empty() else 0
+            hud.show_banner("%s · %s" % [
+                buildcraft.rarity_name(rarity) if buildcraft != null else "УСИЛЕНИЕ",
+                str(spec.get("name","УСИЛЕНИЕ"))
+            ], Color("f0d094"))
+            if rarity == "legendary":
+                hud.set_status("Легендарное правило забега активно: %s" % str(spec.get("desc","")))
+            elif not family.is_empty():
+                hud.set_status("%s: %d/3 · на 3/3 школа эволюционирует." % [GameRules.family_name(family), mini(3,progress)])
+            elif not outcome.is_empty():
+                hud.set_status(str(outcome.get("identity","Билд усилен.")))
     elif action.begins_with("perk:"):
         player.apply_perk(action.trim_prefix("perk:"))
         hud.hide_modal()
