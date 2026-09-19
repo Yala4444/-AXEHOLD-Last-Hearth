@@ -683,6 +683,13 @@ func _start_night() -> void:
         base_spawn_count = int(round(float(base_spawn_count) * ThreatRules.endless_spawn_multiplier(wave)))
     spawn_left = maxi(1, base_spawn_count)
 
+    # First-night calibration is a hard promise: a random night modifier must
+    # never silently erase the v1.17 relief ramp on Threat II-IV.
+    if run_mode == "expedition" and wave == 1 and threat_level >= 2 and threat_level <= 4:
+        var raw_first_night: int = GameRules.wave_count(1, float(biome["difficulty"]))
+        var old_full_pressure: int = int(round(float(raw_first_night) * float(ThreatRules.spec(threat_level).get("spawn",1.0))))
+        spawn_left = mini(spawn_left, maxi(1, old_full_pressure - 1))
+
     if activity_director != null:
         var nest_extra: int = activity_director.night_extra_enemies()
         nest_extra = mini(nest_extra, ThreatRules.first_night_nest_cap(threat_level, wave))
