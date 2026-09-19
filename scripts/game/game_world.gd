@@ -1159,7 +1159,10 @@ func _show_perks(level: int) -> void:
     var choices: Array = GameRules.random_perks(3, player.weapon_id)
     for perk_variant: Variant in choices:
         var perk: Dictionary = perk_variant
-        buttons.append({"text": "%s  %s — %s" % [perk["icon"], perk["name"], perk["desc"]], "action": "perk:" + str(perk["id"])})
+        buttons.append({
+            "text": "%s\n%s" % [str(perk.get("name", "УСИЛЕНИЕ")), str(perk.get("desc", ""))],
+            "action": "perk:" + str(perk.get("id", ""))
+        })
     hud.show_modal("", "УРОВЕНЬ %d" % level, "Выбери усиление на этот забег.", buttons)
 
 func _on_player_died() -> void:
