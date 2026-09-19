@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.15.0-alpha.1 — Living Expedition
+- Added timed Field Objectives at the start of daytime phases.
+- Added Survey Point: reach and hold a temporary reconnaissance marker.
+- Added Field Cache: reach and dismantle a timed salvage objective for a Mechanism Part and biome-relevant supplies.
+- Added Purge Zone: clear a biome-specific marked enemy pack before time expires.
+- Added player-local field objective compass cues so temporary objectives are findable off-screen.
+- Integrated Mira and Thorn into objective callouts when those residents are unlocked.
+- Sequenced Dynamic World and biome events around active Field Objectives to avoid notification/event stacking.
+- Missing a field objective now raises Darkness Threat; failed purge enemies become active hunters.
+- Added persistent field objective completion/failure/perfect statistics.
+- Added Daily Board quests for field objectives and fast completions.
+- Added field-objective performance to expedition results and Camp Field Journal.
+- Replaced the Wanderer's rectangular shadow with an ellipse and strengthened weapon geometry/trails for phone readability.
+- Added dedicated v1.15 regression coverage.
+- Save version bumped to 12.
+- Bumped Android/iOS metadata to 1.15.0-alpha.1 / build 29.
+
 ## 1.14.0-alpha.1 — Reforged
 - Added a screen-space biome fallback and removed large chunk base fills to target the recurring iOS/WebGL black-quadrant artifact.
 - Restored visible idle orbit for the Root Spear; all weapon styles now visibly animate around the Wanderer.
