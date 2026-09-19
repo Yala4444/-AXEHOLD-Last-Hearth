@@ -3,18 +3,21 @@ extends "res://scripts/ui/app_expedition_wow.gd"
 var mobile_scroll: MobileScrollContainer
 var nav_buttons: Dictionary = {}
 var active_nav_key: String = "camp"
+var menu_background: ColorRect
+var menu_vignette: ColorRect
 
 func _build_shell() -> void:
-    var background := ColorRect.new()
-    add_child(background)
-    background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    background.color = VisualSystem.BG
+    menu_background = ColorRect.new()
+    add_child(menu_background)
+    menu_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    menu_background.color = VisualSystem.BG
+    menu_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-    var vignette := ColorRect.new()
-    add_child(vignette)
-    vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-    vignette.color = Color(0.02, 0.035, 0.04, 0.22)
-    vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    menu_vignette = ColorRect.new()
+    add_child(menu_vignette)
+    menu_vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    menu_vignette.color = Color(0.02, 0.035, 0.04, 0.22)
+    menu_vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
     shell = Control.new()
     add_child(shell)
@@ -91,6 +94,24 @@ func _build_shell() -> void:
     _mobile_nav_button("map", "КАРТА", "map", _show_map)
     _mobile_nav_button("trophy", "ТРОФЕИ", "trophy", _show_goals)
     _refresh_nav_state()
+
+func _set_menu_backdrop_visible(value: bool) -> void:
+    if menu_background != null:
+        menu_background.visible = value
+    if menu_vignette != null:
+        menu_vignette.visible = value
+
+func _start_game() -> void:
+    _set_menu_backdrop_visible(false)
+    super._start_game()
+
+func _on_game_quit() -> void:
+    _set_menu_backdrop_visible(true)
+    super._on_game_quit()
+
+func _on_run_finished(result: Dictionary) -> void:
+    _set_menu_backdrop_visible(true)
+    super._on_run_finished(result)
 
 func _clear_body() -> void:
     super._clear_body()
