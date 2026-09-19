@@ -84,6 +84,22 @@ func _show_result() -> void:
         dynamic_note.add_theme_font_size_override("font_size", 9)
         dynamic_note.add_theme_color_override("font_color", Color("b8c7c1"))
 
+    var biome_result: Dictionary = result_data.get("biome_events", {})
+    if not biome_result.is_empty():
+        var region_note := Label.new()
+        box.add_child(region_note)
+        region_note.text = "РЕГИОН · %d событий · %d охот · %d идеальных прохождений" % [
+            int(biome_result.get("completed", 0)),
+            int(biome_result.get("hunts", 0)),
+            int(biome_result.get("perfect", 0))
+        ]
+        if int(biome_result.get("failed", 0)) > 0:
+            region_note.text += " · %d упущено" % int(biome_result.get("failed", 0))
+        region_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        region_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        region_note.add_theme_font_size_override("font_size", 9)
+        region_note.add_theme_color_override("font_color", VisualSystem.GOLD)
+
     var parts_unused: int = int(result_data.get("parts_unused", 0))
     if parts_unused > 0:
         var parts_note := Label.new()
