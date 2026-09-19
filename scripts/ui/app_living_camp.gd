@@ -651,6 +651,17 @@ func _show_goals() -> void:
     field_text.add_theme_font_size_override("font_size", 9)
     field_text.add_theme_color_override("font_color", Color("a9b6b2"))
 
+    var field_objective_stats: Dictionary = GameState.field_objective_stats()
+    var objective_text := Label.new()
+    field_box.add_child(objective_text)
+    objective_text.text = "Полевые цели %d · идеально %d · упущено %d" % [
+        int(field_objective_stats.get("completed", 0)),
+        int(field_objective_stats.get("perfect", 0)),
+        int(field_objective_stats.get("failed", 0))
+    ]
+    objective_text.add_theme_font_size_override("font_size", 8)
+    objective_text.add_theme_color_override("font_color", Color("8ea39a"))
+
     var region_stats: Dictionary = GameState.biome_event_stats()
     var region_lines: Array[String] = []
     for i: int in range(3):
