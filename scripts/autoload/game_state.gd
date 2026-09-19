@@ -1,7 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://axehold_save.json"
-const SAVE_VERSION := 10
+const SAVE_VERSION := 11
 
 var data: Dictionary = {}
 
@@ -54,6 +54,11 @@ func defaults() -> Dictionary:
             "elites":0,
             "rescues":0,
             "chains":0
+        },
+        "biome_event_stats": {
+            "forest":{"events":0,"perfect":0,"hunts":0},
+            "frost":{"events":0,"perfect":0,"hunts":0},
+            "ash":{"events":0,"perfect":0,"hunts":0}
         },
         "skins_owned": [true, false, false, false],
         "selected_skin": 0,
@@ -155,6 +160,12 @@ func _migrate_save() -> void:
             "elites":0,
             "rescues":0,
             "chains":0
+        }
+    if version < 11:
+        data["biome_event_stats"] = {
+            "forest":{"events":0,"perfect":0,"hunts":0},
+            "frost":{"events":0,"perfect":0,"hunts":0},
+            "ash":{"events":0,"perfect":0,"hunts":0}
         }
     data["save_version"] = SAVE_VERSION
     save()
@@ -381,6 +392,26 @@ func record_dynamic_world(delta_stats: Dictionary) -> void:
 
 func dynamic_world_stats() -> Dictionary:
     var stats: Dictionary = data.get("dynamic_world_stats", {})
+    return stats.duplicate(true)
+
+func record_biome_event(biome_index: int, delta_stats: Dictionary) -> void:
+    var biome_data: Dictionary = GameRules.biome(biome_index)
+    var biome_id: String = str(biome_data.get("id", "forest"))
+    var all_stats: Dictionary = data.get("biome_event_stats", {})
+    var stats: Dictionary = all_stats.get(biome_id, {"events":0,"perfect":0,"hunts":0})
+    for key_variant: Variant in delta_stats.keys():
+        var key: String = str(key_variant)
+        stats[key] = int(stats.get(key, 0)) + int(delta_stats.get(key_variant, 0))
+    all_stats[biome_id] = stats
+    data["biome_event_stats"] = all_stats
+    save()
+
+func biome_event_stats(index: int = -1) -> Dictionary:
+    var all_stats: Dictionary = data.get("biome_event_stats", {})
+    if index < 0:
+        return all_stats.duplicate(true)
+    var biome_id: String = str(GameRules.biome(index).get("id", "forest"))
+    var stats: Dictionary = all_stats.get(biome_id, {"events":0,"perfect":0,"hunts":0})
     return stats.duplicate(true)
 
 func add_coins(amount: int) -> void:
