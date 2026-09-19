@@ -23,6 +23,8 @@ func setup(world_ref: GameWorld) -> void:
     set_process(true)
 
 func _process(delta: float) -> void:
+    if world != null and world.tutorial_run:
+        return
     if world == null or not is_instance_valid(world) or world.player == null or world.finishing:
         return
 
