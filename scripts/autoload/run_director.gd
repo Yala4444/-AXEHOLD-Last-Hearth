@@ -21,6 +21,8 @@ var frost_slow_time: float = 0.0
 var environment_hazard_timer: float = 5.0
 var boss_cycle_timer: float = 4.0
 var tracked_boss_id: int = 0
+var tutorial_start_position: Vector2 = Vector2.ZERO
+var tutorial_home_hint_shown: bool = false
 
 func _process(delta: float) -> void:
     if world == null or not is_instance_valid(world):
@@ -79,6 +81,8 @@ func _attach_world(new_world: GameWorld) -> void:
     doctrine_choices.clear()
     seen_enemies.clear()
     tracked_boss_id = 0
+    tutorial_start_position = world.player.global_position if world.player != null else Vector2.ZERO
+    tutorial_home_hint_shown = false
     environment_hazard_timer = 5.0
     boss_cycle_timer = 4.0
     night_speed_applied = false
@@ -100,10 +104,11 @@ func _attach_world(new_world: GameWorld) -> void:
     var biome_data: Dictionary = GameRules.biome(world.biome_index)
     world.hud.set_status(str(biome_data.get("rule", "Подготовь лагерь к ночи.")))
 
-    var settings: Dictionary = GameState.data.get("settings", {})
-    first_run_coaching = bool(settings.get("hints", true)) and not bool(GameState.data.get("coach_complete", false))
+    first_run_coaching = world.tutorial_run
     if first_run_coaching:
-        Analytics.event("coach_start", {"biome": world.biome_index})
+        world.hud.set_run_objective("ОБУЧЕНИЕ · 1/5 · ОСВОЙ ДВИЖЕНИЕ")
+        world.hud.set_status("Проведи пальцем и отойди от Очагa. Оружие вращается и атакует автоматически.")
+        Analytics.event("coach_start", {"biome":world.biome_index,"replay":bool(GameState.data.get("tutorial_replay_pending",false))})
 
 func _handle_phase_transition() -> void:
     if world == null:
@@ -121,6 +126,12 @@ func _handle_phase_transition() -> void:
         environment_hazard_timer = 4.8
         boss_cycle_timer = 3.8
         _apply_biome_night_speed()
+        if first_run_coaching and world.wave == 1:
+            coach_step = 5
+            world.player.set_home_hint(true)
+            world.hud.set_run_objective("ОБУЧЕНИЕ · 5/5 · ЗАЩИТИ ПОСЛЕДНИЙ ОЧАГ")
+            world.hud.show_banner("ТЬМА ИДЁТ К ОЧАГУ", Color("f0d58b"))
+            world.hud.set_status("Перехватывай врагов между краем карты и Очагом. Не стой в центре толпы.")
         if world.biome_index == 1:
             world.hud.show_banner("МОРОЗ КРЕПЧАЕТ", Color("cdeeff"))
             world.hud.set_status("❄️ В Морозной лощине ночью герой движется медленнее.")
@@ -135,6 +146,8 @@ func _handle_phase_transition() -> void:
         _clear_frost_slow()
         if fx != null and is_instance_valid(fx):
             fx.clear_hazards()
+        if first_run_coaching and world.wave >= 1:
+            _finish_first_run_coaching()
         if world.wave == 1 or world.wave == 2:
             pending_dawn_choice = world.wave
         _show_dawn_priority(world.wave)
@@ -399,53 +412,77 @@ func _update_first_run_coaching() -> void:
     if world.hud.modal_open():
         return
 
-    if coach_step == 0 and elapsed >= 0.7:
-        world.hud.set_status("🌲 Подойди к деревьям. Топоры рубят автоматически.")
-        coach_step = 1
+    if coach_step == 0:
+        if elapsed < 0.35:
+            return
+        world.hud.set_run_objective("ОБУЧЕНИЕ · 1/5 · ОСВОЙ ДВИЖЕНИЕ")
+        world.hud.set_status("Проведи пальцем. Сначала просто почувствуй движение Странника.")
+        if world.player.global_position.distance_to(tutorial_start_position) >= 28.0:
+            coach_step = 1
+            world.hud.show_banner("ДВИЖЕНИЕ ОСВОЕНО", Color("d6c486"))
+            world.hud.set_run_objective("ОБУЧЕНИЕ · 2/5 · ДОБУДЬ 3 РЕСУРСА")
+            world.hud.set_status("Подойди к дереву. Оружие работает само — кнопки атаки нет.")
         return
 
-    if coach_step == 1 and world.player.inventory_total() >= 8:
-        world.hud.show_banner("РЮКЗАК НАПОЛНЯЕТСЯ", Color("f5dfa4"))
-        world.hud.set_status("🎒 Вернись к Очагу — ресурсы выгрузятся автоматически.")
-        coach_step = 2
+    if coach_step == 1:
+        if world.player.inventory_total() >= 3 or world.trees_cut >= 1:
+            coach_step = 2
+            world.hud.show_banner("ДОБЫЧА ИДЁТ В РЮКЗАК", Color("d9c98e"))
+            world.hud.set_run_objective("ОБУЧЕНИЕ · 3/5 · ОТНЕСИ ДОБЫЧУ К ОЧАГУ")
+            world.hud.set_status("Набери ещё немного и вернись к тёплому Очагу. Добыча выгрузится автоматически.")
         return
 
-    if coach_step == 2 and _storage_total() >= 8:
-        _highlight_build("wall")
-        world.hud.set_status("🔨 Теперь подойди к площадке ЗАБОРА. Стройка запустится сама, когда ресурсов хватит.")
-        coach_step = 3
-        return
-
-    if coach_step == 3 and bool(world.built.get("wall", false)):
-        _clear_highlight()
-        world.hud.show_banner("ОБОРОНА ГОТОВА", Color("cfe9b1"))
-        world.hud.set_status("🪨 Отлично. Собери камень и руду для следующих построек.")
-        coach_step = 4
-        return
-
-    if world.phase == "day" and world.phase_time <= 10.0 and not night_warning_shown:
-        night_warning_shown = true
-        world.hud.show_banner("НОЧЬ ЧЕРЕЗ 10 СЕК", Color("dce8ff"))
-        if not bool(world.built.get("wall", false)):
+    if coach_step == 2:
+        if world.player.inventory_total() >= 6 and not tutorial_home_hint_shown:
+            tutorial_home_hint_shown = true
+            world.player.set_home_hint(true)
+            world.hud.set_status("Стрелка над Странником показывает путь домой. Вернись к Последнему Очагу.")
+        if _storage_total() >= 6:
+            coach_step = 3
+            world.player.set_home_hint(false)
             _highlight_build("wall")
-            world.hud.set_status("⚠️ До ночи мало времени. Забор сильно снизит урон по Очагу.")
-        else:
-            world.hud.set_status("🔥 Возвращайся к Очагу. Скоро начнётся первая атака.")
-
-    if coach_step <= 4 and world.phase == "night" and world.wave >= 1:
-        _clear_highlight()
-        world.hud.set_status("⚔️ Не стой на месте: веди врагов через вращающиеся топоры и не отдавай им Очаг.")
-        coach_step = 5
+            world.hud.show_banner("ДОБЫЧА В БЕЗОПАСНОСТИ", Color("e0bd73"))
+            world.hud.set_run_objective("ОБУЧЕНИЕ · 4/5 · ПОСТРОЙ ПАЛИСАД")
+            world.hud.set_status("Подойди к площадке Палисада. Если ресурсов хватает, строительство начнётся само.")
         return
 
-    if coach_step == 5 and world.kills >= 3:
-        world.hud.show_banner("ТЫ ПОНЯЛ ОСНОВУ", Color("fff0b4"))
-        world.hud.set_status("Теперь решай сам: усиливать героя или вкладываться в оборону.")
-        GameState.data["coach_complete"] = true
-        GameState.save()
-        Analytics.event("coach_complete", {"wave": world.wave, "kills": world.kills})
-        first_run_coaching = false
-        coach_step = 6
+    if coach_step == 3:
+        if bool(world.built.get("wall", false)):
+            coach_step = 4
+            _clear_highlight()
+            world.player.set_home_hint(true)
+            world.phase_time = minf(world.phase_time, 12.0)
+            world.hud.show_banner("ЛАГЕРЬ ГОТОВИТСЯ К НОЧИ", Color("cfe2b2"))
+            world.hud.set_run_objective("ОБУЧЕНИЕ · 4/5 · ВЕРНИСЬ К ОЧАГУ ДО ТЕМНОТЫ")
+            world.hud.set_status("Днём добывай и строй. Ночью враги идут к Очагу — это главный цикл AXEHOLD.")
+        return
+
+    if coach_step == 4 and world.phase == "day":
+        if world.phase_time <= 9.5 and not night_warning_shown:
+            night_warning_shown = true
+            world.hud.show_banner("НОЧЬ БЛИЗКО", Color("dce8ff"))
+            world.hud.set_status("Вернись к Очагу. Первая учебная атака будет мягче обычной.")
+        return
+
+    if coach_step == 5 and world.phase == "night":
+        if world.kills >= 2:
+            world.hud.set_status("Верно. Перехватывай врагов до того, как они коснутся Очагa.")
+        return
+
+func _finish_first_run_coaching() -> void:
+    if not first_run_coaching:
+        return
+    first_run_coaching = false
+    coach_step = 6
+    _clear_highlight()
+    if world != null and world.player != null:
+        world.player.set_home_hint(false)
+    if world != null and world.hud != null:
+        world.hud.set_run_objective("")
+        world.hud.show_banner("ОСНОВА AXEHOLD ОСВОЕНА", Color("f3d58d"))
+        world.hud.set_status("Добыча → строительство → ночь. Дальше мир начнёт подбрасывать события, охоты и риск.")
+    GameState.complete_tutorial()
+
 
 func _update_contextual_hints() -> void:
     if world == null or world.player == null or world.hud == null:
