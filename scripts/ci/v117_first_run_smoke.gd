@@ -1,6 +1,7 @@
 extends Node
 
 const GameScene: PackedScene = preload("res://scenes/game.tscn")
+const AppScene: PackedScene = preload("res://scenes/app.tscn")
 
 var failures: Array[String] = []
 var snapshot: Dictionary = {}
@@ -13,6 +14,8 @@ func _run() -> void:
 
     _test_tutorial_state()
     _test_threat_relief_rules()
+    _test_mobile_safe_progress_labels()
+    await _test_mobile_settings_shell()
     await _test_clean_tutorial_world()
     await _test_threat_two_first_night()
 
@@ -47,6 +50,36 @@ func _test_threat_relief_rules() -> void:
         _fail("Threat II relief leaked into later nights")
     if ThreatRules.readiness_text(2).strip_edges().is_empty():
         _fail("Threat II has no preparation guidance")
+
+func _test_mobile_safe_progress_labels() -> void:
+    GameState.data = GameState.defaults()
+    var weapon_progress: String = GameState.weapon_mastery_stars("axes")
+    if weapon_progress.contains("★") or weapon_progress.contains("☆") or not weapon_progress.ends_with("/5"):
+        _fail("Weapon mastery still uses unsupported star glyphs")
+
+    var threat_progress: String = ThreatRules.stars(2)
+    if threat_progress != "2/5":
+        _fail("Threat mastery is not using numeric mobile-safe progress")
+
+    var legacy_notice: String = UISanitizer.clean_text("Мастерство оружия: Пепельные клинки → ★☆☆☆☆")
+    if legacy_notice != "Мастерство оружия: Пепельные клинки — 1/5":
+        _fail("Legacy mastery notice sanitizer did not convert star glyphs")
+
+func _test_mobile_settings_shell() -> void:
+    GameState.data = GameState.defaults()
+    GameState.data["coach_complete"] = true
+    var app: Node = AppScene.instantiate()
+    add_child(app)
+    await _wait_frames(4)
+    app.call("_show_settings")
+    await _wait_frames(2)
+    var frame: Control = app.get("nav_frame") as Control
+    if frame == null:
+        _fail("Mobile navigation frame missing")
+    elif frame.visible:
+        _fail("Empty mobile navigation frame remains visible in Settings")
+    app.queue_free()
+    await _wait_frames(3)
 
 func _test_clean_tutorial_world() -> void:
     GameState.data = GameState.defaults()
