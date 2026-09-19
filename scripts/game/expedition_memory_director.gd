@@ -105,7 +105,12 @@ func on_dawn(wave: int) -> String:
         return ""
 
     consequences_triggered += 1
-    return "Последствия экспедиции: " + " · ".join(notes) + "."
+    var combined: String = ""
+    for note: String in notes:
+        if not combined.is_empty():
+            combined += " · "
+        combined += note
+    return "Последствия экспедиции: " + combined + "."
 
 func result_summary() -> Dictionary:
     var visible: Array[Dictionary] = []
@@ -120,8 +125,8 @@ func result_summary() -> Dictionary:
             var moment: Dictionary = moment_variant
             if not bool(moment.get("major", false)):
                 visible.append(moment.duplicate(true))
-    if visible.size() > 5:
-        visible = visible.slice(maxi(0, visible.size() - 5), visible.size())
+    while visible.size() > 5:
+        visible.remove_at(0)
     return {
         "moments":visible,
         "major_events":major_events,
