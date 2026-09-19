@@ -1244,7 +1244,6 @@ func _update_relic_perks(delta: float) -> void:
                     enemy.take_damage(player.damage * (0.65 + 0.22 * float(player.thorn_ring_level)))
                     if core_fx != null:
                         core_fx.enemy_hit(enemy.global_position, false)
-            draw_set_transform(Vector2.ZERO)
             trigger_camera_shake(1.2,0.08)
 
     if player.guardian_spirit_level > 0:
