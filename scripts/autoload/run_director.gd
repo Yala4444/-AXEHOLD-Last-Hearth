@@ -85,7 +85,10 @@ func _attach_world(new_world: GameWorld) -> void:
     frost_slow_applied = false
     frost_slow_time = 0.0
 
-    world.phase_max = GameRules.day_duration(0)
+    var threat_spec: Dictionary = ThreatRules.spec(world.threat_level)
+    world.phase_max = GameRules.day_duration(0) * float(threat_spec.get("day", 1.0))
+    if world.run_mode == "endless":
+        world.phase_max *= maxf(0.72, 1.0 - float(maxi(0, world.wave - 1)) * 0.015)
     world.phase_time = world.phase_max
 
     fx = BiomeFX.new()
