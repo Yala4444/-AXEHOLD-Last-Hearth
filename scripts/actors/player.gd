@@ -5,6 +5,7 @@ signal died
 signal damaged(amount: float, blocked: bool)
 signal level_up_requested(level: int)
 signal build_evolved(evolution_id: String, title: String, description: String)
+signal legendary_triggered(title: String, description: String)
 
 var target_position: Vector2 = Vector2.ZERO
 var move_input: Vector2 = Vector2.ZERO
@@ -312,6 +313,7 @@ func take_damage(amount: float) -> void:
             damage_grace_time = 1.15
             perk_flash = 1.0
             Feedback.play("level", 28)
+            legendary_triggered.emit("ПОСЛЕДНЯЯ ИСКРА", "Смертельный удар сожжён. Странник вернулся с 38% HP и двумя зарядами щита.")
             queue_redraw()
             return
         died.emit()
