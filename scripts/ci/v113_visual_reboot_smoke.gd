@@ -82,8 +82,10 @@ func _test_views() -> void:
         var button: Button = camp.action_buttons.get(key) as Button
         if button == null:
             _fail("Camp hotspot missing after reboot: " + key)
-        elif button.size.x > 36.0 or button.size.y > 36.0:
-            _fail("Camp hotspot remained a large floating text card: " + key)
+        elif button.size.x < 60.0 or button.size.y < 44.0 or button.size.x > 86.0:
+            _fail("Camp hotspot no longer matches the readable v1.14 touch target: " + key)
+        elif button.get_node_or_null("ActionLabel") == null:
+            _fail("Camp hotspot lost its visible destination label: " + key)
     camp.queue_free()
 
     var map_view := WorldMapView.new()
