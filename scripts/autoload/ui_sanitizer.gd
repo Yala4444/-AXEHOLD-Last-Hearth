@@ -34,7 +34,8 @@ const REPLACEMENTS := {
     "📳": "",
     "▶": ">",
     "✓": "OK",
-    "🔥": ""
+    "🔥": "",
+    "→": "—"
 }
 
 func _ready() -> void:
@@ -64,6 +65,12 @@ func _sanitize_tree(node: Node) -> void:
 
 func clean_text(source: String) -> String:
     var result: String = source.replace("\uFE0F", "")
+    var filled_stars: int = result.count("★")
+    var empty_stars: int = result.count("☆")
+    var star_total: int = filled_stars + empty_stars
+    if star_total > 0:
+        result = result.replace("★", "").replace("☆", "")
+
     result = result.replace("Коснись места — герой побежит туда.", "Используй стик слева, чтобы двигаться.")
     result = result.replace("Коснись места", "Используй стик слева")
     for key: String in REPLACEMENTS.keys():
@@ -71,7 +78,17 @@ func clean_text(source: String) -> String:
     while result.contains("  "):
         result = result.replace("  ", " ")
     result = result.replace(" \n", "\n").replace("\n ", "\n")
-    return result.strip_edges()
+    result = result.strip_edges()
+
+    if star_total > 0:
+        var progress: String = "%d/%d" % [filled_stars, star_total]
+        if result.is_empty():
+            result = progress
+        elif result.ends_with("—"):
+            result += " " + progress
+        else:
+            result += " · " + progress
+    return result
 
 func _find_world(node: Node) -> GameWorld:
     if node == null:

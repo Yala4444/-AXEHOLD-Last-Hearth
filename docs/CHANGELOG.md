@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.17.1-alpha.1 — Tutorial Finish & Mobile UI Cleanup
+- Added a proper first-run handoff after Night 1 instead of ending onboarding abruptly.
+- The first doctrine choice now explains the real expedition goal: protect the Last Hearth, keep developing the Wanderer and reach the Guardian on Night 3.
+- Added persistent post-tutorial run objectives through the final preparation and Guardian night.
+- Replaced star-glyph mastery and Threat meters with mobile-safe numeric progress such as 2/5.
+- Legacy saved mastery notices containing unsupported star glyphs are sanitized at runtime.
+- Removed the empty bottom navigation frame from Settings, result and homecoming screens on mobile.
+- Bumped Android/iOS metadata to 1.17.1-alpha.1 / build 32.
+
 ## 1.17.0-alpha.1 — First Run & Difficulty Calibration
 - Rebuilt first-run onboarding into a five-step in-world First Path: movement, harvest, deposit, Palisade, first night.
 - Fresh/replayed tutorials are forced into Forgotten Forest on Threat I without resetting permanent progress.

@@ -683,6 +683,9 @@ func _start_night() -> void:
     if tutorial_run and wave == 1:
         hud.show_banner("ПЕРВАЯ НОЧЬ · ЗАЩИТИ ОЧАГ", Color("f2d98b"))
         hud.set_run_objective("ОБУЧЕНИЕ · 5/5 · НЕ ДАЙ ТЬМЕ ДОЙТИ ДО ОЧАГА")
+    elif tutorial_run and wave == 3:
+        hud.show_banner("ТРЕТЬЯ НОЧЬ · ХРАНИТЕЛЬ БЛИЗКО", Color("f2d98b"))
+        hud.set_run_objective("ФИНАЛ · ПОБЕДИ ХРАНИТЕЛЯ И СОХРАНИ ОЧАГ")
     else:
         hud.show_banner("НОЧЬ %d" % wave, Color("d9e7ff"))
     if core_fx != null:

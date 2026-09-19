@@ -5,6 +5,7 @@ var nav_buttons: Dictionary = {}
 var active_nav_key: String = "camp"
 var menu_background: ColorRect
 var menu_vignette: ColorRect
+var nav_frame: PanelContainer
 
 func _build_shell() -> void:
     menu_background = ColorRect.new()
@@ -81,7 +82,7 @@ func _build_shell() -> void:
     body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     body.add_theme_constant_override("separation", 8)
 
-    var nav_frame := PanelContainer.new()
+    nav_frame = PanelContainer.new()
     main.add_child(nav_frame)
     nav_frame.custom_minimum_size = Vector2(0, 58)
     nav_frame.add_theme_stylebox_override("panel", VisualSystem.panel(Color("0d161a"), Color("28363b"), 6, 4, 1))
@@ -115,8 +116,25 @@ func _on_run_finished(result: Dictionary) -> void:
 
 func _clear_body() -> void:
     super._clear_body()
+    if nav_frame != null:
+        nav_frame.visible = true
     if mobile_scroll != null:
         mobile_scroll.set_deferred("scroll_vertical", 0)
+
+func _show_settings() -> void:
+    super._show_settings()
+    if nav_frame != null:
+        nav_frame.visible = false
+
+func _show_result() -> void:
+    super._show_result()
+    if nav_frame != null:
+        nav_frame.visible = false
+
+func _show_homecoming(snapshot: Dictionary) -> void:
+    super._show_homecoming(snapshot)
+    if nav_frame != null:
+        nav_frame.visible = false
 
 func _panel(parent: Control) -> PanelContainer:
     var panel := PanelContainer.new()

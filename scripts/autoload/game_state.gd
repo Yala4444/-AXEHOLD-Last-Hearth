@@ -736,10 +736,7 @@ func weapon_mastery_level(weapon_id: String) -> int:
 
 func weapon_mastery_stars(weapon_id: String) -> String:
     var level: int = weapon_mastery_level(weapon_id)
-    var out: String = ""
-    for i: int in range(5):
-        out += "★" if i < level else "☆"
-    return out
+    return "%d/5" % level
 
 func _register_weapon_run(won: bool, kills: int) -> void:
     var weapon_id: String = str(data.get("selected_weapon", "axes"))
@@ -756,7 +753,7 @@ func _register_weapon_run(won: bool, kills: int) -> void:
     data["weapon_mastery"] = all_mastery
     var new_level: int = weapon_mastery_level(weapon_id)
     if new_level > old_level:
-        _push_meta_notice("Мастерство оружия: %s → %s" % [
+        _push_meta_notice("Мастерство оружия: %s — уровень %s" % [
             str(WeaponRules.profile(weapon_id).get("name", weapon_id)),
             weapon_mastery_stars(weapon_id)
         ])

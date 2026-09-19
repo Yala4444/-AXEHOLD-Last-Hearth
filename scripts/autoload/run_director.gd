@@ -23,6 +23,7 @@ var boss_cycle_timer: float = 4.0
 var tracked_boss_id: int = 0
 var tutorial_start_position: Vector2 = Vector2.ZERO
 var tutorial_home_hint_shown: bool = false
+var tutorial_completion_pending: bool = false
 
 func _process(delta: float) -> void:
     if world == null or not is_instance_valid(world):
@@ -83,6 +84,7 @@ func _attach_world(new_world: GameWorld) -> void:
     tracked_boss_id = 0
     tutorial_start_position = world.player.global_position if world.player != null else Vector2.ZERO
     tutorial_home_hint_shown = false
+    tutorial_completion_pending = false
     environment_hazard_timer = 5.0
     boss_cycle_timer = 4.0
     night_speed_applied = false
@@ -184,10 +186,16 @@ func _show_pending_dawn_choice() -> void:
             "text":"%s — %s" % [str(spec.get("name", "КУРС")), str(spec.get("desc", ""))],
             "action":"doctrine:" + str(spec.get("id", "hunt"))
         })
+    var title: String = "Рассвет после ночи %d" % completed_wave
+    var description: String = "Выбери один из трёх курсов. В следующем забеге набор будет другим."
+    if completed_wave == 1 and tutorial_completion_pending:
+        title = "ОБУЧЕНИЕ ЗАВЕРШЕНО"
+        description = "Ты освоил основу AXEHOLD. Теперь главная задача — сохранить Последний Очаг и дожить до третьей ночи.\n\nДнём добывай ресурсы, строй и улучшай оборону. После каждой ночи усиливай Странника. На третьей ночи придёт Хранитель.\n\nВыбери первый курс развития."
+        tutorial_completion_pending = false
     world.hud.show_modal(
         "",
-        "Рассвет после ночи %d" % completed_wave,
-        "Выбери один из трёх курсов. В следующем забеге набор будет другим.",
+        title,
+        description,
         buttons
     )
 
@@ -393,12 +401,17 @@ func _show_dawn_priority(completed_wave: int) -> void:
 
     if completed_wave == 1:
         world.hud.show_banner("ПЕРВАЯ НОЧЬ ПЕРЕЖИТА", Color("fff0b4"))
-        if not bool(world.built.get("forge", false)):
+        if tutorial_completion_pending:
+            world.hud.set_run_objective("ЦЕЛЬ ЗАБЕГА · ДОЖИВИ ДО НОЧИ 3")
+            world.hud.set_status("Обучение закончено. Теперь добывай, строй и усиливай Странника — на третьей ночи придёт Хранитель.")
+        elif not bool(world.built.get("forge", false)):
             _highlight_build("forge")
             world.hud.set_status("⚒️ Кузница — сильный следующий шаг, но теперь ты ещё выбираешь курс лагеря.")
         return
 
     if completed_wave == 2:
+        if world.tutorial_run:
+            world.hud.set_run_objective("ЦЕЛЬ ЗАБЕГА · ПОДГОТОВЬСЯ К ХРАНИТЕЛЮ")
         world.hud.show_banner("ПОСЛЕДНЯЯ ПОДГОТОВКА", Color("ffd79c"))
         var base_ratio: float = world.base_hp / maxf(1.0, world.base_max_hp)
         if base_ratio < 0.65 and not bool(world.built.get("shrine", false)):
@@ -477,10 +490,11 @@ func _finish_first_run_coaching() -> void:
     _clear_highlight()
     if world != null and world.player != null:
         world.player.set_home_hint(false)
+    tutorial_completion_pending = true
     if world != null and world.hud != null:
-        world.hud.set_run_objective("")
+        world.hud.set_run_objective("ЦЕЛЬ ЗАБЕГА · ДОЖИВИ ДО НОЧИ 3")
         world.hud.show_banner("ОСНОВА AXEHOLD ОСВОЕНА", Color("f3d58d"))
-        world.hud.set_status("Добыча → строительство → ночь. Дальше мир начнёт подбрасывать события, охоты и риск.")
+        world.hud.set_status("Теперь это настоящий забег: добывай, строй и усиливай Странника. На третьей ночи придёт Хранитель.")
     GameState.complete_tutorial()
 
 
