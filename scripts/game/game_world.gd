@@ -166,6 +166,7 @@ func _start_run() -> void:
     player.damaged.connect(_on_player_damaged)
     player.level_up_requested.connect(_show_perks)
     player.build_evolved.connect(_on_build_evolved)
+    player.legendary_triggered.connect(_on_legendary_triggered)
 
     dynamic_world = DynamicWorldDirector.new()
     add_child(dynamic_world)
@@ -1416,6 +1417,12 @@ func _on_build_evolved(_evolution_id: String, title: String, description: String
     trigger_camera_shake(3.8, 0.18)
     Feedback.play("level", 28)
     Analytics.event("build_evolution", {"title":title,"wave":wave,"level":player.level,"biome":biome_index})
+
+func _on_legendary_triggered(title: String, description: String) -> void:
+    hud.show_banner("ЛЕГЕНДАРНОЕ · " + title, Color("e6b7ee"))
+    hud.set_status(description)
+    trigger_camera_shake(5.0, 0.22)
+    Analytics.event("legendary_triggered", {"title":title,"wave":wave,"biome":biome_index})
 
 func _finish_run(won: bool) -> void:
     if finishing and player.hp > 0.0:
