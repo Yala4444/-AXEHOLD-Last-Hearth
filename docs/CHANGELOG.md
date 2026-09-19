@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.17.0-alpha.1 — First Run & Difficulty Calibration
+- Rebuilt first-run onboarding into a five-step in-world First Path: movement, harvest, deposit, Palisade, first night.
+- Fresh/replayed tutorials are forced into Forgotten Forest on Threat I without resetting permanent progress.
+- Removed caravans, ambushes, field objectives, biome events and exploration activities from the tutorial expedition.
+- Added a player-local return-home cue during onboarding and contextual persistent tutorial objectives in the HUD.
+- Tutorial completes only after the player survives the first night.
+- Added “Repeat Tutorial” to Settings.
+- Added a highlighted tutorial card and dedicated Start Tutorial CTA in the Camp.
+- Added preparation guidance to every Threat tier on the map.
+- Smoothed Threat II Night 1 with lower initial spawn pressure, enemy HP/damage, slower cadence and reduced Hearth damage.
+- Added smaller Night-1 ramps to Threat III/IV while preserving full later-night difficulty; Threat V remains uncompromised.
+- Added additional tutorial-only first-night safety while preserving active defense.
+- Added dedicated v1.17 regression coverage for tutorial isolation and Threat-II calibration.
+- Save version bumped to 14.
+- Bumped Android/iOS metadata to 1.17.0-alpha.1 / build 31.
+
 ## 1.16.0-alpha.1 — Threat & Endless Progression
 - Added five selectable Threat levels to each Chapter-I biome with sequential unlocks.
 - Added one-time first-clear rewards and increasing run multipliers for Threat I–V.
