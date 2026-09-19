@@ -44,6 +44,9 @@ func _process(delta: float) -> void:
 
     event_timer -= delta
     if event_timer <= 0.0:
+        if world.field_objectives != null and not world.field_objectives.active.is_empty():
+            event_timer = 1.5
+            return
         _start_for_wave(world.wave)
 
 func _start_for_wave(wave: int) -> void:
