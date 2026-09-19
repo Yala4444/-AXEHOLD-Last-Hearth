@@ -79,8 +79,9 @@ func _show_home() -> void:
 
     var route := Label.new()
     route_copy.add_child(route)
-    route.text = "%s · %s" % [
+    route.text = "%s · Угроза %d\n%s" % [
         str(biome_data.get("name", "Забытый лес")),
+        GameState.selected_threat(),
         str(weapon.get("name", "Топоры Странника"))
     ]
     route.add_theme_font_size_override("font_size", 12)
@@ -133,9 +134,32 @@ func _show_home() -> void:
     contract_button.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
     contract_button.pressed.connect(_show_contracts)
 
-    var play := _button(departure_box, "В ЭКСПЕДИЦИЮ", true)
+    var play := _button(departure_box, "В ЭКСПЕДИЦИЮ · УГРОЗА %d" % GameState.selected_threat(), true)
     play.custom_minimum_size = Vector2(0, 48)
-    play.pressed.connect(_start_game)
+    play.pressed.connect(_start_expedition)
+
+    if GameState.endless_unlocked():
+        var endless_stats: Dictionary = GameState.data.get("endless_stats", {})
+        var endless_panel := _panel(body)
+        var endless_box := VBoxContainer.new()
+        endless_panel.add_child(endless_box)
+        endless_box.add_theme_constant_override("separation",4)
+
+        var endless_title := Label.new()
+        endless_box.add_child(endless_title)
+        endless_title.text = "ПОСЛЕДНИЙ РУБЕЖ"
+        endless_title.add_theme_font_size_override("font_size",12)
+        endless_title.add_theme_color_override("font_color",Color("e1bb76"))
+
+        var endless_copy := Label.new()
+        endless_box.add_child(endless_copy)
+        endless_copy.text = "Бесконечная оборона · каждая 5-я ночь — Хранитель и реликтовый сундук.\nЛичный рекорд: ночь %d" % int(endless_stats.get("best_wave",0))
+        endless_copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        endless_copy.add_theme_font_size_override("font_size",8)
+        endless_copy.add_theme_color_override("font_color",VisualSystem.TEXT_SOFT)
+
+        var endless_button := _button(endless_box,"НАЧАТЬ ПОСЛЕДНИЙ РУБЕЖ",false)
+        endless_button.pressed.connect(_start_endless)
 
     var notices: Array = GameState.data.get("meta_notices", [])
     if not notices.is_empty():
@@ -340,8 +364,83 @@ func _show_map() -> void:
     rule.add_theme_font_size_override("font_size", 9)
     rule.add_theme_color_override("font_color", Color("9fa9aa"))
 
-    var play := _button(body, "В ЭКСПЕДИЦИЮ: " + str(biome_data.get("name", "Регион")).to_upper(), true)
-    play.pressed.connect(_start_game)
+    var threat_panel := _panel(body)
+    var threat_box := VBoxContainer.new()
+    threat_panel.add_child(threat_box)
+    threat_box.add_theme_constant_override("separation",5)
+
+    var threat_header := HBoxContainer.new()
+    threat_box.add_child(threat_header)
+    var threat_title := Label.new()
+    threat_header.add_child(threat_title)
+    threat_title.text = "УРОВЕНЬ УГРОЗЫ"
+    threat_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    threat_title.add_theme_font_size_override("font_size",10)
+    threat_title.add_theme_color_override("font_color",VisualSystem.GOLD_BRIGHT)
+
+    var mastery := Label.new()
+    threat_header.add_child(mastery)
+    mastery.text = ThreatRules.stars(int((GameState.data.get("biome_mastery",[0,0,0]) as Array)[selected_biome]))
+    mastery.add_theme_font_size_override("font_size",9)
+    mastery.add_theme_color_override("font_color",VisualSystem.GOLD)
+
+    var threat_row := HBoxContainer.new()
+    threat_box.add_child(threat_row)
+    threat_row.add_theme_constant_override("separation",4)
+    var unlocked_threat: int = GameState.threat_unlocked_level(selected_biome)
+    var selected_threat: int = GameState.selected_threat()
+    for level_value: int in range(1,ThreatRules.MAX_LEVEL+1):
+        var threat_button := _button(threat_row, ["I","II","III","IV","V"][level_value-1], level_value == selected_threat)
+        threat_button.custom_minimum_size = Vector2(46,38)
+        threat_button.disabled = level_value > unlocked_threat or level_value == selected_threat
+        threat_button.pressed.connect(_select_threat_from_map.bind(level_value))
+
+    var threat_spec: Dictionary = ThreatRules.spec(selected_threat)
+    var threat_desc := Label.new()
+    threat_box.add_child(threat_desc)
+    threat_desc.text = "%s · награда ×%.2f\n%s" % [
+        str(threat_spec.get("name","")),
+        float(threat_spec.get("reward",1.0)),
+        str(threat_spec.get("desc",""))
+    ]
+    threat_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    threat_desc.add_theme_font_size_override("font_size",8)
+    threat_desc.add_theme_color_override("font_color",VisualSystem.TEXT_SOFT)
+
+    if not GameState.threat_clear_done(selected_biome, selected_threat):
+        var first_reward: Dictionary = ThreatRules.first_clear_reward(selected_threat)
+        var first_clear := Label.new()
+        threat_box.add_child(first_clear)
+        first_clear.text = "ПЕРВОЕ ПРОХОЖДЕНИЕ · +%d мон.%s" % [
+            int(first_reward.get("coins",0)),
+            " · +%d оск." % int(first_reward.get("shards",0)) if int(first_reward.get("shards",0)) > 0 else ""
+        ]
+        first_clear.add_theme_font_size_override("font_size",8)
+        first_clear.add_theme_color_override("font_color",Color("d7bb7a"))
+
+    var play := _button(body, "В ЭКСПЕДИЦИЮ · УГРОЗА %s" % ["I","II","III","IV","V"][selected_threat-1], true)
+    play.pressed.connect(_start_expedition)
+
+    if GameState.endless_unlocked():
+        var endless := _button(body, "ПОСЛЕДНИЙ РУБЕЖ · БЕСКОНЕЧНЫЙ РЕЖИМ", false)
+        endless.pressed.connect(_start_endless)
+
+func _select_threat_from_map(level: int) -> void:
+    if GameState.select_threat(level):
+        Feedback.play("level",7)
+    _show_map()
+
+func _start_expedition() -> void:
+    GameState.data["run_mode"] = "expedition"
+    GameState.save()
+    _start_game()
+
+func _start_endless() -> void:
+    if not GameState.endless_unlocked():
+        return
+    GameState.data["run_mode"] = "endless"
+    GameState.save()
+    _start_game()
 
 func _show_contracts() -> void:
     _clear_body()
@@ -1008,6 +1107,38 @@ func _show_forge() -> void:
             buy_project.disabled = not can_pay
             buy_project.pressed.connect(_buy_building_project.bind(build_type))
 
+    _section("Реликтовая кузня", "Осколки теперь дают постоянный выбор между силой, выживанием и экономикой.")
+
+    var forge_specs: Array[Dictionary] = [
+        {"id":"power","name":"ЖАР ОРУЖИЯ","desc":"+5% урона во всех режимах за уровень"},
+        {"id":"ward","name":"КЛЯТВА ОЧАГА","desc":"+12 максимального HP за уровень"},
+        {"id":"fortune","name":"ЗНАК ДОБЫТЧИКА","desc":"+10% монет за экспедицию за уровень"}
+    ]
+    for forge_spec: Dictionary in forge_specs:
+        var forge_id: String = str(forge_spec.get("id",""))
+        var level_value: int = GameState.relic_forge_level(forge_id)
+        var forge_panel := _panel(body)
+        var forge_row := HBoxContainer.new()
+        forge_panel.add_child(forge_row)
+        forge_row.add_theme_constant_override("separation",8)
+
+        var forge_copy := Label.new()
+        forge_row.add_child(forge_copy)
+        forge_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        forge_copy.text = "%s · %s\n%s" % [
+            str(forge_spec.get("name","")),
+            ThreatRules.stars(level_value).substr(0,3),
+            str(forge_spec.get("desc",""))
+        ]
+        forge_copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        forge_copy.add_theme_font_size_override("font_size",9)
+        forge_copy.add_theme_color_override("font_color",VisualSystem.TEXT_SOFT)
+
+        var forge_buy := _button(forge_row,"МАКС." if level_value >= 3 else "%d ОСК." % GameState.relic_forge_cost(forge_id),false)
+        forge_buy.custom_minimum_size = Vector2(92,44)
+        forge_buy.disabled = level_value >= 3 or int(GameState.data.get("shards",0)) < GameState.relic_forge_cost(forge_id)
+        forge_buy.pressed.connect(_buy_relic_forge.bind(forge_id))
+
     _section("Подготовка Странника", "Обычные улучшения остаются полезными, но теперь конкурируют с чертежами за монеты.")
 
     var specs: Array[Dictionary] = [
@@ -1036,6 +1167,11 @@ func _show_forge() -> void:
         var buy := _button(row, "%d МОН." % GameState.upgrade_cost(kind), false)
         buy.custom_minimum_size = Vector2(112, 48)
         buy.pressed.connect(_buy_upgrade.bind(kind))
+
+func _buy_relic_forge(kind: String) -> void:
+    if GameState.buy_relic_forge(kind):
+        Feedback.play("level",12)
+    _show_forge()
 
 func _buy_building_project(build_type: String) -> void:
     if GameState.buy_building_project(build_type):
@@ -1071,6 +1207,8 @@ func _on_camp_action(action: String) -> void:
 func _select_biome_from_map(index: int) -> void:
     selected_biome = index
     GameState.data["selected_biome"] = index
+    var max_threat: int = GameState.threat_unlocked_level(index)
+    GameState.data["selected_threat"] = mini(int(GameState.data.get("selected_threat",1)), max_threat)
     GameState.save()
     Feedback.play("level", 8)
     Analytics.event("camp_biome_selected", {"biome": index})

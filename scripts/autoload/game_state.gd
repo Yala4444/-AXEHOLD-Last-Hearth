@@ -1,7 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://axehold_save.json"
-const SAVE_VERSION := 12
+const SAVE_VERSION := 13
 
 var data: Dictionary = {}
 
@@ -64,6 +64,25 @@ func defaults() -> Dictionary:
             "completed":0,
             "failed":0,
             "perfect":0
+        },
+        "threat_unlocked": [1,1,1],
+        "threat_clears": [
+            [false,false,false,false,false],
+            [false,false,false,false,false],
+            [false,false,false,false,false]
+        ],
+        "selected_threat": 1,
+        "run_mode": "expedition",
+        "endless_stats": {
+            "runs":0,
+            "best_wave":0,
+            "best_kills":0,
+            "best_coins":0
+        },
+        "relic_forge": {
+            "power":0,
+            "ward":0,
+            "fortune":0
         },
         "skins_owned": [true, false, false, false],
         "selected_skin": 0,
@@ -178,6 +197,25 @@ func _migrate_save() -> void:
             "failed":0,
             "perfect":0
         }
+    if version < 13:
+        var mastery_backfill: Array = data.get("biome_mastery", [0,0,0])
+        var unlocked: Array = [1,1,1]
+        var clears: Array = [
+            [false,false,false,false,false],
+            [false,false,false,false,false],
+            [false,false,false,false,false]
+        ]
+        for biome_index: int in range(3):
+            var mastery_level: int = int(mastery_backfill[biome_index]) if biome_index < mastery_backfill.size() else 0
+            unlocked[biome_index] = clampi(mastery_level + 1, 1, ThreatRules.MAX_LEVEL)
+            for level_index: int in range(mini(mastery_level, ThreatRules.MAX_LEVEL)):
+                clears[biome_index][level_index] = true
+        data["threat_unlocked"] = unlocked
+        data["threat_clears"] = clears
+        data["selected_threat"] = 1
+        data["run_mode"] = "expedition"
+        data["endless_stats"] = {"runs":0,"best_wave":0,"best_kills":0,"best_coins":0}
+        data["relic_forge"] = {"power":0,"ward":0,"fortune":0}
     data["save_version"] = SAVE_VERSION
     save()
 
@@ -436,6 +474,118 @@ func biome_event_stats(index: int = -1) -> Dictionary:
     var stats: Dictionary = all_stats.get(biome_id, {"events":0,"perfect":0,"hunts":0})
     return stats.duplicate(true)
 
+func threat_unlocked_level(biome_index: int) -> int:
+    var values: Array = data.get("threat_unlocked", [1,1,1])
+    if biome_index < 0 or biome_index >= values.size():
+        return 1
+    return clampi(int(values[biome_index]), 1, ThreatRules.MAX_LEVEL)
+
+func selected_threat() -> int:
+    return clampi(int(data.get("selected_threat", 1)), 1, threat_unlocked_level(int(data.get("selected_biome", 0))))
+
+func select_threat(level: int) -> bool:
+    var biome_index: int = clampi(int(data.get("selected_biome", 0)), 0, 2)
+    var unlocked: int = threat_unlocked_level(biome_index)
+    if level < 1 or level > unlocked:
+        return false
+    data["selected_threat"] = level
+    save()
+    Analytics.event("threat_selected", {"biome":biome_index,"level":level})
+    return true
+
+func threat_clear_done(biome_index: int, level: int) -> bool:
+    var all_clears: Array = data.get("threat_clears", [])
+    if biome_index < 0 or biome_index >= all_clears.size():
+        return false
+    var row: Array = all_clears[biome_index]
+    var idx: int = clampi(level,1,ThreatRules.MAX_LEVEL)-1
+    return idx < row.size() and bool(row[idx])
+
+func record_threat_clear(biome_index: int, level: int) -> Dictionary:
+    biome_index = clampi(biome_index,0,2)
+    level = clampi(level,1,ThreatRules.MAX_LEVEL)
+    var all_clears: Array = data.get("threat_clears", [])
+    while all_clears.size() < 3:
+        all_clears.append([false,false,false,false,false])
+    var row: Array = all_clears[biome_index]
+    while row.size() < ThreatRules.MAX_LEVEL:
+        row.append(false)
+
+    var first: bool = not bool(row[level-1])
+    row[level-1] = true
+    all_clears[biome_index] = row
+    data["threat_clears"] = all_clears
+
+    var unlocked: Array = data.get("threat_unlocked", [1,1,1])
+    while unlocked.size() < 3:
+        unlocked.append(1)
+    if level < ThreatRules.MAX_LEVEL:
+        unlocked[biome_index] = maxi(int(unlocked[biome_index]), level + 1)
+    else:
+        unlocked[biome_index] = ThreatRules.MAX_LEVEL
+    data["threat_unlocked"] = unlocked
+
+    var bonus: Dictionary = ThreatRules.first_clear_reward(level) if first else {"coins":0,"shards":0}
+    if first:
+        _push_meta_notice("Угроза %d покорена: %s" % [level, str(ThreatRules.spec(level).get("name",""))])
+        Analytics.event("threat_first_clear", {"biome":biome_index,"level":level})
+    save()
+    return {"first":first,"coins":int(bonus.get("coins",0)),"shards":int(bonus.get("shards",0))}
+
+func endless_unlocked() -> bool:
+    return relic_count() >= 3 or total_mastery() >= 3
+
+func record_endless_run(wave_value: int, kill_count: int, coin_value: int) -> Dictionary:
+    var stats: Dictionary = data.get("endless_stats", {"runs":0,"best_wave":0,"best_kills":0,"best_coins":0})
+    var old_best: int = int(stats.get("best_wave",0))
+    stats["runs"] = int(stats.get("runs",0)) + 1
+    stats["best_wave"] = maxi(old_best, wave_value)
+    stats["best_kills"] = maxi(int(stats.get("best_kills",0)), kill_count)
+    stats["best_coins"] = maxi(int(stats.get("best_coins",0)), coin_value)
+    data["endless_stats"] = stats
+    if wave_value > old_best:
+        _push_meta_notice("Новый рекорд Последнего рубежа: ночь %d." % wave_value)
+    save()
+    return {"new_record":wave_value > old_best,"best_wave":int(stats.get("best_wave",0))}
+
+func relic_forge_level(kind: String) -> int:
+    var forge: Dictionary = data.get("relic_forge", {"power":0,"ward":0,"fortune":0})
+    return clampi(int(forge.get(kind,0)),0,3)
+
+func relic_forge_cost(kind: String) -> int:
+    var level: int = relic_forge_level(kind)
+    if level >= 3:
+        return 999
+    return [1,2,3][level]
+
+func buy_relic_forge(kind: String) -> bool:
+    if not ["power","ward","fortune"].has(kind):
+        return false
+    var level: int = relic_forge_level(kind)
+    if level >= 3:
+        return false
+    var cost: int = relic_forge_cost(kind)
+    if int(data.get("shards",0)) < cost:
+        return false
+    data["shards"] = int(data.get("shards",0)) - cost
+    var forge: Dictionary = data.get("relic_forge", {})
+    forge[kind] = level + 1
+    data["relic_forge"] = forge
+    _push_meta_notice("Реликтовая кузня усилена: %s III" % kind.to_upper() if level + 1 >= 3 else "Реликтовая кузня усилена: %s %d" % [kind.to_upper(),level+1])
+    save()
+    Analytics.event("relic_forge_up", {"kind":kind,"level":level+1,"cost":cost})
+    return true
+
+func relic_forge_bonuses() -> Dictionary:
+    var power: int = relic_forge_level("power")
+    var ward: int = relic_forge_level("ward")
+    var fortune: int = relic_forge_level("fortune")
+    return {
+        "damage_mult":1.0 + float(power)*0.05,
+        "hp_bonus":float(ward)*12.0,
+        "coin_mult":1.0 + float(fortune)*0.10
+    }
+
 func add_coins(amount: int) -> void:
     data["coins"] = int(data.get("coins", 0)) + amount
     save()
@@ -662,48 +812,105 @@ func _push_meta_notice(text: String) -> void:
     notices.append(text)
     data["meta_notices"] = notices
 
-func _award_biome_progress(biome: int) -> void:
-    if biome < 0 or biome >= 3:
-        return
-    var mastery: Array = data.get("biome_mastery", [0, 0, 0])
-    var relics: Array = data.get("boss_relics", [false, false, false])
+func _unlock_first_biome_reward(biome: int) -> void:
+    var relics: Array = data.get("boss_relics", [false,false,false])
     var owned: Array = data.get("weapons_owned", ["axes"])
-    mastery[biome] = int(mastery[biome]) + 1
-    var mastery_level: int = int(mastery[biome])
+    if bool(relics[biome]):
+        return
 
-    if not bool(relics[biome]):
-        relics[biome] = true
-        var weapon_id: String = WeaponRules.unlock_for_biome(biome)
-        if not weapon_id.is_empty() and not owned.has(weapon_id):
-            owned.append(weapon_id)
-            var profile: Dictionary = WeaponRules.profile(weapon_id)
-            _push_meta_notice("🏆 %s добыта. Открыто оружие: %s %s" % [WeaponRules.relic_name(biome), str(profile.get("icon", "⚔️")), str(profile.get("name", weapon_id))])
-        else:
-            _push_meta_notice("🏆 Получена реликвия: %s" % WeaponRules.relic_name(biome))
+    relics[biome] = true
+    var weapon_id: String = WeaponRules.unlock_for_biome(biome)
+    if not weapon_id.is_empty() and not owned.has(weapon_id):
+        owned.append(weapon_id)
+        var profile: Dictionary = WeaponRules.profile(weapon_id)
+        _push_meta_notice("%s добыта. Открыто оружие: %s" % [
+            WeaponRules.relic_name(biome),
+            str(profile.get("name", weapon_id))
+        ])
+    else:
+        _push_meta_notice("Получена реликвия: %s" % WeaponRules.relic_name(biome))
 
-    if mastery_level == 3:
-        data["shards"] = int(data.get("shards", 0)) + 1
-        _push_meta_notice("⭐ Мастерство биома III: +1 🔥")
-    elif mastery_level == 5:
-        data["shards"] = int(data.get("shards", 0)) + 2
-        _push_meta_notice("⭐ Мастерство биома V: +2 🔥")
-
-    data["biome_mastery"] = mastery
     data["boss_relics"] = relics
     data["weapons_owned"] = owned
 
-func register_run(wave: int, won: bool, biome: int, kills: int, builds: int, trees: int) -> void:
+func _sync_threat_from_legacy_mastery(biome: int, mastery_level: int) -> void:
+    var safe_level: int = clampi(mastery_level, 0, ThreatRules.MAX_LEVEL)
+    var all_clears: Array = data.get("threat_clears", [
+        [false,false,false,false,false],
+        [false,false,false,false,false],
+        [false,false,false,false,false]
+    ])
+    while all_clears.size() < 3:
+        all_clears.append([false,false,false,false,false])
+
+    var row: Array = all_clears[biome]
+    while row.size() < ThreatRules.MAX_LEVEL:
+        row.append(false)
+    for i: int in range(safe_level):
+        row[i] = true
+    all_clears[biome] = row
+    data["threat_clears"] = all_clears
+
+    var unlocked: Array = data.get("threat_unlocked", [1,1,1])
+    while unlocked.size() < 3:
+        unlocked.append(1)
+    unlocked[biome] = clampi(maxi(int(unlocked[biome]), safe_level + 1), 1, ThreatRules.MAX_LEVEL)
+    data["threat_unlocked"] = unlocked
+
+func _award_legacy_biome_progress(biome: int) -> Dictionary:
+    if biome < 0 or biome >= 3:
+        return {"first":false,"coins":0,"shards":0}
+
+    var mastery: Array = data.get("biome_mastery", [0,0,0])
+    var old_level: int = int(mastery[biome])
+    var new_level: int = mini(ThreatRules.MAX_LEVEL, old_level + 1)
+    mastery[biome] = new_level
+    data["biome_mastery"] = mastery
+    _unlock_first_biome_reward(biome)
+    _sync_threat_from_legacy_mastery(biome, new_level)
+
+    # Compatibility for the pre-v1.16 mastery model. Real v1.16 gameplay passes
+    # an explicit Threat level and therefore never uses this path.
+    if new_level == 3 and old_level < 3:
+        data["shards"] = int(data.get("shards",0)) + 1
+        _push_meta_notice("Мастерство биома III: +1 осколок.")
+    elif new_level == 5 and old_level < 5:
+        data["shards"] = int(data.get("shards",0)) + 2
+        _push_meta_notice("Мастерство биома V: +2 осколка.")
+
+    return {"first":new_level > old_level,"coins":0,"shards":0}
+
+func _award_biome_progress(biome: int, threat_level: int) -> Dictionary:
+    if biome < 0 or biome >= 3:
+        return {"first":false,"coins":0,"shards":0}
+
+    var mastery: Array = data.get("biome_mastery", [0,0,0])
+    var old_mastery: int = int(mastery[biome])
+    mastery[biome] = maxi(old_mastery, clampi(threat_level,1,ThreatRules.MAX_LEVEL))
+    data["biome_mastery"] = mastery
+    _unlock_first_biome_reward(biome)
+    return record_threat_clear(biome, threat_level)
+
+func register_run(wave: int, won: bool, biome: int, kills: int, builds: int, trees: int, threat_level: int = 0, run_mode: String = "expedition", run_coins_value: int = 0) -> Dictionary:
     data["runs"] = int(data["runs"]) + 1
     _register_weapon_run(won, kills)
     data["best_wave"] = max(int(data["best_wave"]), wave)
     data["stats"]["kills"] = int(data["stats"]["kills"]) + kills
     data["stats"]["builds"] = int(data["stats"]["builds"]) + builds
     data["stats"]["trees"] = int(data["stats"]["trees"]) + trees
-    if won:
+
+    var progress_reward: Dictionary = {"first":false,"coins":0,"shards":0}
+    if run_mode == "endless":
+        progress_reward = record_endless_run(wave, kills, run_coins_value)
+    elif won:
         data["wins"] = int(data["wins"]) + 1
         var wins: Array = data["biome_wins"]
         if biome >= 0 and biome < wins.size():
             wins[biome] = int(wins[biome]) + 1
             data["biome_wins"] = wins
-            _award_biome_progress(biome)
+            if threat_level <= 0:
+                progress_reward = _award_legacy_biome_progress(biome)
+            else:
+                progress_reward = _award_biome_progress(biome, threat_level)
     save()
+    return progress_reward

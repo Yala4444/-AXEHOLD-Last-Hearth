@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.16.0-alpha.1 — Threat & Endless Progression
+- Added five selectable Threat levels to each Chapter-I biome with sequential unlocks.
+- Added one-time first-clear rewards and increasing run multipliers for Threat I–V.
+- High Threat now increases enemy HP/damage/speed, shortens preparation and reduces passive Tower dominance.
+- Added the Relic Forge: Guardian Shards can permanently improve global damage, maximum HP or coin earnings.
+- Added Last Stand, an Endless mode that continues beyond Night 3 and tracks personal records.
+- Endless mode scales enemies, spawn pressure and rewards with every night.
+- Every fifth Endless night now contains a Guardian checkpoint.
+- Guardian checkpoints offer a run chest with three choices, an optional cash-out, and an optional rewarded-ad chest upgrade.
+- Added visible roguelite relics: Fire Orb, Frost Circle, Thorn Ring and Guardian Spirit.
+- Added persistent Endless records for best wave, kills and coins.
+- Standard result screens now show Threat and first-clear progression; Endless results surface new records.
+- Added 0.52-second post-hit damage grace to prevent unreadable same-frame burst deaths.
+- Moved caravan attackers farther from the event center and added an explicit high-danger approach warning.
+- Added Threat-clear and Endless daily task types.
+- Added v1.16 regression coverage while preserving legacy mastery regression behavior.
+- Save version bumped to 13.
+- Bumped Android/iOS metadata to 1.16.0-alpha.1 / build 30.
+
 ## 1.15.0-alpha.1 — Living Expedition
 - Added timed Field Objectives at the start of daytime phases.
 - Added Survey Point: reach and hold a temporary reconnaissance marker.

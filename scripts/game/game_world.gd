@@ -12,6 +12,12 @@ const BuildPadScene: PackedScene = preload("res://scenes/build_pad.tscn")
 
 var biome_index: int = 0
 var biome: Dictionary = {}
+var threat_level: int = 1
+var run_mode: String = "expedition"
+var endless_checkpoint_wave: int = 0
+var endless_chest_boosted: bool = false
+var relic_thorn_timer: float = 2.5
+var relic_spirit_timer: float = 18.0
 var player: AxPlayer
 var hud: GameHud
 var core_fx: CoreFX
@@ -81,8 +87,10 @@ var weapon_combo: int = 0
 var weapon_combo_timeout: float = 0.0
 var weapon_last_hit_count: int = 0
 
-func configure(index: int) -> void:
+func configure(index: int, selected_threat: int = 1, mode: String = "expedition") -> void:
     biome_index = index
+    threat_level = clampi(selected_threat, 1, ThreatRules.MAX_LEVEL)
+    run_mode = mode if mode in ["expedition","endless"] else "expedition"
 
 func _ready() -> void:
     core_fx = CoreFX.new()
@@ -120,7 +128,8 @@ func _start_run() -> void:
     add_child(run_variation)
     run_variation.setup(self)
 
-    phase_max = GameRules.day_duration(0)
+    var threat_spec: Dictionary = ThreatRules.spec(threat_level)
+    phase_max = GameRules.day_duration(0) * float(threat_spec.get("day",1.0))
     phase_time = phase_max
 
     player = PlayerScene.instantiate() as AxPlayer
@@ -129,10 +138,15 @@ func _start_run() -> void:
     var upgrades: Dictionary = GameState.data["upgrades"]
     var skin_index: int = int(GameState.data.get("selected_skin", 0))
     player.setup(upgrades, GameRules.skin(skin_index))
+    var relic_bonuses: Dictionary = GameState.relic_forge_bonuses()
+    player.damage *= float(relic_bonuses.get("damage_mult",1.0))
+    player.max_hp += float(relic_bonuses.get("hp_bonus",0.0))
+    player.hp = player.max_hp
     var resident_bonuses: Dictionary = GameState.expedition_resident_bonuses()
     player.move_speed *= float(resident_bonuses.get("move_mult", 1.0))
     storage["parts"] = int(storage.get("parts", 0)) + int(resident_bonuses.get("starting_parts", 0))
     turret_global_damage_mult *= float(resident_bonuses.get("tower_damage_mult", 1.0))
+    turret_global_damage_mult *= float(ThreatRules.spec(threat_level).get("tower",1.0))
     player.set_world_bounds(world_rect.grow(-34.0))
     player.set_home_target(base_position)
     _setup_camera()
@@ -161,8 +175,12 @@ func _start_run() -> void:
     for _i in range(initial_ore):
         _spawn_resource("ore")
 
-    Analytics.event("run_start", {"biome": biome_index, "weapon": player.weapon_id})
-    hud.show_banner(str(biome["name"]).to_upper())
+    Analytics.event("run_start", {"biome":biome_index,"weapon":player.weapon_id,"threat":threat_level,"mode":run_mode})
+    if run_mode == "endless":
+        hud.show_banner("ПОСЛЕДНИЙ РУБЕЖ · " + str(biome["name"]).to_upper(), Color("e3b56a"))
+        hud.set_run_objective("БЕСКОНЕЧНЫЙ РЕЖИМ · рекорд %d" % int((GameState.data.get("endless_stats",{}) as Dictionary).get("best_wave",0)))
+    else:
+        hud.show_banner("%s · УГРОЗА %d" % [str(biome["name"]).to_upper(), threat_level])
     var resident_part_bonus: int = int(storage.get("parts", 0))
     if resident_part_bonus > 0:
         hud.set_status("Торн подготовил %d дет. · собирай добычу и возвращайся к Очагу." % resident_part_bonus)
@@ -259,6 +277,7 @@ func _process(delta: float) -> void:
     _deposit_and_build(delta)
     _maintain_resources()
     _update_building_passives(delta)
+    _update_relic_perks(delta)
     _update_camera_lookahead(delta)
     _update_world_fill(delta)
     var bag_ratio: float = float(player.inventory_total()) / float(maxi(1, player.capacity))
@@ -634,7 +653,10 @@ func _start_night() -> void:
     if run_variation != null:
         run_variation.prepare_night(wave)
         base_spawn_count = run_variation.modify_spawn_count(base_spawn_count)
-    spawn_left = base_spawn_count
+    base_spawn_count = int(round(float(base_spawn_count) * float(ThreatRules.spec(threat_level).get("spawn",1.0))))
+    if run_mode == "endless":
+        base_spawn_count = int(round(float(base_spawn_count) * ThreatRules.endless_spawn_multiplier(wave)))
+    spawn_left = maxi(1, base_spawn_count)
 
     if activity_director != null:
         var nest_extra: int = activity_director.night_extra_enemies()
@@ -663,7 +685,9 @@ func _start_day() -> void:
     phase = "day"
     if backdrop != null:
         backdrop.set_night(false)
-    phase_max = GameRules.day_duration(wave)
+    phase_max = GameRules.day_duration(wave) * float(ThreatRules.spec(threat_level).get("day",1.0))
+    if run_mode == "endless":
+        phase_max *= maxf(0.72, 1.0 - float(maxi(0,wave-1))*0.015)
     phase_time = phase_max
     player.heal(18.0 + (10.0 * shrine_regen_multiplier if bool(built["shrine"]) else 0.0))
     if shrine_ward_active:
@@ -685,10 +709,13 @@ func _spawn_enemy(is_boss: bool = false, forced_kind: String = "") -> void:
     enemy.configure(kind, float(biome["difficulty"]), wave, Color(str(biome["enemy"])), is_boss, biome_index)
     if run_variation != null:
         run_variation.tune_enemy(enemy)
+    _apply_threat_to_enemy(enemy, is_boss)
     if biome_events != null:
         biome_events.apply_enemy_behavior(enemy)
     if is_boss:
-        enemy.max_hp *= 1.0 + biome_index * 0.28
+        enemy.max_hp *= (1.0 + biome_index * 0.28) * float(ThreatRules.spec(threat_level).get("boss_hp",1.0))
+        if run_mode == "endless":
+            enemy.max_hp *= 1.0 + floor(float(wave)/5.0)*0.22
         enemy.hp = enemy.max_hp
         boss_ref = enemy
         hud.show_banner(str(biome.get("boss_name", "ХРАНИТЕЛЬ")).to_upper(), Color("ffb66a"))
@@ -706,6 +733,7 @@ func spawn_event_enemy(kind: String, position: Vector2, elite_trait: String = ""
     position.y = clampf(position.y, safe_rect.position.y, safe_rect.end.y)
     enemy.global_position = position
     enemy.configure(kind, float(biome["difficulty"]) * (1.0 + float(wave) * 0.06), wave, Color(str(biome["enemy"])), false, biome_index)
+    _apply_threat_to_enemy(enemy, false)
     if not elite_trait.is_empty():
         enemy.configure_elite(elite_trait)
     if biome_events != null:
@@ -766,7 +794,8 @@ func _update_night(delta: float) -> void:
         spawn_timer = maxf(0.42, (1.55 - wave * 0.12) * interval_mult)
         _spawn_enemy()
         spawn_left -= 1
-    if wave == 3 and not boss_spawned and spawn_left <= 3:
+    var should_spawn_boss: bool = (run_mode == "endless" and ThreatRules.endless_is_boss_wave(wave)) or (run_mode != "endless" and wave == 3)
+    if should_spawn_boss and not boss_spawned and spawn_left <= 3:
         boss_spawned = true
         _spawn_enemy(true)
 
@@ -833,7 +862,12 @@ func _update_night(delta: float) -> void:
     if spawn_left == 0 and enemies.is_empty() and not objective_blocks_end:
         if run_variation != null:
             run_variation.on_night_completed(wave)
-        if wave >= 3:
+        if run_mode == "endless":
+            if ThreatRules.endless_is_boss_wave(wave):
+                _show_endless_checkpoint()
+            else:
+                _start_day()
+        elif wave >= 3:
             _finish_run(true)
         else:
             _start_day()
@@ -1153,11 +1187,112 @@ func _on_enemy_killed(enemy: AxEnemy) -> void:
         add_mechanism_parts(1, enemy.global_position)
     if enemy.boss:
         add_mechanism_parts(2, enemy.global_position)
-        run_shards = int(biome["reward"])
+        if run_mode == "endless":
+            run_shards += 1
+        else:
+            run_shards = int(biome["reward"])
         boss_ref = null
         hud.hide_boss()
     enemy_defeated.emit(enemy)
     enemy.queue_free()
+
+func _apply_threat_to_enemy(enemy: AxEnemy, is_boss: bool) -> void:
+    if enemy == null or not is_instance_valid(enemy):
+        return
+    var spec: Dictionary = ThreatRules.spec(threat_level)
+    enemy.max_hp *= float(spec.get("enemy_hp",1.0))
+    enemy.hp = enemy.max_hp
+    enemy.contact_damage *= float(spec.get("enemy_damage",1.0))
+    enemy.move_speed *= float(spec.get("enemy_speed",1.0))
+
+    if run_mode == "endless":
+        enemy.max_hp *= ThreatRules.endless_enemy_hp(wave)
+        enemy.hp = enemy.max_hp
+        enemy.contact_damage *= ThreatRules.endless_enemy_damage(wave)
+        enemy.move_speed *= ThreatRules.endless_enemy_speed(wave)
+
+    if not is_boss and threat_level >= 3 and not enemy.elite and randf() < 0.055 * float(threat_level - 2):
+        var traits: Array[String] = ["swift","armored","vampiric"]
+        enemy.configure_elite(traits[randi() % traits.size()])
+
+func _update_relic_perks(delta: float) -> void:
+    if player == null:
+        return
+
+    if player.fire_orb_level > 0:
+        var fire_radius: float = 58.0 + float(player.fire_orb_level) * 5.0
+        for enemy: AxEnemy in enemies:
+            if is_instance_valid(enemy) and not enemy.dying and player.global_position.distance_to(enemy.global_position) <= fire_radius:
+                enemy.take_damage(player.damage * delta * (0.10 + 0.05 * float(player.fire_orb_level)))
+
+    if player.frost_aura_level > 0:
+        var frost_radius: float = 66.0 + float(player.frost_aura_level) * 8.0
+        for enemy: AxEnemy in enemies:
+            if is_instance_valid(enemy) and not enemy.dying:
+                if player.global_position.distance_to(enemy.global_position) <= frost_radius:
+                    enemy.behavior_speed_multiplier = minf(enemy.behavior_speed_multiplier, 0.80 - 0.07 * float(player.frost_aura_level - 1))
+                else:
+                    enemy.behavior_speed_multiplier = move_toward(enemy.behavior_speed_multiplier, 1.0, delta * 1.8)
+
+    if player.thorn_ring_level > 0:
+        relic_thorn_timer -= delta
+        if relic_thorn_timer <= 0.0:
+            relic_thorn_timer = maxf(2.4, 4.2 - float(player.thorn_ring_level) * 0.45)
+            var radius: float = 92.0 + float(player.thorn_ring_level) * 8.0
+            for enemy: AxEnemy in enemies.duplicate():
+                if is_instance_valid(enemy) and not enemy.dying and player.global_position.distance_to(enemy.global_position) <= radius:
+                    enemy.take_damage(player.damage * (0.65 + 0.22 * float(player.thorn_ring_level)))
+                    if core_fx != null:
+                        core_fx.enemy_hit(enemy.global_position, false)
+            trigger_camera_shake(1.2,0.08)
+
+    if player.guardian_spirit_level > 0:
+        relic_spirit_timer -= delta
+        if relic_spirit_timer <= 0.0:
+            relic_spirit_timer = maxf(11.0, 22.0 - float(player.guardian_spirit_level) * 3.0)
+            player.shield_hits = mini(5, player.shield_hits + 1)
+            hud.set_status("Дух Хранителя восстановил защитный заряд.")
+
+func _endless_relic_choices(boosted: bool) -> Array[String]:
+    var relics: Array[String] = ["fire_orb","frost_aura","thorn_ring","guardian_spirit"]
+    relics.shuffle()
+    if boosted:
+        return relics.slice(0,3)
+
+    var pool: Array[String] = ["damage","crit","speed","hp","shield","orbit","fire_orb","frost_aura","thorn_ring","guardian_spirit"]
+    pool.shuffle()
+    var choices: Array[String] = []
+    for id: String in pool:
+        if not choices.has(id):
+            choices.append(id)
+        if choices.size() >= 3:
+            break
+    return choices
+
+func _show_endless_checkpoint(boosted: bool = false) -> void:
+    endless_checkpoint_wave = wave
+    endless_chest_boosted = boosted
+    var buttons: Array = []
+    for perk_id: String in _endless_relic_choices(boosted):
+        var spec: Dictionary = {}
+        for perk_variant: Variant in GameRules.PERKS:
+            var perk: Dictionary = perk_variant
+            if str(perk.get("id","")) == perk_id:
+                spec = perk
+                break
+        buttons.append({
+            "text":"%s\n%s" % [str(spec.get("name",perk_id)),str(spec.get("desc",""))],
+            "action":"endless_relic:" + perk_id
+        })
+
+    if not boosted:
+        buttons.append({"text":"УЛУЧШИТЬ СУНДУК · РЕКЛАМА","action":"endless_chest_ad"})
+    buttons.append({"text":"ЗАБРАТЬ НАГРАДУ И ВЕРНУТЬСЯ","action":"endless_cashout"})
+    hud.show_modal("", "СУНДУК НОЧИ %d" % wave, "Хранитель пал. Выбери силу и продолжай или зафиксируй рекорд.", buttons)
+
+func _on_endless_chest_ad(_placement: String) -> void:
+    hud.hide_modal()
+    _show_endless_checkpoint(true)
 
 func _show_perks(level: int) -> void:
     var buttons: Array = []
@@ -1196,18 +1331,32 @@ func _finish_run(won: bool) -> void:
     if run_variation != null:
         run_variation.on_run_finished(won)
     var unused_parts: int = int(storage.get("parts", 0))
-    var reward: int = 22 + wave * 15 + run_coins + builds * 4 + unused_parts * 8
-    GameState.register_run(wave, won, biome_index, kills, builds, trees_cut)
-    if won:
-        QuestDirector.record("run_win", 1, {"biome":biome_index, "wave":wave})
-    Analytics.event("run_end", {"won": won, "wave": wave, "biome": biome_index, "kills": kills, "parts_unused":unused_parts, "weapon":player.weapon_id})
-    var earned_shards: int = run_shards if won else 0
+    var base_reward: int = 22 + wave * 15 + run_coins + builds * 4 + unused_parts * 8
+    var reward_mult: float = ThreatRules.reward_multiplier(threat_level)
+    if run_mode == "endless":
+        reward_mult *= ThreatRules.endless_reward_multiplier(wave)
+    reward_mult *= float(GameState.relic_forge_bonuses().get("coin_mult",1.0))
+    var reward: int = int(round(float(base_reward) * reward_mult))
+    var progress_reward: Dictionary = GameState.register_run(wave, won, biome_index, kills, builds, trees_cut, threat_level, run_mode, reward)
+    if run_mode != "endless" and won:
+        reward += int(progress_reward.get("coins",0))
+        run_shards += int(progress_reward.get("shards",0))
+        QuestDirector.record("run_win", 1, {"biome":biome_index, "wave":wave,"threat":threat_level})
+        QuestDirector.record("threat_clear",1,{"biome":biome_index,"threat":threat_level})
+    elif run_mode == "endless":
+        QuestDirector.record("endless_wave",wave,{"biome":biome_index})
+    Analytics.event("run_end", {"won":won,"wave":wave,"biome":biome_index,"kills":kills,"parts_unused":unused_parts,"weapon":player.weapon_id,"threat":threat_level,"mode":run_mode})
+    var earned_shards: int = run_shards if (won or run_mode == "endless") else 0
     run_finished.emit({
         "won": won,
         "biome": biome_index,
         "wave": wave,
         "coins": reward,
         "shards": earned_shards,
+        "run_mode":run_mode,
+        "threat":threat_level,
+        "first_clear":bool(progress_reward.get("first",false)),
+        "new_record":bool(progress_reward.get("new_record",false)),
         "kills": kills,
         "parts_unused": unused_parts,
         "parts_bonus": unused_parts * 8,
@@ -1262,6 +1411,18 @@ func _on_hud_action(action: String) -> void:
     elif action == "revive":
         AdService.rewarded_completed.connect(_on_revive_ad, CONNECT_ONE_SHOT)
         AdService.show_rewarded("revive")
+    elif action == "endless_cashout":
+        hud.hide_modal()
+        _finish_run(true)
+    elif action == "endless_chest_ad":
+        AdService.rewarded_completed.connect(_on_endless_chest_ad, CONNECT_ONE_SHOT)
+        AdService.show_rewarded("endless_chest")
+    elif action.begins_with("endless_relic:"):
+        var relic_id: String = action.trim_prefix("endless_relic:")
+        player.apply_perk(relic_id)
+        hud.hide_modal()
+        endless_chest_boosted = false
+        _start_day()
     elif action == "build_upgrade:cancel":
         if pending_upgrade_pad != null and is_instance_valid(pending_upgrade_pad):
             pending_upgrade_pad.reset_upgrade()

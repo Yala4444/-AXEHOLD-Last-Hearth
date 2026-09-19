@@ -30,7 +30,9 @@ const DAILY_POOL: Array[Dictionary] = [
     {"id":"region_master","category":"biome","event":"biome_event","title":"УСМИРИТЬ РЕГИОН","desc":"Переживи 2 региональных события.","goal":2,"reward_type":"coins","reward":70},
     {"id":"regional_hunter","category":"combat","event":"regional_hunt","title":"ОХОТА НА ВОЖАКА","desc":"Уничтожь региональную редкую цель.","goal":1,"reward_type":"coins","reward":82},
     {"id":"field_runner","category":"explore","event":"field_objective","title":"ПО МЕТКАМ РАЗВЕДКИ","desc":"Выполни 3 полевые цели.","goal":3,"reward_type":"coins","reward":66},
-    {"id":"clean_field","category":"risk","event":"field_objective_perfect","title":"БЕЗ ПРОМЕДЛЕНИЯ","desc":"Заверши полевую цель с большим запасом времени.","goal":1,"reward_type":"coins","reward":58}
+    {"id":"clean_field","category":"risk","event":"field_objective_perfect","title":"БЕЗ ПРОМЕДЛЕНИЯ","desc":"Заверши полевую цель с большим запасом времени.","goal":1,"reward_type":"coins","reward":58},
+    {"id":"threat_climber","category":"mastery","event":"threat_clear","title":"ВЫШЕ ВО ТЬМУ","desc":"Пройди уровень Угрозы.","goal":1,"reward_type":"coins","reward":88},
+    {"id":"endless_five","category":"endless","event":"endless_wave","title":"ПОСЛЕДНИЙ РУБЕЖ","desc":"Доберись минимум до 5-й ночи бесконечного режима.","goal":5,"reward_type":"shards","reward":1}
 ]
 
 static func spec(id: String) -> Dictionary:

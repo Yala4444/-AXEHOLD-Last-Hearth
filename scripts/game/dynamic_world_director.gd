@@ -115,11 +115,11 @@ func _start_event(event_type: String) -> void:
 
     match event_type:
         "caravan_defense":
-            _spawn_pack(point, event_id, ["normal", "runner", "brute"], "attack_anchor")
+            _spawn_pack(point, event_id, ["normal", "runner", "brute"], "attack_anchor", 78.0)
             if world.wave >= 1:
-                _spawn_elite(point + Vector2(46, -22), event_id, "brute", "armored", "attack_anchor")
+                _spawn_elite(point + Vector2(96, -34), event_id, "brute", "armored", "attack_anchor")
             world.hud.show_banner("КАРАВАН ПОД АТАКОЙ", Color("e0b86f"))
-            world.hud.set_status("Успей добраться до каравана и перебить нападающих.")
+            world.hud.set_status("ОПАСНОСТЬ: ВЫСОКАЯ · враги стоят кольцом вокруг каравана. Входи с края, не в центр.")
         "survivor_rescue":
             _spawn_pack(point, event_id, ["normal", "runner"], "attack_anchor")
             _spawn_elite(point + Vector2(42, 16), event_id, "runner", "ravenous", "attack_anchor")
@@ -144,10 +144,10 @@ func _start_event(event_type: String) -> void:
         "biome":world.biome_index
     })
 
-func _spawn_pack(point: Vector2, event_id: String, kinds: Array[String], behavior: String) -> void:
+func _spawn_pack(point: Vector2, event_id: String, kinds: Array[String], behavior: String, base_radius: float = 58.0) -> void:
     for i: int in range(kinds.size()):
         var angle: float = TAU * float(i) / float(maxi(1, kinds.size())) + 0.35
-        var pos: Vector2 = point + Vector2(cos(angle), sin(angle)) * (48.0 + float(i % 2) * 16.0)
+        var pos: Vector2 = point + Vector2(cos(angle), sin(angle)) * (base_radius + float(i % 2) * 18.0)
         var enemy: AxEnemy = world.spawn_event_enemy(kinds[i], pos, "", event_id, point, behavior)
         _track_enemy(enemy)
 

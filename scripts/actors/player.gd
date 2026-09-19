@@ -64,6 +64,11 @@ var kill_heal_amount: float = 0.0
 var field_target: Vector2 = Vector2.ZERO
 var field_hint_active: bool = false
 var field_hint_color: Color = Color("d5a652")
+var damage_grace_time: float = 0.0
+var fire_orb_level: int = 0
+var frost_aura_level: int = 0
+var thorn_ring_level: int = 0
+var guardian_spirit_level: int = 0
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -145,6 +150,7 @@ func _physics_process(delta: float) -> void:
     damage_flash = maxf(0.0, damage_flash - delta * 4.8)
     block_flash = maxf(0.0, block_flash - delta * 3.6)
     perk_flash = maxf(0.0, perk_flash - delta * 2.0)
+    damage_grace_time = maxf(0.0, damage_grace_time - delta)
     weapon_action_time = maxf(0.0, weapon_action_time - delta)
     environment_speed_time = maxf(0.0, environment_speed_time - delta)
     if environment_speed_time <= 0.0:
@@ -266,13 +272,17 @@ func clear_inventory() -> Dictionary:
     return result
 
 func take_damage(amount: float) -> void:
+    if damage_grace_time > 0.0:
+        return
     if shield_hits > 0:
+        damage_grace_time = 0.20
         shield_hits -= 1
         block_flash = 1.0
         Feedback.play("shield", 24)
         damaged.emit(0.0, true)
         queue_redraw()
         return
+    damage_grace_time = 0.52
     hp = maxf(0.0, hp - amount)
     damage_flash = 1.0
     Feedback.play("hit", 38)
@@ -338,6 +348,15 @@ func apply_perk(id: String) -> void:
         "hunter_rhythm":
             kill_heal_every = 10
             kill_heal_amount += 12.0
+        "fire_orb":
+            fire_orb_level = mini(3, fire_orb_level + 1)
+        "frost_aura":
+            frost_aura_level = mini(3, frost_aura_level + 1)
+        "thorn_ring":
+            thorn_ring_level = mini(3, thorn_ring_level + 1)
+        "guardian_spirit":
+            guardian_spirit_level = mini(3, guardian_spirit_level + 1)
+            shield_hits += 1
     perk_flash = 1.0
     queue_redraw()
 
@@ -355,6 +374,7 @@ func _draw() -> void:
 
     var shadow_scale: float = 1.0 + (0.08 if weapon_action_time > 0.0 else 0.0)
     _draw_shadow_ellipse(Vector2(0, 18), Vector2(14.5 * shadow_scale, 4.8), Color(0.025, 0.035, 0.03, 0.30))
+    _draw_relic_auras()
 
     var radius: float = orbit_radius + axes * 4.0
     if weapon_style == "axes" or weapon_style == "twin_blades":
@@ -579,6 +599,41 @@ func _draw_inventory_gauge() -> void:
                 field_anchor - field_dir * 3.0 + field_side * 4.0,
                 field_anchor - field_dir * 3.0 - field_side * 4.0
             ]), field_hint_color)
+
+func _draw_relic_auras() -> void:
+    if frost_aura_level > 0:
+        var frost_radius: float = 58.0 + float(frost_aura_level) * 7.0
+        draw_circle(Vector2.ZERO, frost_radius, Color(0.48,0.78,0.88,0.035 + float(frost_aura_level)*0.01))
+        draw_arc(Vector2.ZERO, frost_radius, 0.0, TAU, 32, Color(0.60,0.88,0.96,0.18), 1.5)
+
+    if thorn_ring_level > 0:
+        var thorn_radius: float = 50.0 + float(thorn_ring_level) * 6.0
+        for i: int in range(10):
+            var a: float = TAU*float(i)/10.0 + motion_time*0.18
+            var p := Vector2(cos(a),sin(a))*thorn_radius
+            var dir := p.normalized()
+            var side := Vector2(-dir.y,dir.x)
+            draw_colored_polygon(PackedVector2Array([
+                p + dir*5.0,
+                p - dir*3.0 + side*2.5,
+                p - dir*3.0 - side*2.5
+            ]),Color(0.47,0.72,0.40,0.60))
+
+    if fire_orb_level > 0:
+        var orb_count: int = fire_orb_level
+        for i: int in range(orb_count):
+            var a: float = -motion_time*2.2 + TAU*float(i)/float(maxi(1,orb_count))
+            var p := Vector2(cos(a),sin(a))*(48.0 + float(fire_orb_level)*4.0)
+            draw_circle(p,7.5,Color(0.95,0.36,0.12,0.10))
+            draw_circle(p,4.5,Color("e96b35"))
+            draw_circle(p+Vector2(0,-1),2.2,Color("ffd46f"))
+
+    if guardian_spirit_level > 0:
+        var a: float = motion_time*1.25
+        var p := Vector2(cos(a),sin(a))*36.0 + Vector2(0,-8)
+        draw_circle(p,6.0,Color(0.42,0.76,0.92,0.10))
+        draw_circle(p,3.2,Color("8fd5e8"))
+        draw_line(p, p + Vector2(0,-8), Color(0.74,0.93,1.0,0.42), 1.4)
 
 func _draw_weapon(pos: Vector2, weapon_angle: float) -> void:
     match weapon_style:
