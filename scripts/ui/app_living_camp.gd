@@ -201,6 +201,28 @@ func _show_home() -> void:
         notice.add_theme_font_size_override("font_size", 8)
         notice.add_theme_color_override("font_color", Color("cdb475"))
 
+    var preview := _panel(body)
+    preview.add_theme_stylebox_override("panel", VisualSystem.panel(Color("18231b"), Color("b89655"), 7, 9, 1))
+    var preview_box := VBoxContainer.new()
+    preview.add_child(preview_box)
+    preview_box.add_theme_constant_override("separation", 4)
+    var preview_title := Label.new()
+    preview_box.add_child(preview_title)
+    preview_title.text = "НОВЫЙ ОБЛИК · ВАРИАНТ A"
+    preview_title.add_theme_font_size_override("font_size", 11)
+    preview_title.add_theme_color_override("font_color", Color("edcd87"))
+    var preview_copy := Label.new()
+    preview_box.add_child(preview_copy)
+    preview_copy.text = "Тёплый живой мир: движение → рубка → сбор → доставка → постройка. Отдельный короткий фрагмент без риска для основной игры."
+    preview_copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    preview_copy.add_theme_font_size_override("font_size", 8)
+    preview_copy.add_theme_color_override("font_color", VisualSystem.TEXT_SOFT)
+    var preview_button := _button(preview_box, "ПОПРОБОВАТЬ НОВЫЙ СТИЛЬ", true)
+    preview_button.pressed.connect(_start_living_board_proof)
+
+func _start_living_board_proof() -> void:
+    get_tree().change_scene_to_file("res://scenes/living_board_proof.tscn")
+
 func _show_arsenal() -> void:
     _clear_body()
     _section("Арсенал", "Выбирай стиль боя, а не просто большее число.")
