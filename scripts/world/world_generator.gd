@@ -12,9 +12,26 @@ func setup(world_ref: GameWorld) -> void:
 
 func _create_clusters() -> void:
     clusters = {"tree": [], "rock": [], "ore": []}
-    _make_ring_clusters("tree", 9, 230.0, 760.0)
-    _make_ring_clusters("rock", 6, 470.0, 1050.0)
-    _make_ring_clusters("ore", 5, 760.0, 1450.0)
+    _make_ring_clusters("tree", 7, 185.0, 720.0)
+    _make_ring_clusters("rock", 5, 390.0, 980.0)
+    _make_ring_clusters("ore", 4, 650.0, 1360.0)
+
+    # The first route must teach itself without an arrow forest: one readable
+    # wood cluster sits near home, while stone and ore pull exploration outward.
+    var tree_points: Array = clusters["tree"]
+    if not tree_points.is_empty():
+        tree_points[0] = clamp_to_world(world.base_position + Vector2(178.0, 36.0), 70.0)
+    clusters["tree"] = tree_points
+
+    var rock_points: Array = clusters["rock"]
+    if not rock_points.is_empty():
+        rock_points[0] = clamp_to_world(world.base_position + Vector2(-365.0, 128.0), 70.0)
+    clusters["rock"] = rock_points
+
+    var ore_points: Array = clusters["ore"]
+    if not ore_points.is_empty():
+        ore_points[0] = clamp_to_world(world.base_position + Vector2(610.0, -165.0), 70.0)
+    clusters["ore"] = ore_points
 
 func _make_ring_clusters(kind: String, count: int, min_radius: float, max_radius: float) -> void:
     var points: Array = clusters[kind]
@@ -65,7 +82,7 @@ func clamp_to_world(point: Vector2, margin: float) -> Vector2:
 
 func _spawn_landmarks() -> void:
     var occupied: Array = []
-    var count: int = 30 if world.biome_index == 0 else 24
+    var count: int = 22 if world.biome_index == 0 else 20
     for i: int in range(count):
         var point: Vector2 = activity_point(250.0, minf(world.world_size.x, world.world_size.y) * 0.46, occupied)
         occupied.append(point)
