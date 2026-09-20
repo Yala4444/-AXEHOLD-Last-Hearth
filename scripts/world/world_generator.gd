@@ -65,7 +65,7 @@ func clamp_to_world(point: Vector2, margin: float) -> Vector2:
 
 func _spawn_landmarks() -> void:
     var occupied: Array = []
-    var count: int = 24
+    var count: int = 30 if world.biome_index == 0 else 24
     for i: int in range(count):
         var point: Vector2 = activity_point(250.0, minf(world.world_size.x, world.world_size.y) * 0.46, occupied)
         occupied.append(point)
@@ -80,7 +80,10 @@ func _spawn_landmarks() -> void:
             var ash_kinds: Array[String] = ["dead_tree", "bones", "ruin", "firepit", "dead_tree"]
             kind = ash_kinds[i % ash_kinds.size()]
         else:
-            var forest_kinds: Array[String] = ["stump", "ruin", "sign", "firepit", "bones"]
+            var forest_kinds: Array[String] = [
+                "ancient_tree", "root_arch", "stump", "ruin", "fallen_totem",
+                "sign", "firepit", "bones"
+            ]
             kind = forest_kinds[i % forest_kinds.size()]
         node.configure(kind, world.biome_index, i % 3)
         landmark_nodes.append(node)

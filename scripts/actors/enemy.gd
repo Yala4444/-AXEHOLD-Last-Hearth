@@ -38,6 +38,7 @@ var surge_cooldown: float = 2.8
 var surge_windup: float = 0.0
 var surge_time: float = 0.0
 var surge_direction: Vector2 = Vector2.ZERO
+var visual_identity_version: int = 2
 
 func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss: bool = false, region_index: int = 0) -> void:
     enemy_type = kind
@@ -94,6 +95,36 @@ func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss
     modulate = Color.WHITE
     scale = Vector2.ONE * base_scale
     queue_redraw()
+
+func visual_role_signature() -> Dictionary:
+    var silhouette: String = "husk"
+    var footprint: Vector2 = Vector2(22, 34)
+    match enemy_type:
+        "runner":
+            silhouette = "low_long_limb"
+            footprint = Vector2(28, 36)
+        "brute":
+            silhouette = "broad_horned_wedge"
+            footprint = Vector2(42, 46)
+        "stalker":
+            silhouette = "tall_masked_crescent"
+            footprint = Vector2(30, 48)
+        "guardian":
+            silhouette = "stone_bulwark"
+            footprint = Vector2(40, 48)
+        "boss":
+            silhouette = "regional_colossus"
+            footprint = Vector2(76, 92)
+    if boss:
+        silhouette = "regional_colossus"
+        footprint = Vector2(76, 92)
+    return {
+        "version":visual_identity_version,
+        "role":enemy_type,
+        "silhouette":silhouette,
+        "footprint":footprint,
+        "biome_language":biome_index
+    }
 
 func configure_elite(trait_id: String) -> void:
     if boss:
@@ -372,6 +403,9 @@ func _draw() -> void:
     else:
         _draw_pixel_ghoul(body_color, dark, light)
 
+    if not boss:
+        _draw_biome_identity()
+
     if hit_flash > 0.25:
         draw_rect(Rect2(-17, -21, 34, 39), Color(1.0, 0.90, 0.72, hit_flash * 0.42), false, 2.0)
 
@@ -482,6 +516,35 @@ func _draw_pixel_guardian(body: Color, dark: Color, light: Color) -> void:
     draw_circle(Vector2(0,7),4.0,Color("d0ba72"))
     _pixel_eyes(4.2, Color("f4e6bf"))
 
+func _draw_biome_identity() -> void:
+    # Anatomy communicates combat role; these restrained overlays communicate
+    # the region without turning enemies into simple palette swaps.
+    match biome_index:
+        1:
+            var frost := Color(0.70, 0.91, 0.96, 0.78)
+            draw_colored_polygon(PackedVector2Array([
+                Vector2(-8,-14), Vector2(-4,-25), Vector2(0,-15)
+            ]), frost)
+            draw_colored_polygon(PackedVector2Array([
+                Vector2(7,-11), Vector2(13,-20), Vector2(10,-8)
+            ]), frost.darkened(0.08))
+            draw_line(Vector2(-5,6), Vector2(5,-2), Color(frost, 0.42), 1.4)
+        2:
+            var ember := Color("ef7140")
+            draw_line(Vector2(-6,-8), Vector2(-1,1), ember, 1.8)
+            draw_line(Vector2(-1,1), Vector2(-5,9), ember.darkened(0.10), 1.6)
+            draw_line(Vector2(5,-4), Vector2(1,5), Color(1.0,0.46,0.20,0.70), 1.4)
+            draw_circle(Vector2(0,8), 2.2, Color(1.0,0.58,0.24,0.55))
+        _:
+            var root := Color("493b28")
+            draw_line(Vector2(-6,8), Vector2(-14,18), root, 2.6)
+            draw_line(Vector2(5,9), Vector2(14,17), root, 2.6)
+            draw_line(Vector2(-10,15), Vector2(-17,13), root.darkened(0.10), 1.8)
+            if enemy_type in ["brute", "guardian"]:
+                draw_line(Vector2(-9,-14), Vector2(-17,-25), root.lightened(0.10), 2.4)
+                draw_line(Vector2(9,-14), Vector2(18,-23), root.lightened(0.10), 2.4)
+            draw_circle(Vector2(0,5), 2.0, Color(0.67,0.18,0.12,0.75))
+
 func _draw_boss_aura() -> void:
     var pulse: float = (sin(animation_time * 3.2) + 1.0) * 0.5
     var aura: Color
@@ -508,6 +571,13 @@ func _draw_pixel_boss(body: Color, dark: Color, light: Color) -> void:
 func _draw_forest_boss(body: Color, dark: Color, light: Color) -> void:
     var bark := Color("544b36").lightened(hit_flash*0.16)
     var moss := Color("547b48")
+    # Wide, asymmetric root mantle makes the Guardian recognizable before its
+    # attacks begin and gives it a true set-piece scale.
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-34,-17),Vector2(-24,-31),Vector2(-10,-26),Vector2(0,-40),
+        Vector2(13,-30),Vector2(32,-24),Vector2(39,-7),Vector2(31,18),
+        Vector2(16,34),Vector2(-8,36),Vector2(-30,25),Vector2(-41,2)
+    ]),Color("342f24"))
     draw_colored_polygon(PackedVector2Array([
         Vector2(-22,-19),Vector2(-12,-31),Vector2(0,-35),Vector2(13,-30),
         Vector2(24,-18),Vector2(27,8),Vector2(16,26),Vector2(0,31),
@@ -519,10 +589,11 @@ func _draw_forest_boss(body: Color, dark: Color, light: Color) -> void:
         Vector2(-12,19),Vector2(-21,6)
     ]), bark)
     # Antlers and roots.
-    draw_line(Vector2(-12,-25),Vector2(-30,-42),Color("8b7652"),4.0)
-    draw_line(Vector2(-25,-37),Vector2(-35,-29),Color("8b7652"),3.0)
-    draw_line(Vector2(12,-25),Vector2(31,-41),Color("8b7652"),4.0)
-    draw_line(Vector2(26,-36),Vector2(36,-27),Color("8b7652"),3.0)
+    draw_line(Vector2(-12,-25),Vector2(-32,-47),Color("8b7652"),4.5)
+    draw_line(Vector2(-24,-38),Vector2(-40,-34),Color("8b7652"),3.2)
+    draw_line(Vector2(-30,-45),Vector2(-27,-57),Color("8b7652"),2.6)
+    draw_line(Vector2(12,-25),Vector2(34,-42),Color("8b7652"),4.2)
+    draw_line(Vector2(27,-36),Vector2(43,-28),Color("8b7652"),3.0)
     draw_line(Vector2(-18,13),Vector2(-34,27),moss,5.0)
     draw_line(Vector2(18,13),Vector2(34,27),moss,5.0)
     # Living core.
@@ -530,7 +601,16 @@ func _draw_forest_boss(body: Color, dark: Color, light: Color) -> void:
     draw_circle(Vector2(0,3),6.0,Color("6faa55"))
     draw_circle(Vector2(0,3),2.5,Color("c0ec91"))
     draw_line(Vector2(-12,-8),Vector2(12,-8),moss.darkened(0.08),3.0)
-    _pixel_eyes(8.0,Color("e4f6c7"))
+    # Bone mask and a single ember gaze keep the face iconic at phone scale.
+    draw_colored_polygon(PackedVector2Array([
+        Vector2(-11,-22),Vector2(0,-29),Vector2(12,-21),Vector2(8,-9),
+        Vector2(0,-5),Vector2(-8,-10)
+    ]),Color("c2b99b"))
+    draw_line(Vector2(-5,-18),Vector2(6,-16),Color("40392d"),2.0)
+    draw_circle(Vector2(4,-17),2.3,Color("f0a044"))
+    for mushroom: Vector2 in [Vector2(-24,-18),Vector2(-19,-24),Vector2(22,-16)]:
+        draw_circle(mushroom,4.0,Color("9a5f45"))
+        draw_line(mushroom + Vector2(0,2),mushroom + Vector2(0,7),Color("cab991"),2.0)
 
 func _draw_frost_boss(body: Color, dark: Color, light: Color) -> void:
     var ice := Color("8bbfce").lightened(hit_flash*0.18)

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.21.0-alpha.1 — VISUAL IDENTITY
+- Reworked the Wanderer into a hooded, ragged-cloak silhouette with a permanent Last Hearth rune, stronger armor planes and an amber gaze.
+- Added an explicit visual-role contract so normal, runner, brute, stalker and guardian enemies remain distinguishable by shape before color or effects.
+- Added restrained biome anatomy overlays: forest roots and antlers, frost crystals and ash-region ember cracks.
+- Rebuilt the Forest Guardian as a larger asymmetric root-and-antler colossus with a bone mask, single ember eye, fungal growth and living core.
+- Added ancient trees, root arches and fallen folk totems to the Forgotten Forest landmark pool.
+- Increased forest landmark density and added deterministic amber fireflies and broad root veins to break up the tiled ground rhythm.
+- Added dedicated v1.21 regression coverage for the Wanderer identity, unique enemy silhouettes, boss scale and Forgotten Forest landmark language.
+- Bumped Android/iOS metadata to 1.21.0-alpha.1 / build 36.
+
 ## 1.20.0-alpha.1 — COHERENCE FOUNDATION
 - Added a single Encounter Orchestrator that owns the expedition attention slot for field objectives, major events, regional hazards and named hunts.
 - Prevented timed encounter systems from starting on top of one another and added explicit breathing-room cooldowns after outcomes.

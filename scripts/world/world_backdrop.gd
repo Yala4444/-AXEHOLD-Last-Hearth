@@ -10,6 +10,7 @@ var biome: Dictionary = {}
 var biome_index: int = 0
 var night: bool = false
 var chunks: Array[WorldBackdropChunk] = []
+var visual_identity_version: int = 2
 
 func setup(size: Vector2, hearth: Vector2, biome_data: Dictionary, index: int) -> void:
     world_size = size
@@ -32,6 +33,15 @@ func chunk_count() -> int:
 
 func max_chunk_extent() -> Vector2:
     return CHUNK_SIZE
+
+func visual_identity_profile() -> Dictionary:
+    return {
+        "version":visual_identity_version,
+        "biome":biome_index,
+        "chunk_count":chunks.size(),
+        "landmark_language":"folk_ruins",
+        "day_night_blend":true
+    }
 
 func _rebuild_chunks() -> void:
     for child: Node in get_children():

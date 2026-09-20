@@ -77,6 +77,7 @@ var perk_counts: Dictionary = {}
 var family_counts: Dictionary = {}
 var evolutions: Dictionary = {}
 var legendary_traits: Dictionary = {}
+var visual_identity_version: int = 2
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -94,6 +95,15 @@ func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     target_position = global_position
     apply_weapon_profile(str(GameState.data.get("selected_weapon", "axes")))
     queue_redraw()
+
+func visual_identity_profile() -> Dictionary:
+    return {
+        "version":visual_identity_version,
+        "silhouette":"hooded_wanderer",
+        "anchor":"hearth_rune",
+        "weapon_readable":true,
+        "build_reactive":true
+    }
 
 func apply_weapon_profile(id: String) -> void:
     weapon_id = id if WeaponRules.WEAPONS.has(id) else "axes"
@@ -556,9 +566,11 @@ func _draw() -> void:
     var cape := PackedVector2Array([
         body_offset + Vector2(-10 + cape_shift, -5),
         body_offset + Vector2(-12 + cape_shift, 9),
-        body_offset + Vector2(-7 + cape_shift, 19),
-        body_offset + Vector2(0 + cape_shift, 23),
-        body_offset + Vector2(8 + cape_shift, 18),
+        body_offset + Vector2(-8 + cape_shift, 19),
+        body_offset + Vector2(-3 + cape_shift, 17),
+        body_offset + Vector2(1 + cape_shift, 24),
+        body_offset + Vector2(5 + cape_shift, 18),
+        body_offset + Vector2(9 + cape_shift, 20),
         body_offset + Vector2(11 + cape_shift, 7),
         body_offset + Vector2(8 + cape_shift, -5)
     ])
@@ -617,13 +629,19 @@ func _draw() -> void:
         body_offset + Vector2(8, -5)
     ])
     draw_colored_polygon(chest, flash_body)
+    draw_line(body_offset + Vector2(-8, -4), body_offset + Vector2(-10, 2), flash_body.lightened(0.24), 1.4)
     draw_line(body_offset + Vector2(-7, 1), body_offset + Vector2(7, 1), flash_body.lightened(0.16), 1.4)
     draw_line(body_offset + Vector2(-6, 8), body_offset + Vector2(6, 8), leather, 3.0)
-    draw_rect(Rect2(body_offset + Vector2(-1.5, 6.5), Vector2(3, 4)), VisualSystem.GOLD)
+    # The Last Hearth rune is the hero's permanent visual anchor.
+    draw_circle(body_offset + Vector2(0, 5), 4.0, Color(0.08, 0.10, 0.10, 0.60))
+    draw_circle(body_offset + Vector2(0, 5), 2.4, VisualSystem.GOLD.darkened(0.12))
+    draw_line(body_offset + Vector2(0, 1), body_offset + Vector2(0, 9), VisualSystem.GOLD_BRIGHT, 1.2)
 
     # Shoulder guards and hands.
     draw_circle(body_offset + Vector2(-10.5, -1.5), 4.0, armor_dark)
     draw_circle(body_offset + Vector2(10.5, -1.5), 4.0, armor_dark)
+    draw_arc(body_offset + Vector2(-10.5, -1.5), 4.0, 3.4, 5.8, 8, Color("aeb9bb"), 1.2)
+    draw_arc(body_offset + Vector2(10.5, -1.5), 4.0, 3.6, 6.0, 8, Color("aeb9bb"), 1.2)
     draw_rect(Rect2(body_offset + Vector2(-14, 2), Vector2(4, 7)), armor_dark)
     draw_rect(Rect2(body_offset + Vector2(10, 2), Vector2(4, 7)), armor_dark)
     draw_circle(body_offset + Vector2(-13, 9), 2.3, skin)
@@ -648,10 +666,10 @@ func _draw() -> void:
         head + Vector2(4, 5),
         head + Vector2(-4, 5)
     ])
-    draw_colored_polygon(face, skin)
-    draw_rect(Rect2(head + Vector2(-5, -4), Vector2(10, 3)), Color("49362e"))
+    draw_colored_polygon(face, Color("11171a").lightened(damage_flash * 0.16))
+    draw_rect(Rect2(head + Vector2(-5, -4), Vector2(10, 3)), skin_cape.darkened(0.30))
     var eye_x: float = 2.3 * facing_x
-    draw_rect(Rect2(head + Vector2(eye_x - 0.8, 0), Vector2(2, 2)), Color("1c1715"))
+    draw_rect(Rect2(head + Vector2(eye_x - 0.8, 0), Vector2(2, 2)), VisualSystem.GOLD_BRIGHT)
 
     # Scarf and backpack/satchel communicate the explorer fantasy.
     draw_line(body_offset + Vector2(-7 * facing_x, -7), body_offset + Vector2(-12 * facing_x, 1), VisualSystem.GOLD.darkened(0.12), 3.0)

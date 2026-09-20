@@ -43,6 +43,8 @@ func _draw() -> void:
     # The base biome wash is screen-space in GameWorld. Avoiding large chunk
     # background rectangles prevents iOS/WebGL black-quadrant artifacts.
     _draw_ground_detail()
+    if biome_index == 0:
+        _draw_forest_atmosphere()
     _draw_path_segment()
     _draw_clearing_segment()
     _draw_landmarks()
@@ -99,6 +101,27 @@ func _draw_forest_detail(p: Vector2, index: int) -> void:
     else:
         draw_rect(Rect2(p.x, p.y, 3, 7), tuft)
         draw_rect(Rect2(p.x + 4, p.y + 2, 2, 5), Color(tuft, tuft.a * 0.72))
+
+func _draw_forest_atmosphere() -> void:
+    var sx: int = int(floor(chunk_rect.position.x))
+    var sy: int = int(floor(chunk_rect.position.y))
+    var seed: int = abs(sx * 19 + sy * 43)
+    for i: int in range(4):
+        var px: float = 28.0 + float((seed + i * 97) % maxi(1, int(chunk_rect.size.x - 56.0)))
+        var py: float = 24.0 + float((seed * 3 + i * 71) % maxi(1, int(chunk_rect.size.y - 48.0)))
+        var p := Vector2(px, py)
+        var world_p := chunk_rect.position + p
+        if world_p.distance_to(base_position) < 125.0:
+            continue
+        var glow_alpha: float = lerpf(0.10, 0.28, night_mix)
+        draw_circle(p, 6.0, Color(0.86,0.67,0.25,glow_alpha * 0.18))
+        draw_circle(p, 1.4, Color(0.95,0.79,0.36,glow_alpha))
+    # Broad root veins break the tiled ground pattern and lead the eye.
+    if seed % 3 == 0:
+        var origin := Vector2(chunk_rect.size.x * 0.18, chunk_rect.size.y * 0.76)
+        var root_color := Color(0.17,0.13,0.08,0.16 if not night else 0.12)
+        draw_line(origin,origin + Vector2(82,-28),root_color,3.0)
+        draw_line(origin + Vector2(49,-17),origin + Vector2(67,-42),root_color,2.0)
 
 func _draw_frost_detail(p: Vector2, index: int) -> void:
     var snow: Color = Color(0.86, 0.94, 0.95, 0.075 if not night else 0.055)

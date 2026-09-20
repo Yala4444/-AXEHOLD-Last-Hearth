@@ -330,6 +330,16 @@ jobs:
             exit 1
           fi
 
+      - name: V1.21 visual identity regression
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_v121_visual_identity_smoke.tscn 2>&1 | tee /tmp/godot-v121-visual-identity.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v121-visual-identity.log; then
+            echo "GDScript parse errors detected during v1.21 visual identity test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |
