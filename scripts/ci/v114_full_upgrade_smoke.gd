@@ -57,6 +57,7 @@ func _test_world_foundation() -> void:
         world.biome_events._finish_environment(true, "")
 
         world.wave = 2
+        world.encounter_orchestrator.cooldown = 0.0
         world.biome_events._start_regional_hunt()
         if world.biome_events.mini_boss == null or not is_instance_valid(world.biome_events.mini_boss):
             _fail("Regional hunt did not create a rare target")
