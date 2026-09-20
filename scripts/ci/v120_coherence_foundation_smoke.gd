@@ -103,6 +103,10 @@ func _test_transparent_buildcraft_and_hud_queue() -> void:
     if preview.find("ЭФФЕКТ:") < 0 or preview.find("КОРОНА ПЕПЛА") < 0:
         _fail("Buildcraft card does not preview its exact effect and imminent evolution")
 
+    # Isolate the queue from the expedition's startup announcement.
+    world.hud.banner_queue.clear()
+    world.hud.banner_running = false
+    world.hud.banner_current_text = ""
     world.hud.show_banner("АКТИВНО", Color.WHITE, 0)
     world.hud.show_banner("НИЗКИЙ", Color.WHITE, 1)
     world.hud.show_banner("КРИТИЧЕСКИЙ", Color.WHITE, 9)
