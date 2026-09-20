@@ -7,6 +7,8 @@ signal level_up_requested(level: int)
 signal build_evolved(evolution_id: String, title: String, description: String)
 signal legendary_triggered(title: String, description: String)
 
+const WANDERER_ART: Texture2D = preload("res://assets/art/forgotten_forest/wanderer.webp")
+
 var target_position: Vector2 = Vector2.ZERO
 var move_input: Vector2 = Vector2.ZERO
 var direct_control: bool = false
@@ -77,7 +79,7 @@ var perk_counts: Dictionary = {}
 var family_counts: Dictionary = {}
 var evolutions: Dictionary = {}
 var legendary_traits: Dictionary = {}
-var visual_identity_version: int = 2
+var visual_identity_version: int = 3
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -102,7 +104,9 @@ func visual_identity_profile() -> Dictionary:
         "silhouette":"hooded_wanderer",
         "anchor":"hearth_rune",
         "weapon_readable":true,
-        "build_reactive":true
+        "build_reactive":true,
+        "production_art":true,
+        "art_texture":"res://assets/art/forgotten_forest/wanderer.webp"
     }
 
 func apply_weapon_profile(id: String) -> void:
@@ -679,6 +683,11 @@ func _draw() -> void:
         draw_rect(Rect2(body_offset + Vector2(bag_x - 4, 4), Vector2(8, 10)), leather.darkened(0.12))
         draw_line(body_offset + Vector2(bag_x - 3, 7), body_offset + Vector2(bag_x + 3, 7), leather.lightened(0.16), 1.0)
 
+    # Production illustration overlays the lightweight procedural fallback.
+    # The fallback keeps the hero safe if an import ever fails; the cutout is
+    # the primary in-game presentation and receives subtle runtime animation.
+    _draw_illustrated_wanderer(body_offset, moving)
+
     if weapon_style == "spear":
         var spear_dir: Vector2
         if weapon_action_time > 0.0:
@@ -719,10 +728,22 @@ func _draw() -> void:
 
     _draw_inventory_gauge()
 
+func _draw_illustrated_wanderer(body_offset: Vector2, moving: bool) -> void:
+    if WANDERER_ART == null:
+        return
+    var breathe: float = sin(motion_time * (8.0 if moving else 2.4))
+    var action_tilt: float = -facing_x * weapon_action_ratio() * 0.045
+    var width: float = 64.0 + breathe * (1.2 if moving else 0.45)
+    var height: float = 79.0 - breathe * (1.0 if moving else 0.35)
+    var tint_color := Color.WHITE.lerp(Color(1.0, 0.68, 0.58), clampf(damage_flash, 0.0, 1.0) * 0.72)
+    draw_set_transform(body_offset + Vector2(0, -10), action_tilt, Vector2(facing_x, 1.0))
+    draw_texture_rect(WANDERER_ART, Rect2(-width * 0.5, -height * 0.5, width, height), false, tint_color)
+    draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 func _draw_inventory_gauge() -> void:
     var ratio: float = clampf(float(inventory_total()) / float(maxi(1, capacity)), 0.0, 1.0)
     var pulse: float = (sin(motion_time * 7.0) + 1.0) * 0.5
-    var track := Rect2(-24, -36, 48, 6)
+    var track := Rect2(-24, -62, 48, 6)
     draw_rect(track, Color(0.035, 0.05, 0.05, 0.78))
     draw_rect(track, Color(0.72, 0.79, 0.72, 0.26), false, 1.0)
 
@@ -733,21 +754,21 @@ func _draw_inventory_gauge() -> void:
         fill_color = Color("ce6257").lightened(pulse * 0.10)
 
     if ratio > 0.0:
-        draw_rect(Rect2(-23, -35, 46.0 * ratio, 4), fill_color)
+        draw_rect(Rect2(-23, -61, 46.0 * ratio, 4), fill_color)
 
     if ratio >= 0.60:
         var font: Font = ThemeDB.fallback_font
         var text: String = "%d/%d" % [inventory_total(), capacity]
-        draw_string(font, Vector2(-24, -40), text, HORIZONTAL_ALIGNMENT_CENTER, 48, 7, Color("f2ecdc"))
+        draw_string(font, Vector2(-24, -66), text, HORIZONTAL_ALIGNMENT_CENTER, 48, 7, Color("f2ecdc"))
 
     if ratio >= 0.98:
         var font_full: Font = ThemeDB.fallback_font
-        draw_string(font_full, Vector2(-24, -45), "ПОЛОН", HORIZONTAL_ALIGNMENT_CENTER, 48, 6, Color("f4c0a0"))
+        draw_string(font_full, Vector2(-24, -71), "ПОЛОН", HORIZONTAL_ALIGNMENT_CENTER, 48, 6, Color("f4c0a0"))
 
     if home_hint_active and global_position.distance_to(home_target) > 70.0:
         var dir: Vector2 = global_position.direction_to(home_target)
         if dir.length_squared() > 0.01:
-            var anchor := Vector2(0, -49)
+            var anchor := Vector2(0, -76)
             var side := Vector2(-dir.y, dir.x)
             draw_colored_polygon(PackedVector2Array([
                 anchor + dir * 8.0,

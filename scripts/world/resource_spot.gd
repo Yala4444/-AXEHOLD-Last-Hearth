@@ -1,6 +1,10 @@
 class_name ResourceSpot
 extends Node2D
 
+const FOREST_TREE_ART: Texture2D = preload("res://assets/art/forgotten_forest/harvest_tree.webp")
+const FOREST_ROCK_ART: Texture2D = preload("res://assets/art/forgotten_forest/stone_deposit.webp")
+const FOREST_ORE_ART: Texture2D = preload("res://assets/art/forgotten_forest/ore_deposit.webp")
+
 var resource_type: String = "tree"
 var hp: float = 52.0
 var max_hp: float = 52.0
@@ -10,6 +14,7 @@ var hit_pulse: float = 0.0
 var hit_gate: float = 0.0
 var wobble_phase: float = 0.0
 var biome_index: int = 0
+var visual_identity_version: int = 3
 
 func configure(kind: String, v: int = 0, biome: int = 0) -> void:
     resource_type = kind
@@ -27,6 +32,14 @@ func configure(kind: String, v: int = 0, biome: int = 0) -> void:
             radius = 13.0
     hp = max_hp
     queue_redraw()
+
+func visual_identity_profile() -> Dictionary:
+    return {
+        "version":visual_identity_version,
+        "resource":resource_type,
+        "biome":biome_index,
+        "production_art":biome_index == 0
+    }
 
 func _process(delta: float) -> void:
     hit_gate = maxf(0.0, hit_gate - delta)
@@ -52,7 +65,9 @@ func damage(amount: float) -> bool:
 
 func _draw() -> void:
     var flash: float = hit_pulse * 0.28
-    if resource_type == "tree":
+    if biome_index == 0:
+        _draw_illustrated_resource(flash)
+    elif resource_type == "tree":
         _draw_tree(flash)
     elif resource_type == "rock":
         _draw_rock(flash)
@@ -61,8 +76,34 @@ func _draw() -> void:
 
     if hp < max_hp:
         var ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0)
-        draw_rect(Rect2(-14, -24, 28, 4), Color(0.08, 0.08, 0.08, 0.32))
-        draw_rect(Rect2(-14, -24, 28 * ratio, 4), Color("72a66d"))
+        var bar_y: float = -24.0
+        if biome_index == 0:
+            bar_y = -75.0 if resource_type == "tree" else (-42.0 if resource_type == "ore" else -35.0)
+        draw_rect(Rect2(-14, bar_y, 28, 4), Color(0.08, 0.08, 0.08, 0.32))
+        draw_rect(Rect2(-14, bar_y, 28 * ratio, 4), Color("72a66d"))
+
+func _draw_illustrated_resource(flash: float) -> void:
+    if biome_index != 0:
+        return
+    var texture: Texture2D = FOREST_TREE_ART
+    var size := Vector2(76, 81)
+    var y_offset: float = -23.0
+    match resource_type:
+        "rock":
+            texture = FOREST_ROCK_ART
+            size = Vector2(54, 57)
+            y_offset = -9.0
+        "ore":
+            texture = FOREST_ORE_ART
+            size = Vector2(59, 66)
+            y_offset = -14.0
+    if texture == null:
+        return
+    var mirror: float = -1.0 if variant % 2 == 1 else 1.0
+    var tint_color := Color.WHITE.lerp(Color(1.0, 0.72, 0.58), flash * 0.62)
+    draw_set_transform(Vector2(0, y_offset), 0.0, Vector2(mirror, 1.0))
+    draw_texture_rect(texture, Rect2(-size * 0.5, size), false, tint_color)
+    draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_tree(flash: float) -> void:
     _draw_shadow_ellipse(Vector2(0, 17), Vector2(16, 4.5), Color(0.03, 0.04, 0.03, 0.20))

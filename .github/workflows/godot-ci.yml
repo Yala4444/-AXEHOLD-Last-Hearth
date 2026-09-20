@@ -340,6 +340,16 @@ jobs:
             exit 1
           fi
 
+      - name: V1.22 Forgotten Forest art overhaul regression
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . res://scenes/ci_v122_forest_art_overhaul_smoke.tscn 2>&1 | tee /tmp/godot-v122-forest-art.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v122-forest-art.log; then
+            echo "GDScript parse errors detected during v1.22 forest art test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |

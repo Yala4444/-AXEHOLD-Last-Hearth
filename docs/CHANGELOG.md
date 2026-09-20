@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.22.0-alpha.1 — FORGOTTEN FOREST ART OVERHAUL
+- Replaced the Forgotten Forest's primary procedural figures with twelve optimized hand-painted production assets.
+- Added a fully illustrated Wanderer with detailed armor, torn cloak, amber eye and Last Hearth rune while preserving runtime weapon readability.
+- Added distinct illustrated Root Husk, Briar Hound, Ironroot Ravager, Hollow Seer and Oathstone Bulwark enemy roles.
+- Rebuilt the Forest Guardian as a large flagship cutout with antlers, bone mask, rune stones, forest growth and a living core.
+- Replaced the central fire with a detailed Last Hearth landmark while preserving health, deposit and dynamic glow feedback.
+- Added illustrated ancient sentinel and harvest trees, stone deposit and violet ore deposit.
+- Added lightweight breathing, movement squash, attack tilt, damage tint and elite tint animation over the painted sprites.
+- Expanded Forgotten Forest ground atmosphere with deterministic low mist and leaf litter.
+- Kept procedural rendering as an import-safe fallback and as the active style for the remaining biomes.
+- Added dedicated v1.22 import and runtime contract regression coverage for all production art.
+- Bumped Android/iOS metadata to 1.22.0-alpha.1 / build 37.
+
 ## 1.21.0-alpha.1 — VISUAL IDENTITY
 - Reworked the Wanderer into a hooded, ragged-cloak silhouette with a permanent Last Hearth rune, stronger armor planes and an amber gaze.
 - Added an explicit visual-role contract so normal, runner, brute, stalker and guardian enemies remain distinguishable by shape before color or effects.

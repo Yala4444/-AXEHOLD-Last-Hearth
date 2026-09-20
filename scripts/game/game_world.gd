@@ -9,6 +9,7 @@ const PlayerScene: PackedScene = preload("res://scenes/player.tscn")
 const EnemyScene: PackedScene = preload("res://scenes/enemy.tscn")
 const ResourceScene: PackedScene = preload("res://scenes/resource_spot.tscn")
 const BuildPadScene: PackedScene = preload("res://scenes/build_pad.tscn")
+const LAST_HEARTH_ART: Texture2D = preload("res://assets/art/forgotten_forest/last_hearth.webp")
 
 var biome_index: int = 0
 var biome: Dictionary = {}
@@ -1603,8 +1604,9 @@ func _draw() -> void:
         draw_arc(base_position, radius, 0.0, TAU, 40, Color(0.94, 0.76, 0.36, deposit_pulse * 0.54), 2.5)
 
     var ratio: float = clampf(base_hp / maxf(1.0, base_max_hp), 0.0, 1.0)
-    draw_rect(Rect2(base_position + Vector2(-45, -76), Vector2(90, 5)), Color(0.07, 0.08, 0.07, 0.34))
-    draw_rect(Rect2(base_position + Vector2(-45, -76), Vector2(90 * ratio, 5)), Color("83b06e"))
+    var hearth_bar_y: float = -91.0 if biome_index == 0 else -76.0
+    draw_rect(Rect2(base_position + Vector2(-45, hearth_bar_y), Vector2(90, 5)), Color(0.07, 0.08, 0.07, 0.34))
+    draw_rect(Rect2(base_position + Vector2(-45, hearth_bar_y), Vector2(90 * ratio, 5)), Color("83b06e"))
 
     if turret_shot_time > 0.0:
         draw_line(turret_shot_from, turret_shot_to, Color(1.0, 0.83, 0.38, 0.58 + turret_shot_time * 0.32), 2.5)
@@ -1689,16 +1691,26 @@ func _draw_hearth(night: bool) -> void:
         base_position + Vector2(5, 4)
     ]), Color("ffd879"))
 
+    if biome_index == 0 and LAST_HEARTH_ART != null:
+        var art_pulse: float = 1.0 + sin(Time.get_ticks_msec() * 0.004) * 0.008
+        var art_size := Vector2(184.0, 155.0) * art_pulse
+        draw_texture_rect(
+            LAST_HEARTH_ART,
+            Rect2(base_position + Vector2(-art_size.x * 0.5, -art_size.y * 0.49), art_size),
+            false,
+            Color.WHITE
+        )
+
     # Storage crate makes deposit function visually obvious.
-    var crate_pos := base_position + Vector2(39, 20)
+    var crate_pos := base_position + Vector2(57, 30) if biome_index == 0 else base_position + Vector2(39, 20)
     draw_rect(Rect2(crate_pos - Vector2(13, 9), Vector2(26, 18)), Color("4e321f"))
     draw_rect(Rect2(crate_pos - Vector2(11, 7), Vector2(22, 14)), Color("865a31"))
     draw_rect(Rect2(crate_pos + Vector2(-11, -1), Vector2(22, 3)), Color("b27c42"))
     draw_rect(Rect2(crate_pos + Vector2(-2, -7), Vector2(4, 14)), Color("5d3d24"))
 
 func _draw_palisade() -> void:
-    var radius_x: float = 78.0
-    var radius_y: float = 66.0
+    var radius_x: float = 112.0 if biome_index == 0 else 78.0
+    var radius_y: float = 91.0 if biome_index == 0 else 66.0
     for i: int in range(28):
         var angle: float = TAU * float(i) / 28.0
         # Leave a small gate on the lower side.

@@ -3,6 +3,13 @@ extends CharacterBody2D
 
 signal killed(enemy: AxEnemy)
 
+const FOREST_HUSK_ART: Texture2D = preload("res://assets/art/forgotten_forest/root_husk.webp")
+const FOREST_RUNNER_ART: Texture2D = preload("res://assets/art/forgotten_forest/briar_hound.webp")
+const FOREST_BRUTE_ART: Texture2D = preload("res://assets/art/forgotten_forest/ironroot_ravager.webp")
+const FOREST_STALKER_ART: Texture2D = preload("res://assets/art/forgotten_forest/hollow_seer.webp")
+const FOREST_GUARDIAN_ART: Texture2D = preload("res://assets/art/forgotten_forest/oathstone_bulwark.webp")
+const FOREST_BOSS_ART: Texture2D = preload("res://assets/art/forgotten_forest/forest_guardian.webp")
+
 var enemy_type: String = "normal"
 var biome_index: int = 0
 var hp: float = 40.0
@@ -38,7 +45,7 @@ var surge_cooldown: float = 2.8
 var surge_windup: float = 0.0
 var surge_time: float = 0.0
 var surge_direction: Vector2 = Vector2.ZERO
-var visual_identity_version: int = 2
+var visual_identity_version: int = 3
 
 func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss: bool = false, region_index: int = 0) -> void:
     enemy_type = kind
@@ -123,7 +130,8 @@ func visual_role_signature() -> Dictionary:
         "role":enemy_type,
         "silhouette":silhouette,
         "footprint":footprint,
-        "biome_language":biome_index
+        "biome_language":biome_index,
+        "production_art":biome_index == 0
     }
 
 func configure_elite(trait_id: String) -> void:
@@ -389,30 +397,42 @@ func _draw() -> void:
     var dark: Color = body_color.darkened(0.30)
     var light: Color = body_color.lightened(0.18)
 
-    if boss:
+    if biome_index != 0:
+        if boss:
+            _draw_boss_aura()
+            _draw_pixel_boss(body_color, dark, light)
+        elif enemy_type == "runner":
+            _draw_pixel_runner(body_color, dark, light)
+        elif enemy_type == "brute":
+            _draw_pixel_brute(body_color, dark, light)
+        elif enemy_type == "stalker":
+            _draw_pixel_stalker(body_color, dark, light)
+        elif enemy_type == "guardian":
+            _draw_pixel_guardian(body_color, dark, light)
+        else:
+            _draw_pixel_ghoul(body_color, dark, light)
+        if not boss:
+            _draw_biome_identity()
+    elif boss:
         _draw_boss_aura()
-        _draw_pixel_boss(body_color, dark, light)
-    elif enemy_type == "runner":
-        _draw_pixel_runner(body_color, dark, light)
-    elif enemy_type == "brute":
-        _draw_pixel_brute(body_color, dark, light)
-    elif enemy_type == "stalker":
-        _draw_pixel_stalker(body_color, dark, light)
-    elif enemy_type == "guardian":
-        _draw_pixel_guardian(body_color, dark, light)
-    else:
-        _draw_pixel_ghoul(body_color, dark, light)
 
-    if not boss:
-        _draw_biome_identity()
+    _draw_illustrated_forest_identity()
 
-    if hit_flash > 0.25:
+    if hit_flash > 0.25 and biome_index != 0:
         draw_rect(Rect2(-17, -21, 34, 39), Color(1.0, 0.90, 0.72, hit_flash * 0.42), false, 2.0)
 
     if not dying:
         var ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0)
-        var width: float = 54.0 if boss else (38.0 if elite else (32.0 if enemy_type == "guardian" else 26.0))
-        var bar_y: float = -39.0 if boss else (-33.0 if elite else -27.0)
+        var width: float = 92.0 if boss and biome_index == 0 else (54.0 if boss else (38.0 if elite else (32.0 if enemy_type == "guardian" else 26.0)))
+        var art_bar_y: float = -55.0
+        match enemy_type:
+            "runner":
+                art_bar_y = -42.0
+            "brute", "guardian":
+                art_bar_y = -54.0
+            "stalker":
+                art_bar_y = -59.0
+        var bar_y: float = (-102.0 if boss else art_bar_y) if biome_index == 0 else (-39.0 if boss else (-33.0 if elite else -27.0))
         var bar_color: Color = Color("cf6165") if boss else (elite_glow if elite else (Color("c7b56e") if enemy_type == "guardian" else Color("8f7198")))
         draw_rect(Rect2(-width / 2.0, bar_y, width, 4.0), Color(0.08, 0.08, 0.08, 0.35))
         draw_rect(Rect2(-width / 2.0, bar_y, width * ratio, 4.0), bar_color)
@@ -421,6 +441,55 @@ func _draw() -> void:
         if elite and not elite_title.is_empty():
             var elite_font: Font = ThemeDB.fallback_font
             draw_string(elite_font, Vector2(-34, bar_y - 5), elite_title, HORIZONTAL_ALIGNMENT_CENTER, 68, 6, elite_glow.lightened(0.16))
+
+func _draw_illustrated_forest_identity() -> void:
+    if biome_index != 0:
+        return
+    var texture: Texture2D = FOREST_HUSK_ART
+    var size := Vector2(58, 64)
+    var y_offset: float = -10.0
+    match enemy_type:
+        "runner":
+            texture = FOREST_RUNNER_ART
+            size = Vector2(72, 62)
+            y_offset = -7.0
+        "brute":
+            texture = FOREST_BRUTE_ART
+            size = Vector2(82, 86)
+            y_offset = -14.0
+        "stalker":
+            texture = FOREST_STALKER_ART
+            size = Vector2(58, 91)
+            y_offset = -17.0
+        "guardian":
+            texture = FOREST_GUARDIAN_ART
+            size = Vector2(84, 88)
+            y_offset = -15.0
+        "boss":
+            texture = FOREST_BOSS_ART
+            size = Vector2(164, 173)
+            y_offset = -35.0
+    if boss:
+        texture = FOREST_BOSS_ART
+        size = Vector2(164, 173)
+        y_offset = -35.0
+    if texture == null:
+        return
+    var moving: bool = velocity.length_squared() > 16.0
+    var pace: float = 3.6 if boss else (8.4 if enemy_type == "runner" else 5.4)
+    var breathe: float = sin(animation_time * pace)
+    var squash: float = (0.018 if moving else 0.008) * breathe
+    var tilt: float = 0.0
+    if enemy_type == "runner" and moving:
+        tilt = -0.035 * breathe
+    elif enemy_type == "stalker":
+        tilt = 0.018 * breathe
+    var art_tint := Color.WHITE.lerp(Color(1.0, 0.66, 0.54), clampf(hit_flash, 0.0, 1.0) * 0.82)
+    if elite and not boss:
+        art_tint = art_tint.lerp(elite_glow.lightened(0.30), 0.14)
+    draw_set_transform(Vector2(0, y_offset), tilt, Vector2(1.0 - squash, 1.0 + squash))
+    draw_texture_rect(texture, Rect2(-size * 0.5, size), false, art_tint)
+    draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_pixel_ghoul(body: Color, dark: Color, light: Color) -> void:
     # Basic husk: hunched, asymmetrical, obviously corrupted.

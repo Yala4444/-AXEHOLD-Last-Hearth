@@ -122,6 +122,18 @@ func _draw_forest_atmosphere() -> void:
         var root_color := Color(0.17,0.13,0.08,0.16 if not night else 0.12)
         draw_line(origin,origin + Vector2(82,-28),root_color,3.0)
         draw_line(origin + Vector2(49,-17),origin + Vector2(67,-42),root_color,2.0)
+    # Layered low mist and leaf litter soften the procedural grid while keeping
+    # the play space readable. The deterministic seed avoids visual popping.
+    for i: int in range(3):
+        var mist_x: float = float((seed * 5 + i * 113) % maxi(1, int(chunk_rect.size.x)))
+        var mist_y: float = float((seed * 7 + i * 59) % maxi(1, int(chunk_rect.size.y)))
+        var mist_alpha: float = lerpf(0.018, 0.045, night_mix)
+        draw_circle(Vector2(mist_x, mist_y), 34.0 + float(i) * 8.0, Color(0.55,0.63,0.55,mist_alpha))
+    for i: int in range(7):
+        var leaf_x: float = float((seed * 11 + i * 47) % maxi(1, int(chunk_rect.size.x)))
+        var leaf_y: float = float((seed * 13 + i * 79) % maxi(1, int(chunk_rect.size.y)))
+        var leaf_color := Color(0.34,0.15,0.10,0.16 if not night else 0.10)
+        draw_line(Vector2(leaf_x,leaf_y),Vector2(leaf_x + 4.0,leaf_y + 2.0),leaf_color,1.6)
 
 func _draw_frost_detail(p: Vector2, index: int) -> void:
     var snow: Color = Color(0.86, 0.94, 0.95, 0.075 if not night else 0.055)
