@@ -456,10 +456,10 @@ func _draw_tree() -> void:
     if tree_hp <= 0:
         draw_circle(at + Vector2(5, 25), 26.0, Color(0.18,0.25,0.13,0.22))
         draw_rect(Rect2(at + Vector2(-14,15), Vector2(28,17)), Color("81502f"))
-        draw_ellipse(at + Vector2(0,15), Vector2(16,8), Color("d29a55"))
+        _ellipse(at + Vector2(0,15), Vector2(16,8), Color("d29a55"))
         draw_circle(at + Vector2(0,15), 7.0, Color("9d6638"), false, 2.0)
         return
-    draw_ellipse(at + Vector2(4, 38), Vector2(45, 17), Color(0.18,0.25,0.13,0.22))
+    _ellipse(at + Vector2(4, 38), Vector2(45, 17), Color(0.18,0.25,0.13,0.22))
     draw_colored_polygon(PackedVector2Array([at+Vector2(-14,40),at+Vector2(-10,-15),at+Vector2(11,-16),at+Vector2(17,41)]), Color("80502f"))
     draw_line(at + Vector2(-4,30), at + Vector2(2,-12), Color("b77b43"), 5.0)
     if tree_hp < 4:
@@ -473,7 +473,7 @@ func _draw_tree() -> void:
     draw_circle(at + Vector2(-12,-47), 19.0, Color("78a957"))
     draw_arc(at + Vector2(0,-30), 46.0, 0.0, TAU, 32, Color(0.18,0.34,0.16,0.7), 2.5)
 
-func draw_ellipse(center: Vector2, radius: Vector2, color: Color) -> void:
+func _ellipse(center: Vector2, radius: Vector2, color: Color) -> void:
     var points := PackedVector2Array()
     for i: int in range(25):
         var a := TAU * float(i) / 24.0
@@ -500,7 +500,7 @@ func _draw_hero() -> void:
         var phase := clampf(1.0 - action_time / 0.82, 0.0, 1.0)
         attack = sin(phase * PI) * 1.4
     var at := hero_pos + Vector2(0, -bob)
-    draw_ellipse(hero_pos + Vector2(0,15), Vector2(22,9), Color(0.16,0.22,0.12,0.28))
+    _ellipse(hero_pos + Vector2(0,15), Vector2(22,9), Color(0.16,0.22,0.12,0.28))
     draw_set_transform(at, 0.0, Vector2(facing, 1.0))
     draw_line(Vector2(-7,10), Vector2(-9 + stride*5.0,25), Color("453328"), 7.0)
     draw_line(Vector2(7,10), Vector2(9 - stride*5.0,25), Color("453328"), 7.0)
@@ -530,7 +530,7 @@ func _draw_hero() -> void:
 func _draw_tokens() -> void:
     for token: Dictionary in tokens:
         var at: Vector2 = token["pos"]
-        draw_ellipse(at + Vector2(0,4), Vector2(11,4), Color(0.18,0.22,0.12,0.18))
+        _ellipse(at + Vector2(0,4), Vector2(11,4), Color(0.18,0.22,0.12,0.18))
         draw_line(at + Vector2(-10,0), at + Vector2(10,0), Color("9f6436"), 8.0)
         draw_circle(at + Vector2(-10,0), 4.0, Color("d09550"))
         draw_circle(at + Vector2(-10,0), 2.0, Color("82502e"), false, 1.0)
