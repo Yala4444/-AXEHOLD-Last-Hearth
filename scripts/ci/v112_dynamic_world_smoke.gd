@@ -79,7 +79,7 @@ func _test_dynamic_runtime() -> void:
     day_enemy.take_damage(99999.0)
     await _wait_frames(3)
 
-    world.dynamic_world._start_event("caravan_defense")
+    _start_test_event(world, "caravan_defense")
     if str(world.dynamic_world.active_event.get("type", "")) != "caravan_defense":
         _fail("Caravan defense event failed to start")
     var caravan_enemies: Array = world.dynamic_world.active_event.get("enemies", []).duplicate()
@@ -98,7 +98,7 @@ func _test_dynamic_runtime() -> void:
     if world.expedition_memory == null or not world.expedition_memory.has_flag("caravan_escorted"):
         _fail("Caravan escort did not persist into expedition memory")
 
-    world.dynamic_world._start_event("survivor_rescue")
+    _start_test_event(world, "survivor_rescue")
     var rescue_enemies: Array = world.dynamic_world.active_event.get("enemies", []).duplicate()
     for enemy_variant: Variant in rescue_enemies:
         var enemy: AxEnemy = enemy_variant as AxEnemy
@@ -116,7 +116,7 @@ func _test_dynamic_runtime() -> void:
     if world.dynamic_world.rescues_completed != 1:
         _fail("Survivor rescue did not complete")
 
-    world.dynamic_world._start_event("elite_hunt")
+    _start_test_event(world, "elite_hunt")
     var hunt_enemies: Array = world.dynamic_world.active_event.get("enemies", [])
     var found_elite: bool = false
     for enemy_variant: Variant in hunt_enemies:
@@ -134,7 +134,7 @@ func _test_dynamic_runtime() -> void:
     if world.dynamic_world.elites_killed < 2:
         _fail("Elite kill accounting did not include rescue/hunt elites")
 
-    world.dynamic_world._start_event("ambush")
+    _start_test_event(world, "ambush")
     world.dynamic_world.active_event["time"] = 0.01
     world.dynamic_world._update_active_event(0.2)
     if world.dynamic_world.events_failed < 1:
@@ -154,6 +154,14 @@ func _test_dynamic_runtime() -> void:
 
     world.queue_free()
     await _wait_frames(4)
+
+func _start_test_event(world: GameWorld, event_type: String) -> void:
+    # Runtime pacing keeps a deliberate pause between encounters. This legacy
+    # regression test skips time so it can exercise every branch in one world.
+    if world.encounter_orchestrator != null:
+        world.encounter_orchestrator.cooldown = 0.0
+    if not world.dynamic_world._start_event(event_type):
+        _fail("Test event could not acquire encounter slot: " + event_type)
 
 func _wait_frames(count: int) -> void:
     for _i: int in range(count):
