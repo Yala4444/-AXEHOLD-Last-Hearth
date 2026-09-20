@@ -1,9 +1,11 @@
 class_name ResourceSpot
 extends Node2D
 
-const FOREST_TREE_ART: Texture2D = preload("res://assets/art/forgotten_forest/harvest_tree.png")
-const FOREST_ROCK_ART: Texture2D = preload("res://assets/art/forgotten_forest/stone_deposit.png")
-const FOREST_ORE_ART: Texture2D = preload("res://assets/art/forgotten_forest/ore_deposit.png")
+const FOREST_ART_PATHS: Dictionary = {
+    "tree":"res://assets/art/forgotten_forest/harvest_tree.png",
+    "rock":"res://assets/art/forgotten_forest/stone_deposit.png",
+    "ore":"res://assets/art/forgotten_forest/ore_deposit.png"
+}
 
 var resource_type: String = "tree"
 var hp: float = 52.0
@@ -15,6 +17,7 @@ var hit_gate: float = 0.0
 var wobble_phase: float = 0.0
 var biome_index: int = 0
 var visual_identity_version: int = 3
+var forest_art_cache: Dictionary = {}
 
 func configure(kind: String, v: int = 0, biome: int = 0) -> void:
     resource_type = kind
@@ -85,16 +88,17 @@ func _draw() -> void:
 func _draw_illustrated_resource(flash: float) -> void:
     if biome_index != 0:
         return
-    var texture: Texture2D = FOREST_TREE_ART
+    var texture: Texture2D = forest_art_cache.get(resource_type) as Texture2D
+    if texture == null:
+        texture = ResourceLoader.load(str(FOREST_ART_PATHS.get(resource_type, FOREST_ART_PATHS["tree"]))) as Texture2D
+        forest_art_cache[resource_type] = texture
     var size := Vector2(76, 81)
     var y_offset: float = -23.0
     match resource_type:
         "rock":
-            texture = FOREST_ROCK_ART
             size = Vector2(54, 57)
             y_offset = -9.0
         "ore":
-            texture = FOREST_ORE_ART
             size = Vector2(59, 66)
             y_offset = -14.0
     if texture == null:

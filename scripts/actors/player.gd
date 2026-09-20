@@ -7,7 +7,7 @@ signal level_up_requested(level: int)
 signal build_evolved(evolution_id: String, title: String, description: String)
 signal legendary_triggered(title: String, description: String)
 
-const WANDERER_ART: Texture2D = preload("res://assets/art/forgotten_forest/wanderer.png")
+const WANDERER_ART_PATH: String = "res://assets/art/forgotten_forest/wanderer.png"
 
 var target_position: Vector2 = Vector2.ZERO
 var move_input: Vector2 = Vector2.ZERO
@@ -80,6 +80,7 @@ var family_counts: Dictionary = {}
 var evolutions: Dictionary = {}
 var legendary_traits: Dictionary = {}
 var visual_identity_version: int = 3
+var wanderer_art: Texture2D
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -729,7 +730,9 @@ func _draw() -> void:
     _draw_inventory_gauge()
 
 func _draw_illustrated_wanderer(body_offset: Vector2, moving: bool) -> void:
-    if WANDERER_ART == null:
+    if wanderer_art == null:
+        wanderer_art = ResourceLoader.load(WANDERER_ART_PATH) as Texture2D
+    if wanderer_art == null:
         return
     var breathe: float = sin(motion_time * (8.0 if moving else 2.4))
     var action_tilt: float = -facing_x * weapon_action_ratio() * 0.045
@@ -737,7 +740,7 @@ func _draw_illustrated_wanderer(body_offset: Vector2, moving: bool) -> void:
     var height: float = 79.0 - breathe * (1.0 if moving else 0.35)
     var tint_color := Color.WHITE.lerp(Color(1.0, 0.68, 0.58), clampf(damage_flash, 0.0, 1.0) * 0.72)
     draw_set_transform(body_offset + Vector2(0, -10), action_tilt, Vector2(facing_x, 1.0))
-    draw_texture_rect(WANDERER_ART, Rect2(-width * 0.5, -height * 0.5, width, height), false, tint_color)
+    draw_texture_rect(wanderer_art, Rect2(-width * 0.5, -height * 0.5, width, height), false, tint_color)
     draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_inventory_gauge() -> void:

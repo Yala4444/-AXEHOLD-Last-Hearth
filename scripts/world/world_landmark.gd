@@ -1,12 +1,13 @@
 class_name WorldLandmark
 extends Node2D
 
-const ANCIENT_TREE_ART: Texture2D = preload("res://assets/art/forgotten_forest/ancient_sentinel_tree.png")
+const ANCIENT_TREE_ART_PATH: String = "res://assets/art/forgotten_forest/ancient_sentinel_tree.png"
 
 var kind: String = "stump"
 var biome_index: int = 0
 var variant: int = 0
 var visual_identity_version: int = 3
+var ancient_tree_art: Texture2D
 
 func configure(new_kind: String, index: int, new_variant: int = 0) -> void:
     kind = new_kind
@@ -88,12 +89,14 @@ func _draw_ice() -> void:
     draw_line(Vector2(-1, -12), Vector2(-4, 7), Color(0.84, 0.95, 0.96, 0.48), 1.0)
 
 func _draw_ancient_tree() -> void:
-    if ANCIENT_TREE_ART != null:
+    if ancient_tree_art == null:
+        ancient_tree_art = ResourceLoader.load(ANCIENT_TREE_ART_PATH) as Texture2D
+    if ancient_tree_art != null:
         var art_scale: float = 0.90 + float(variant) * 0.08
         var art_size := Vector2(160, 180) * art_scale
         var mirror: float = -1.0 if variant == 1 else 1.0
         draw_set_transform(Vector2(0, 4), 0.0, Vector2(mirror, 1.0))
-        draw_texture_rect(ANCIENT_TREE_ART, Rect2(-art_size.x * 0.5, -art_size.y + 25.0, art_size.x, art_size.y), false)
+        draw_texture_rect(ancient_tree_art, Rect2(-art_size.x * 0.5, -art_size.y + 25.0, art_size.x, art_size.y), false)
         draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
         return
     var shadow := Color(0.02,0.04,0.025,0.18)

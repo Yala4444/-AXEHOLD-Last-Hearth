@@ -9,7 +9,7 @@ const PlayerScene: PackedScene = preload("res://scenes/player.tscn")
 const EnemyScene: PackedScene = preload("res://scenes/enemy.tscn")
 const ResourceScene: PackedScene = preload("res://scenes/resource_spot.tscn")
 const BuildPadScene: PackedScene = preload("res://scenes/build_pad.tscn")
-const LAST_HEARTH_ART: Texture2D = preload("res://assets/art/forgotten_forest/last_hearth.png")
+const LAST_HEARTH_ART_PATH: String = "res://assets/art/forgotten_forest/last_hearth.png"
 
 var biome_index: int = 0
 var biome: Dictionary = {}
@@ -47,6 +47,7 @@ var trees_cut: int = 0
 var revived: bool = false
 var paused_local: bool = false
 var finishing: bool = false
+var last_hearth_art: Texture2D
 var turret_timer: float = 0.0
 var turret_shot_time: float = 0.0
 var turret_shot_from: Vector2 = Vector2.ZERO
@@ -1691,11 +1692,13 @@ func _draw_hearth(night: bool) -> void:
         base_position + Vector2(5, 4)
     ]), Color("ffd879"))
 
-    if biome_index == 0 and LAST_HEARTH_ART != null:
+    if biome_index == 0 and last_hearth_art == null:
+        last_hearth_art = ResourceLoader.load(LAST_HEARTH_ART_PATH) as Texture2D
+    if biome_index == 0 and last_hearth_art != null:
         var art_pulse: float = 1.0 + sin(Time.get_ticks_msec() * 0.004) * 0.008
         var art_size := Vector2(184.0, 155.0) * art_pulse
         draw_texture_rect(
-            LAST_HEARTH_ART,
+            last_hearth_art,
             Rect2(base_position + Vector2(-art_size.x * 0.5, -art_size.y * 0.49), art_size),
             false,
             Color.WHITE

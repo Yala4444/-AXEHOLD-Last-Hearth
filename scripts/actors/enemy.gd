@@ -3,12 +3,14 @@ extends CharacterBody2D
 
 signal killed(enemy: AxEnemy)
 
-const FOREST_HUSK_ART: Texture2D = preload("res://assets/art/forgotten_forest/root_husk.png")
-const FOREST_RUNNER_ART: Texture2D = preload("res://assets/art/forgotten_forest/briar_hound.png")
-const FOREST_BRUTE_ART: Texture2D = preload("res://assets/art/forgotten_forest/ironroot_ravager.png")
-const FOREST_STALKER_ART: Texture2D = preload("res://assets/art/forgotten_forest/hollow_seer.png")
-const FOREST_GUARDIAN_ART: Texture2D = preload("res://assets/art/forgotten_forest/oathstone_bulwark.png")
-const FOREST_BOSS_ART: Texture2D = preload("res://assets/art/forgotten_forest/forest_guardian.png")
+const FOREST_ART_PATHS: Dictionary = {
+    "normal":"res://assets/art/forgotten_forest/root_husk.png",
+    "runner":"res://assets/art/forgotten_forest/briar_hound.png",
+    "brute":"res://assets/art/forgotten_forest/ironroot_ravager.png",
+    "stalker":"res://assets/art/forgotten_forest/hollow_seer.png",
+    "guardian":"res://assets/art/forgotten_forest/oathstone_bulwark.png",
+    "boss":"res://assets/art/forgotten_forest/forest_guardian.png"
+}
 
 var enemy_type: String = "normal"
 var biome_index: int = 0
@@ -46,6 +48,7 @@ var surge_windup: float = 0.0
 var surge_time: float = 0.0
 var surge_direction: Vector2 = Vector2.ZERO
 var visual_identity_version: int = 3
+var forest_art_cache: Dictionary = {}
 
 func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss: bool = false, region_index: int = 0) -> void:
     enemy_type = kind
@@ -445,32 +448,32 @@ func _draw() -> void:
 func _draw_illustrated_forest_identity() -> void:
     if biome_index != 0:
         return
-    var texture: Texture2D = FOREST_HUSK_ART
+    var art_role: String = "boss" if boss else enemy_type
+    if not FOREST_ART_PATHS.has(art_role):
+        art_role = "normal"
+    var texture: Texture2D = forest_art_cache.get(art_role) as Texture2D
+    if texture == null:
+        texture = ResourceLoader.load(str(FOREST_ART_PATHS[art_role])) as Texture2D
+        forest_art_cache[art_role] = texture
     var size := Vector2(58, 64)
     var y_offset: float = -10.0
     match enemy_type:
         "runner":
-            texture = FOREST_RUNNER_ART
             size = Vector2(72, 62)
             y_offset = -7.0
         "brute":
-            texture = FOREST_BRUTE_ART
             size = Vector2(82, 86)
             y_offset = -14.0
         "stalker":
-            texture = FOREST_STALKER_ART
             size = Vector2(58, 91)
             y_offset = -17.0
         "guardian":
-            texture = FOREST_GUARDIAN_ART
             size = Vector2(84, 88)
             y_offset = -15.0
         "boss":
-            texture = FOREST_BOSS_ART
             size = Vector2(164, 173)
             y_offset = -35.0
     if boss:
-        texture = FOREST_BOSS_ART
         size = Vector2(164, 173)
         y_offset = -35.0
     if texture == null:
