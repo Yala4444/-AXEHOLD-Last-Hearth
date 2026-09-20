@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.25.0-alpha.1 — LIVING WORLD
+- Consolidated the production direction from the Living Board Game experiments into the real expedition instead of shipping the rejected prototype loop.
+- Added Last Hearth Growth driven only by resources physically carried home: Ember → Campfire → Last Hearth → Beacon.
+- Hearth stages visibly expand warm territory, flame scale and camp dressing while adding modest maximum durability, home recovery and deposit comfort.
+- Kept AXEHOLD's signature automatic harvesting/combat intact: orbiting weapons remain the source of chopping and damage; no manual tap-to-chop loop was introduced.
+- Added explicit harvest-contact arcs and chips so a resource visibly reacts while orbiting weapons work it.
+- Reworked the Wanderer presentation into a maintainable direction-aware movement language with side mirroring, north-facing hood/cape read, step weight and attack lean over the production illustration.
+- Reduced starting resource and landmark clutter while placing an intentional first wood cluster near home and pushing stone/ore farther into exploration routes.
+- Gave Forest enemy roles distinct movement language on top of their illustrated silhouettes: hound lunges, brute stomps, stalker floats and guardians move with heavier restraint.
+- Added Hearth Growth to expedition result data so a run remembers how far the home fire was developed.
+- Added an authoritative v1.25 Living World product/production TЗ covering core loop, visual language, pacing, events, Buildcraft and release roadmap.
+- Added dedicated v1.25 regression coverage for physical Hearth growth, direction-aware Wanderer movement, harvesting readability, world composition and enemy silhouette contracts.
+- Bumped Android/iOS metadata to 1.25.0-alpha.1 / build 39.
+
 ## 1.22.0-alpha.1 — FORGOTTEN FOREST ART OVERHAUL
 - Replaced the Forgotten Forest's primary procedural figures with twelve optimized hand-painted production assets.
 - Added a fully illustrated Wanderer with detailed armor, torn cloak, amber eye and Last Hearth rune while preserving runtime weapon readability.

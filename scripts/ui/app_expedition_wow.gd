@@ -136,6 +136,19 @@ func _show_result() -> void:
         build_meta.add_theme_font_size_override("font_size", 7)
         build_meta.add_theme_color_override("font_color", VisualSystem.TEXT_MUTED)
 
+    var hearth_result: Dictionary = result_data.get("hearth_growth", {})
+    if not hearth_result.is_empty() and int(hearth_result.get("delivered",0)) > 0:
+        var hearth_note := Label.new()
+        box.add_child(hearth_note)
+        hearth_note.text = "ПОСЛЕДНИЙ ОЧАГ · %s · принесено %d ресурсов" % [
+            str(hearth_result.get("name","УГОЛЁК")),
+            int(hearth_result.get("delivered",0))
+        ]
+        hearth_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        hearth_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        hearth_note.add_theme_font_size_override("font_size", 9)
+        hearth_note.add_theme_color_override("font_color", Color("e6bd72"))
+
     var memory_result: Dictionary = result_data.get("expedition_memory", {})
     var memories: Array = memory_result.get("moments", [])
     if not memories.is_empty():

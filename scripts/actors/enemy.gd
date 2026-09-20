@@ -47,7 +47,7 @@ var surge_cooldown: float = 2.8
 var surge_windup: float = 0.0
 var surge_time: float = 0.0
 var surge_direction: Vector2 = Vector2.ZERO
-var visual_identity_version: int = 3
+var visual_identity_version: int = 4
 var forest_art_cache: Dictionary = {}
 
 func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss: bool = false, region_index: int = 0) -> void:
@@ -455,6 +455,7 @@ func _draw_illustrated_forest_identity() -> void:
     if texture == null:
         texture = ResourceLoader.load(str(FOREST_ART_PATHS[art_role])) as Texture2D
         forest_art_cache[art_role] = texture
+
     var size := Vector2(58, 64)
     var y_offset: float = -10.0
     match enemy_type:
@@ -478,19 +479,59 @@ func _draw_illustrated_forest_identity() -> void:
         y_offset = -35.0
     if texture == null:
         return
+
     var moving: bool = velocity.length_squared() > 16.0
-    var pace: float = 3.6 if boss else (8.4 if enemy_type == "runner" else 5.4)
+    var pace: float = 3.6 if boss else 5.4
+    var squash_amount: float = 0.014
+    var tilt_amount: float = 0.0
+    var vertical_lift: float = 0.0
+
+    match enemy_type:
+        "runner":
+            pace = 9.2
+            squash_amount = 0.045
+            tilt_amount = -0.055
+        "brute":
+            pace = 3.8
+            squash_amount = 0.020
+            vertical_lift = 1.8
+        "stalker":
+            pace = 7.4
+            squash_amount = 0.014
+            tilt_amount = 0.025
+            vertical_lift = -2.5
+        "guardian":
+            pace = 2.9
+            squash_amount = 0.010
+            vertical_lift = 1.2
+    if boss:
+        pace = 2.6
+        squash_amount = 0.008
+        vertical_lift = 1.5
+
     var breathe: float = sin(animation_time * pace)
-    var squash: float = (0.018 if moving else 0.008) * breathe
-    var tilt: float = 0.0
+    var squash: float = (squash_amount if moving else squash_amount * 0.38) * breathe
+    var movement_dir: Vector2 = velocity.normalized() if moving else Vector2.ZERO
+    var direction_lean: float = movement_dir.x * (0.028 if not boss else 0.012)
+    var tilt: float = tilt_amount * breathe + direction_lean
+    var step_lift: float = absf(breathe) * vertical_lift if moving else 0.0
+    var transform_scale := Vector2(1.0 - squash, 1.0 + squash)
+
+    # Each combat role now moves differently even while sharing the maintainable
+    # single-cutout animation system: hounds lunge, brutes stomp, stalkers float
+    # and guardians barely flex.
     if enemy_type == "runner" and moving:
-        tilt = -0.035 * breathe
+        transform_scale.x *= 1.04 + absf(breathe) * 0.025
+        transform_scale.y *= 0.97
+    elif enemy_type == "brute" and moving:
+        transform_scale.x *= 1.0 + absf(breathe) * 0.018
     elif enemy_type == "stalker":
-        tilt = 0.018 * breathe
+        y_offset += sin(animation_time * 4.2) * 2.2
+
     var art_tint := Color.WHITE.lerp(Color(1.0, 0.66, 0.54), clampf(hit_flash, 0.0, 1.0) * 0.82)
     if elite and not boss:
         art_tint = art_tint.lerp(elite_glow.lightened(0.30), 0.14)
-    draw_set_transform(Vector2(0, y_offset), tilt, Vector2(1.0 - squash, 1.0 + squash))
+    draw_set_transform(Vector2(0, y_offset - step_lift), tilt, transform_scale)
     draw_texture_rect(texture, Rect2(-size * 0.5, size), false, art_tint)
     draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
