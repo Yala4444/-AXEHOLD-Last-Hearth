@@ -116,9 +116,18 @@ func choice_text(spec: Dictionary) -> String:
 
     var rarity_label: String = rarity_name(rarity)
     var header: String = "%s · %s" % [rarity_label, str(spec.get("name","УСИЛЕНИЕ"))]
-    var body: String = str(spec.get("desc",""))
+    var body: String = "ЭФФЕКТ: " + str(spec.get("desc",""))
     if rarity != "legendary" and not family.is_empty():
-        body += "\n%s %d/3 → эволюция" % [GameRules.family_name(family), mini(3, progress + 1)]
+        var next_progress: int = mini(3, progress + 1)
+        if next_progress >= 3:
+            var evolution: Dictionary = GameRules.evolution_for_family(family)
+            body += "\n%s 3/3 → %s: %s" % [
+                GameRules.family_name(family),
+                str(evolution.get("name", "ЭВОЛЮЦИЯ")),
+                str(evolution.get("desc", "правило школы изменится"))
+            ]
+        else:
+            body += "\n%s %d/3 → эволюция на 3/3" % [GameRules.family_name(family), next_progress]
     return header + "\n" + body
 
 func apply_choice(perk_id: String, rarity: String = "common", source: String = "level") -> Dictionary:
@@ -126,19 +135,13 @@ func apply_choice(perk_id: String, rarity: String = "common", source: String = "
         return {}
 
     var before: Dictionary = world.player.buildcraft_snapshot()
+    var stats_before: Dictionary = _combat_snapshot()
     world.player.apply_perk(perk_id)
 
-    match rarity:
-        "rare":
-            world.player.damage *= 1.04
-        "epic":
-            world.player.damage *= 1.08
-            world.player.max_hp += 6.0
-            world.player.hp = minf(world.player.max_hp, world.player.hp + 6.0)
-        "legendary":
-            pass
-        _:
-            rarity = "common"
+    # Rarity controls how exceptional an offer is, but never mutates unrelated
+    # combat stats behind the card text. All power comes from the selected perk.
+    if rarity not in ["common", "rare", "epic", "legendary"]:
+        rarity = "common"
 
     choices_taken += 1
     rarity_counts[rarity] = int(rarity_counts.get(rarity,0)) + 1
@@ -146,18 +149,23 @@ func apply_choice(perk_id: String, rarity: String = "common", source: String = "
         legendary_offered = true
 
     var after: Dictionary = world.player.buildcraft_snapshot()
+    var stats_after: Dictionary = _combat_snapshot()
     Analytics.event("buildcraft_pick", {
         "perk":perk_id,
         "rarity":rarity,
         "family":GameRules.perk_family(perk_id),
         "source":source,
-        "level":world.player.level
+        "level":world.player.level,
+        "hidden_stat_bonus":false
     })
     return {
         "perk":GameRules.perk_spec(perk_id),
         "rarity":rarity,
         "before":before,
         "after":after,
+        "stats_before":stats_before,
+        "stats_after":stats_after,
+        "hidden_stat_bonus":false,
         "identity":short_identity()
     }
 
@@ -182,7 +190,21 @@ func result_summary() -> Dictionary:
     snapshot["choices"] = choices_taken
     snapshot["rarities"] = rarity_counts.duplicate(true)
     snapshot["identity"] = short_identity()
+    snapshot["hidden_rarity_bonuses"] = false
     return snapshot
+
+func _combat_snapshot() -> Dictionary:
+    if world == null or world.player == null:
+        return {}
+    return {
+        "damage":world.player.damage,
+        "max_hp":world.player.max_hp,
+        "move_speed":world.player.move_speed,
+        "capacity":world.player.capacity,
+        "crit_chance":world.player.crit_chance,
+        "crit_multiplier":world.player.crit_multiplier,
+        "shield_hits":world.player.shield_hits
+    }
 
 func rarity_name(rarity: String) -> String:
     match rarity:

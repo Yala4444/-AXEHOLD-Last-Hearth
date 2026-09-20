@@ -70,6 +70,7 @@ var biome_events: BiomeEventDirector
 var field_objectives: FieldObjectiveDirector
 var expedition_memory: ExpeditionMemoryDirector
 var buildcraft: BuildcraftDirector
+var encounter_orchestrator: EncounterOrchestrator
 var world_fill_layer: CanvasLayer
 var world_fill: ColorRect
 
@@ -131,6 +132,10 @@ func _start_run() -> void:
     buildcraft = BuildcraftDirector.new()
     add_child(buildcraft)
     buildcraft.setup(self)
+
+    encounter_orchestrator = EncounterOrchestrator.new()
+    add_child(encounter_orchestrator)
+    encounter_orchestrator.setup(self)
 
     activity_director = WorldActivityDirector.new()
     add_child(activity_director)
@@ -1429,15 +1434,15 @@ func _on_player_damaged(_amount: float, blocked: bool) -> void:
     hud.set_status("Щит поглотил удар." if blocked else "Герой получил урон.")
 
 func _on_build_evolved(_evolution_id: String, title: String, description: String) -> void:
-    hud.show_banner("ЭВОЛЮЦИЯ · " + title, Color("f4c66f"))
-    hud.set_status(description)
+    hud.show_banner("ЭВОЛЮЦИЯ · " + title, Color("f4c66f"), 100)
+    hud.set_status(description, 100, 3.0)
     trigger_camera_shake(3.8, 0.18)
     Feedback.play("level", 28)
     Analytics.event("build_evolution", {"title":title,"wave":wave,"level":player.level,"biome":biome_index})
 
 func _on_legendary_triggered(title: String, description: String) -> void:
-    hud.show_banner("ЛЕГЕНДАРНОЕ · " + title, Color("e6b7ee"))
-    hud.set_status(description)
+    hud.show_banner("ЛЕГЕНДАРНОЕ · " + title, Color("e6b7ee"), 100)
+    hud.set_status(description, 100, 3.0)
     trigger_camera_shake(5.0, 0.22)
     Analytics.event("legendary_triggered", {"title":title,"wave":wave,"biome":biome_index})
 
@@ -1481,6 +1486,7 @@ func _finish_run(won: bool) -> void:
         "dynamic_world": dynamic_world.result_summary() if dynamic_world != null else {},
         "biome_events": biome_events.result_summary() if biome_events != null else {},
         "field_objectives": field_objectives.result_summary() if field_objectives != null else {},
+        "encounter_orchestrator": encounter_orchestrator.result_summary() if encounter_orchestrator != null else {},
         "expedition_memory": expedition_memory.result_summary() if expedition_memory != null else {},
         "buildcraft": buildcraft.result_summary() if buildcraft != null else {}
     })
@@ -1704,4 +1710,3 @@ func _draw_palisade() -> void:
         draw_colored_polygon(PackedVector2Array([
             pos + Vector2(-3, -8), pos + Vector2(0, -14), pos + Vector2(3, -8)
         ]), Color("b68a54"))
-

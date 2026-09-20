@@ -10,10 +10,12 @@ var environment_time: float = 0.0
 var hazard_spawn_timer: float = 0.0
 var hazards_spawned: int = 0
 var environment_hits: int = 0
+var environment_owner_id: String = ""
 
 var mini_boss: AxEnemy = null
 var mini_hunt_time: float = 0.0
 var mini_support: Array[AxEnemy] = []
+var hunt_owner_id: String = ""
 
 var night_penalties: Dictionary = {}
 var events_completed: int = 0
@@ -40,14 +42,14 @@ func _process(delta: float) -> void:
             _finish_environment(false, "Ночь прервала региональное событие.")
         return
 
-    if world.wave == 1 and not started_environment and world.phase_time <= 34.0:
+    if world.wave == 1 and not started_environment and world.phase_time <= 34.0 and _encounter_slot_ready():
         if (world.dynamic_world == null or world.dynamic_world.active_event.is_empty()) and (world.field_objectives == null or world.field_objectives.active.is_empty()):
             _start_environment_event()
 
     if active_environment:
         _update_environment(delta)
 
-    if world.wave == 2 and not started_hunt and not active_environment and world.phase_time <= 29.0:
+    if world.wave == 2 and not started_hunt and not active_environment and world.phase_time <= 29.0 and _encounter_slot_ready():
         # Only one named hunt should define a run. If Events 2.0 already
         # produced one, the regional director yields instead of stacking noise.
         if world.dynamic_world != null and world.dynamic_world.seen_types.has("elite_hunt"):
@@ -60,7 +62,14 @@ func _process(delta: float) -> void:
         if mini_hunt_time <= 0.0:
             _fail_regional_hunt()
 
+func _encounter_slot_ready() -> bool:
+    return world.encounter_orchestrator == null or world.encounter_orchestrator.ready()
+
 func _start_environment_event() -> void:
+    var owner_id: String = "biome_environment:%d:%d" % [world.wave, world.biome_index]
+    if world.encounter_orchestrator != null and not world.encounter_orchestrator.request(owner_id, "regional_event", 60, 14.0):
+        return
+    environment_owner_id = owner_id
     started_environment = true
     active_environment = true
     environment_time = 10.0
@@ -71,14 +80,14 @@ func _start_environment_event() -> void:
     match world.biome_index:
         1:
             world.player.apply_environment_slow(0.88, 10.0)
-            world.hud.show_banner("БЕЛАЯ БУРЯ", Color("b9e8f2"))
-            world.hud.set_status("Метель режет скорость. Следи за трескающимся льдом и не стой на месте.")
+            world.hud.show_banner("БЕЛАЯ БУРЯ", Color("b9e8f2"), 60)
+            world.hud.set_status("Метель режет скорость. Следи за трескающимся льдом и не стой на месте.", 60)
         2:
-            world.hud.show_banner("РАЗЛОМ ЖАРА", Color("f18a55"))
-            world.hud.set_status("Земля вскрывается под ногами. Уходи из отмеченных огнём зон.")
+            world.hud.show_banner("РАЗЛОМ ЖАРА", Color("f18a55"), 60)
+            world.hud.set_status("Земля вскрывается под ногами. Уходи из отмеченных огнём зон.", 60)
         _:
-            world.hud.show_banner("КОРНИ ПРОБУЖДАЮТСЯ", Color("a9cf78"))
-            world.hud.set_status("Старые корни хватают всё живое. Смотри под ноги и меняй маршрут.")
+            world.hud.show_banner("КОРНИ ПРОБУЖДАЮТСЯ", Color("a9cf78"), 60)
+            world.hud.set_status("Старые корни хватают всё живое. Смотри под ноги и меняй маршрут.", 60)
 
     Analytics.event("biome_event_started", {
         "biome":world.biome_index,
@@ -195,7 +204,7 @@ func _finish_environment(success: bool, reason: String) -> void:
             )
         QuestDirector.record("biome_event", 1, {"biome":world.biome_index})
         GameState.record_biome_event(world.biome_index, {"events":1,"perfect":1 if environment_hits == 0 else 0})
-        world.hud.show_banner("РЕГИОН УСМИРЁН", Color("d8cc91"))
+        world.hud.show_banner("РЕГИОН УСМИРЁН", Color("d8cc91"), 70)
         world.hud.set_status(("+%d мон. · %s" % [reward, regional_boon]) if not regional_boon.is_empty() else "+%d мон. · ресурс биома · Угроза снижена." % reward)
         Analytics.event("biome_event_completed", {"biome":world.biome_index,"hits":environment_hits})
     else:
@@ -211,11 +220,19 @@ func _finish_environment(success: bool, reason: String) -> void:
                 "danger",
                 true
             )
-        world.hud.show_banner("РЕГИОН ВЗЯЛ СВОЁ", Color("d27868"))
+        world.hud.show_banner("РЕГИОН ВЗЯЛ СВОЁ", Color("d27868"), 70)
         world.hud.set_status((reason + " " if not reason.is_empty() else "") + "Следующая ночь получила региональное усиление.")
         Analytics.event("biome_event_failed", {"biome":world.biome_index,"hits":environment_hits})
 
+    if world.encounter_orchestrator != null and not environment_owner_id.is_empty():
+        world.encounter_orchestrator.release(environment_owner_id, "resolved" if success else "failed")
+    environment_owner_id = ""
+
 func _start_regional_hunt() -> void:
+    var owner_id: String = "biome_hunt:%d:%d" % [world.wave, world.biome_index]
+    if world.encounter_orchestrator != null and not world.encounter_orchestrator.request(owner_id, "regional_hunt", 80, 18.0):
+        return
+    hunt_owner_id = owner_id
     started_hunt = true
     mini_hunt_time = 26.0
     var point: Vector2 = _hunt_point()
@@ -228,16 +245,16 @@ func _start_regional_hunt() -> void:
                 world.spawn_event_enemy("runner", point + Vector2(48, 12), "", event_id, point, "hunt"),
                 world.spawn_event_enemy("runner", point + Vector2(-42, -18), "", event_id, point, "hunt")
             ]
-            world.hud.show_banner("БЕЛЫЙ ОХОТНИК", Color("b9e8f2"))
-            world.hud.set_status("Редкий хищник вышел в метель. Убей его до третьей ночи.")
+            world.hud.show_banner("БЕЛЫЙ ОХОТНИК", Color("b9e8f2"), 80)
+            world.hud.set_status("Редкий хищник вышел в метель. Убей его до третьей ночи.", 80)
         2:
             mini_boss = world.spawn_event_enemy("brute", point, "ash_seeder", event_id, point, "hunt")
             mini_support = [
                 world.spawn_event_enemy("guardian", point + Vector2(52, 0), "", event_id, point, "hunt"),
                 world.spawn_event_enemy("normal", point + Vector2(-44, 20), "", event_id, point, "hunt")
             ]
-            world.hud.show_banner("ПЕПЕЛЬНЫЙ СЕЯТЕЛЬ", Color("f28b55"))
-            world.hud.set_status("Он несёт жар в следующую ночь. Останови его сейчас.")
+            world.hud.show_banner("ПЕПЕЛЬНЫЙ СЕЯТЕЛЬ", Color("f28b55"), 80)
+            world.hud.set_status("Он несёт жар в следующую ночь. Останови его сейчас.", 80)
         _:
             mini_boss = world.spawn_event_enemy("guardian", point, "root_alpha", event_id, point, "hunt")
             mini_support = [
@@ -245,8 +262,8 @@ func _start_regional_hunt() -> void:
                 world.spawn_event_enemy("runner", point + Vector2(-44, -16), "", event_id, point, "hunt"),
                 world.spawn_event_enemy("normal", point + Vector2(4, 52), "", event_id, point, "hunt")
             ]
-            world.hud.show_banner("ВОЖАК КОРНЕЙ", Color("a9cf78"))
-            world.hud.set_status("Стая держится рядом с вожаком. Разорви её до наступления ночи.")
+            world.hud.show_banner("ВОЖАК КОРНЕЙ", Color("a9cf78"), 80)
+            world.hud.set_status("Стая держится рядом с вожаком. Разорви её до наступления ночи.", 80)
 
     Analytics.event("regional_hunt_started", {"biome":world.biome_index,"wave":world.wave})
 
@@ -278,10 +295,13 @@ func _complete_regional_hunt() -> void:
         )
     QuestDirector.record("regional_hunt", 1, {"biome":world.biome_index})
     GameState.record_biome_event(world.biome_index, {"hunts":1})
-    world.hud.show_banner("РЕГИОНАЛЬНАЯ ЦЕЛЬ ПОВЕРЖЕНА", Color("e6c779"))
-    world.hud.set_status("Реликвия «%s» получена · деталь механизма · давление следующей ночи снижено." % str(relic.get("name","Реликвия")))
+    world.hud.show_banner("РЕГИОНАЛЬНАЯ ЦЕЛЬ ПОВЕРЖЕНА", Color("e6c779"), 90)
+    world.hud.set_status("Реликвия «%s» получена · деталь механизма · давление следующей ночи снижено." % str(relic.get("name","Реликвия")), 90)
     Analytics.event("regional_hunt_completed", {"biome":world.biome_index,"wave":world.wave})
     mini_boss = null
+    if world.encounter_orchestrator != null and not hunt_owner_id.is_empty():
+        world.encounter_orchestrator.release(hunt_owner_id, "resolved")
+    hunt_owner_id = ""
 
 func _fail_regional_hunt() -> void:
     if mini_boss == null or not is_instance_valid(mini_boss) or mini_boss.dying:
@@ -300,10 +320,13 @@ func _fail_regional_hunt() -> void:
             "danger",
             true
         )
-    world.hud.show_banner("ЦЕЛЬ УШЛА В ТЕМНОТУ", Color("d27868"))
-    world.hud.set_status("Региональная элита усилит следующую ночь и останется на карте.")
+    world.hud.show_banner("ЦЕЛЬ УШЛА В ТЕМНОТУ", Color("d27868"), 90)
+    world.hud.set_status("Региональная элита усилит следующую ночь и останется на карте.", 90)
     Analytics.event("regional_hunt_failed", {"biome":world.biome_index,"wave":world.wave})
     mini_boss = null
+    if world.encounter_orchestrator != null and not hunt_owner_id.is_empty():
+        world.encounter_orchestrator.release(hunt_owner_id, "failed")
+    hunt_owner_id = ""
 
 func _apply_night_penalty(wave: int, hunt_failure: bool) -> void:
     var spec: Dictionary = night_penalties.get(wave, {})

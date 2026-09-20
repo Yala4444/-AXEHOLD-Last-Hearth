@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.20.0-alpha.1 — COHERENCE FOUNDATION
+- Added a single Encounter Orchestrator that owns the expedition attention slot for field objectives, major events, regional hazards and named hunts.
+- Prevented timed encounter systems from starting on top of one another and added explicit breathing-room cooldowns after outcomes.
+- Preserved denied and completed encounter-slot history in run telemetry and result data.
+- Removed hidden rarity stat bonuses from Buildcraft; a choice now applies only the effect written on its card.
+- Buildcraft cards now label their exact effect and reveal the name and rule change of an evolution before the decisive 3/3 pick.
+- Added a bounded, deduplicated HUD banner queue with priority ordering so critical announcements are no longer overwritten by ambient notices.
+- Added priority and generation protection to status toasts so stale fade callbacks cannot hide newer information.
+- Added dedicated v1.20 regression coverage for encounter arbitration, cooldowns, Buildcraft transparency, evolution previews and HUD message conflicts.
+- Bumped Android/iOS metadata to 1.20.0-alpha.1 / build 35.
+
 ## 1.19.0-alpha.1 — BUILDCRAFT
 - Rebuilt level-up choices around six build families: Fire, Steel, Frost, Ward, Hunt and Roots.
 - Added visible 3/3 family evolutions that change combat rules, not just stats.

@@ -35,6 +35,11 @@ var modal: ColorRect
 var modal_panel: PanelContainer
 var modal_box: VBoxContainer
 var status_time: float = 0.0
+var status_priority: int = 0
+var status_generation: int = 0
+var banner_queue: Array[Dictionary] = []
+var banner_running: bool = false
+var banner_current_text: String = ""
 
 func _ready() -> void:
     layer = 60
@@ -46,11 +51,13 @@ func _process(delta: float) -> void:
     if status_time > 0.0:
         status_time -= delta
         if status_time <= 0.0 and status_panel != null and status_panel.visible:
+            var generation: int = status_generation
             var tween := create_tween()
             tween.tween_property(status_panel, "modulate:a", 0.0, 0.16)
             tween.tween_callback(func() -> void:
-                if status_panel != null:
+                if status_panel != null and generation == status_generation and status_time <= 0.0:
                     status_panel.visible = false
+                    status_priority = 0
             )
 
 func _build() -> void:
@@ -368,17 +375,64 @@ func set_built_context(title: String, effect: String) -> void:
 func hide_build_context() -> void:
     build_panel.visible = false
 
-func set_status(text: String) -> void:
+func set_status(text: String, priority: int = 0, duration: float = 2.2) -> void:
     if text.strip_edges().is_empty() or build_panel.visible:
         return
-    status_label.text = _safe(text)
+    var safe_text: String = _safe(text)
+    if status_panel.visible and status_time > 0.25 and priority < status_priority:
+        return
+    if status_label.text == safe_text and status_panel.visible:
+        status_time = maxf(status_time, duration)
+        status_priority = maxi(status_priority, priority)
+        return
+    status_generation += 1
+    status_priority = priority
+    status_label.text = safe_text
     status_panel.visible = true
     status_panel.modulate.a = 1.0
-    status_time = 2.2
+    status_time = clampf(duration, 1.2, 3.0)
 
-func show_banner(text: String, color: Color = VisualSystem.GOLD_BRIGHT) -> void:
-    banner.text = _safe(text)
-    banner.add_theme_color_override("font_color", color)
+func show_banner(text: String, color: Color = VisualSystem.GOLD_BRIGHT, priority: int = 0) -> void:
+    var safe_text: String = _safe(text)
+    if safe_text.is_empty() or safe_text == banner_current_text:
+        return
+    for item: Dictionary in banner_queue:
+        if str(item.get("text", "")) == safe_text:
+            return
+    if banner_queue.size() >= 3:
+        var weakest_index: int = 0
+        var weakest_priority: int = int(banner_queue[0].get("priority", 0))
+        for i: int in range(1, banner_queue.size()):
+            var queued_priority: int = int(banner_queue[i].get("priority", 0))
+            if queued_priority < weakest_priority:
+                weakest_priority = queued_priority
+                weakest_index = i
+        if priority < weakest_priority:
+            return
+        banner_queue.remove_at(weakest_index)
+    var next_item: Dictionary = {"text":safe_text, "color":color, "priority":priority}
+    var inserted: bool = false
+    for i: int in range(banner_queue.size()):
+        if priority > int(banner_queue[i].get("priority", 0)):
+            banner_queue.insert(i, next_item)
+            inserted = true
+            break
+    if not inserted:
+        banner_queue.append(next_item)
+    if not banner_running:
+        _play_next_banner()
+
+func _play_next_banner() -> void:
+    if banner_queue.is_empty():
+        banner_running = false
+        banner_current_text = ""
+        return
+    banner_running = true
+    var item: Dictionary = banner_queue.pop_front()
+    banner_current_text = str(item.get("text", ""))
+    banner.text = banner_current_text
+    var item_color: Color = item.get("color", VisualSystem.GOLD_BRIGHT)
+    banner.add_theme_color_override("font_color", item_color)
     banner.modulate.a = 0.0
     banner.scale = Vector2(0.94,0.94)
     banner.pivot_offset = banner.size * 0.5
@@ -390,6 +444,11 @@ func show_banner(text: String, color: Color = VisualSystem.GOLD_BRIGHT) -> void:
     tween.chain().set_parallel(true)
     tween.tween_property(banner, "modulate:a", 0.0, 0.18)
     tween.tween_property(banner, "scale", Vector2(1.025,1.025), 0.18)
+    tween.finished.connect(func() -> void:
+        banner_running = false
+        banner_current_text = ""
+        _play_next_banner()
+    )
 
 func show_boss(name: String, hp: float, max_hp: float) -> void:
     boss_panel.visible = true

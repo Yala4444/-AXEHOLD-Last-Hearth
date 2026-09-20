@@ -56,7 +56,6 @@ func _process(delta: float) -> void:
         _start_for_wave(world.wave)
 
 func _start_for_wave(wave: int) -> void:
-    started_waves[wave] = true
     var event_type: String = ""
 
     # v1.18 pacing: one memorable encounter per day, with a named hunt
@@ -76,12 +75,18 @@ func _start_for_wave(wave: int) -> void:
         else:
             event_type = "ambush"
 
-    _start_event(event_type)
+    if _start_event(event_type):
+        started_waves[wave] = true
+    else:
+        event_timer = 1.5
 
-func _start_event(event_type: String) -> void:
+func _start_event(event_type: String) -> bool:
+    var owner_id: String = "dynamic:%d:%s" % [world.wave, event_type]
+    if world.encounter_orchestrator != null and not world.encounter_orchestrator.request(owner_id, "major_event", 70, 18.0):
+        return false
     event_counter += 1
     seen_types[event_type] = true
-    var event_id: String = "%d:%d:%s" % [world.wave, event_counter, event_type]
+    var event_id: String = owner_id
     var point: Vector2 = world.player.global_position
     var duration: float = 30.0
     var title: String = "СОБЫТИЕ"
@@ -113,6 +118,7 @@ func _start_event(event_type: String) -> void:
 
     active_event = {
         "id":event_id,
+        "owner":owner_id,
         "type":event_type,
         "point":point,
         "duration":duration,
@@ -128,25 +134,25 @@ func _start_event(event_type: String) -> void:
             _spawn_pack(point, event_id, ["normal", "runner", "brute"], "attack_anchor", 78.0)
             if world.wave >= 1:
                 _spawn_elite(point + Vector2(96, -34), event_id, "brute", "armored", "attack_anchor")
-            world.hud.show_banner("КАРАВАН ПОД АТАКОЙ", Color("e0b86f"))
-            world.hud.set_status("ОПАСНОСТЬ: ВЫСОКАЯ · враги стоят кольцом вокруг каравана. Входи с края, не в центр.")
+            world.hud.show_banner("КАРАВАН ПОД АТАКОЙ", Color("e0b86f"), 70)
+            world.hud.set_status("ОПАСНОСТЬ: ВЫСОКАЯ · враги стоят кольцом вокруг каравана. Входи с края, не в центр.", 70)
         "survivor_rescue":
             _spawn_pack(point, event_id, ["normal", "runner"], "attack_anchor")
             _spawn_elite(point + Vector2(42, 16), event_id, "runner", "ravenous", "attack_anchor")
-            world.hud.show_banner("КРИК О ПОМОЩИ", Color("a8d0b1"))
-            world.hud.set_status("Выживший окружён. Сначала очисти место, затем подойди к нему.")
+            world.hud.show_banner("КРИК О ПОМОЩИ", Color("a8d0b1"), 70)
+            world.hud.set_status("Выживший окружён. Сначала очисти место, затем подойди к нему.", 70)
         "elite_hunt":
             var kind: String = "guardian" if world.biome_index != 2 else "brute"
             var elite_trait_id: String = ["warlord", "volatile", "armored"][world.biome_index]
             _spawn_elite(point, event_id, kind, elite_trait_id, "hunt")
-            world.hud.show_banner("ОХОТА · %s" % GameRules.named_hunt_name(world.biome_index), Color("dd8068"))
-            world.hud.set_status("Это именная цель. Победа даст реликвию, которая останется с тобой до конца забега.")
+            world.hud.show_banner("ОХОТА · %s" % GameRules.named_hunt_name(world.biome_index), Color("dd8068"), 70)
+            world.hud.set_status("Это именная цель. Победа даст реликвию, которая останется с тобой до конца забега.", 70)
         "ambush":
             _spawn_ambush(point, event_id)
             if world.run_variation != null:
                 world.run_variation.add_threat(0.35, "day_ambush")
-            world.hud.show_banner("ЗАСАДА!", Color("c392d9"))
-            world.hud.set_status("Тьма вышла на твой след. Переживи короткую схватку.")
+            world.hud.show_banner("ЗАСАДА!", Color("c392d9"), 70)
+            world.hud.set_status("Тьма вышла на твой след. Переживи короткую схватку.", 70)
 
     world.hud.set_run_objective("КРУПНОЕ СОБЫТИЕ · %s · %dс" % [title, int(ceil(duration))])
     Analytics.event("dynamic_event_started", {
@@ -154,6 +160,7 @@ func _start_event(event_type: String) -> void:
         "wave":world.wave,
         "biome":world.biome_index
     })
+    return true
 
 func _spawn_pack(point: Vector2, event_id: String, kinds: Array[String], behavior: String, base_radius: float = 58.0) -> void:
     for i: int in range(kinds.size()):
@@ -236,8 +243,8 @@ func _resolve_cleared_combat() -> void:
         if marker != null and is_instance_valid(marker):
             marker.duration = 15.0
             marker.set_state("secure")
-        world.hud.show_banner("МЕСТО ОЧИЩЕНО", Color("a8d0b1"))
-        world.hud.set_status("Подойди к выжившему и задержись рядом. Если спасёшь его, он поможет у Очагa.")
+        world.hud.show_banner("МЕСТО ОЧИЩЕНО", Color("a8d0b1"), 70)
+        world.hud.set_status("Подойди к выжившему и задержись рядом. Если спасёшь его, он поможет у Очагa.", 70)
     else:
         _complete_event()
 
@@ -284,10 +291,10 @@ func _update_chain_cache(delta: float) -> void:
             QuestDirector.record("event_chain", 1, {"biome":world.biome_index})
             QuestDirector.record("dynamic_event", 1, {"type":"trail_cache","biome":world.biome_index})
             GameState.record_dynamic_world({"events":1,"chains":1})
-            world.hud.show_banner("СЛЕД ПРИВЁЛ К ТАЙНИКУ", Color("e4c87f"))
-            world.hud.set_status("+9 мон. · +3 руды · цепочка события завершена.")
+            world.hud.show_banner("СЛЕД ПРИВЁЛ К ТАЙНИКУ", Color("e4c87f"), 80)
+            world.hud.set_status("+9 мон. · +3 руды · цепочка события завершена.", 80)
             Analytics.event("dynamic_event_completed", {"type":"trail_cache","wave":world.wave,"biome":world.biome_index})
-            _clear_active_event()
+            _clear_active_event("resolved")
             return
     else:
         active_event["secure_progress"] = maxf(0.0, progress - delta)
@@ -325,8 +332,8 @@ func _complete_event() -> void:
                         "Ты получил крупный запас сразу, но следующей ночью за грузом придут охотники.",
                         "danger"
                     )
-                world.hud.show_banner("ГРУЗ ПРИСВОЕН", Color("d6906d"))
-                world.hud.set_status("+26 мон. · крупные припасы в складе · следующая ночь усилена.")
+                world.hud.show_banner("ГРУЗ ПРИСВОЕН", Color("d6906d"), 80)
+                world.hud.set_status("+26 мон. · крупные припасы в складе · следующая ночь усилена.", 80)
             else:
                 world.run_coins += 10
                 world.storage["wood"] = int(world.storage.get("wood",0)) + 6
@@ -341,8 +348,8 @@ func _complete_event() -> void:
                         "Торговцы закрепились у базы и после каждой пережитой ночи будут подвозить дерево, камень и ремонтировать Очаг.",
                         "gold"
                     )
-                world.hud.show_banner("КАРАВАН У ОЧАГА", Color("e2bd72"))
-                world.hud.set_status("Теперь каждый рассвет караван будет приносить припасы и ремонт.")
+                world.hud.show_banner("КАРАВАН У ОЧАГА", Color("e2bd72"), 80)
+                world.hud.set_status("Теперь каждый рассвет караван будет приносить припасы и ремонт.", 80)
         "survivor_rescue":
             rescues_completed += 1
             world.run_coins += 12
@@ -360,8 +367,8 @@ func _complete_event() -> void:
                     "green",
                     true
                 )
-            world.hud.show_banner("ДОЗОРНЫЙ У ОЧАГА", Color("a7d0b2"))
-            world.hud.set_status("+25 прочности Очагa · +2 защиты · помощь на каждом рассвете.")
+            world.hud.show_banner("ДОЗОРНЫЙ У ОЧАГА", Color("a7d0b2"), 80)
+            world.hud.set_status("+25 прочности Очагa · +2 защиты · помощь на каждом рассвете.", 80)
         "elite_hunt":
             world.run_coins += 20
             world.add_mechanism_parts(1, point)
@@ -378,8 +385,8 @@ func _complete_event() -> void:
                     "violet",
                     true
                 )
-            world.hud.show_banner("%s ПОВЕРЖЕН" % GameRules.named_hunt_name(world.biome_index), Color("df8a68"))
-            world.hud.set_status("Реликвия «%s» изменила твой билд. +20 мон. · +1 деталь." % str(relic.get("name","Реликвия")))
+            world.hud.show_banner("%s ПОВЕРЖЕН" % GameRules.named_hunt_name(world.biome_index), Color("df8a68"), 80)
+            world.hud.set_status("Реликвия «%s» изменила твой билд. +20 мон. · +1 деталь." % str(relic.get("name","Реликвия")), 80)
         "ambush":
             world.run_coins += 12
             world.player.gain_xp(10)
@@ -391,8 +398,8 @@ func _complete_event() -> void:
                     "neutral",
                     false
                 )
-            world.hud.show_banner("ЗАСАДА СОРВАНА", Color("c7a0d9"))
-            world.hud.set_status("+12 мон. · +10 опыта.")
+            world.hud.show_banner("ЗАСАДА СОРВАНА", Color("c7a0d9"), 80)
+            world.hud.set_status("+12 мон. · +10 опыта.", 80)
 
     GameState.record_dynamic_world({
         "events":1,
@@ -404,9 +411,10 @@ func _complete_event() -> void:
         "biome":world.biome_index
     })
 
-    _clear_active_event()
+    _clear_active_event("resolved")
 
 func _start_chain_cache(origin: Vector2) -> void:
+    var owner_id: String = str(active_event.get("owner", active_event.get("id", "")))
     event_counter += 1
     var direction := Vector2.from_angle(randf_range(0.0, TAU))
     var point: Vector2 = origin + direction * randf_range(105.0, 160.0)
@@ -422,6 +430,7 @@ func _start_chain_cache(origin: Vector2) -> void:
 
     active_event = {
         "id":"chain:%d" % event_counter,
+        "owner":owner_id,
         "type":"trail_cache",
         "point":point,
         "duration":22.0,
@@ -431,7 +440,7 @@ func _start_chain_cache(origin: Vector2) -> void:
         "stage":"chain",
         "secure_progress":0.0
     }
-    world.hud.set_status("На спасённом караване была карта. У тебя 22 сек., чтобы добраться до тайника.")
+    world.hud.set_status("На спасённом караване была карта. У тебя 22 сек., чтобы добраться до тайника.", 70)
     Analytics.event("dynamic_event_chain_started", {"wave":world.wave,"biome":world.biome_index})
 
 func _fail_event(reason: String) -> void:
@@ -483,15 +492,18 @@ func _fail_event(reason: String) -> void:
         "wave":world.wave,
         "biome":world.biome_index
     })
-    world.hud.show_banner("СОБЫТИЕ УПУЩЕНО", Color("c98075"))
-    world.hud.set_status(reason + " Последствие останется в этом забеге.")
-    _clear_active_event()
+    world.hud.show_banner("СОБЫТИЕ УПУЩЕНО", Color("c98075"), 80)
+    world.hud.set_status(reason + " Последствие останется в этом забеге.", 80)
+    _clear_active_event("failed")
 
-func _clear_active_event() -> void:
+func _clear_active_event(outcome: String = "resolved") -> void:
+    var owner_id: String = str(active_event.get("owner", active_event.get("id", "")))
     var marker: DynamicEventMarker = active_event.get("marker") as DynamicEventMarker
     if marker != null and is_instance_valid(marker):
         marker.queue_free()
     active_event.clear()
+    if world != null and world.encounter_orchestrator != null and not owner_id.is_empty():
+        world.encounter_orchestrator.release(owner_id, outcome)
     if world != null and world.hud != null:
         world.hud.set_run_objective("")
 

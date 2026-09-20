@@ -58,6 +58,7 @@ func _test_memory_and_event_choices() -> void:
         if extra < 4:
             _fail("Caravan theft did not strengthen the next night")
 
+    world.encounter_orchestrator.cooldown = 0.0
     world.dynamic_world._start_event("elite_hunt")
     var thorn_before: int = world.player.thorn_ring_level
     world.dynamic_world._complete_event()

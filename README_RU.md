@@ -1,6 +1,6 @@
 # AXEHOLD: Last Hearth
 
-Играбельный production-oriented прототип **v0.2.0** для **Godot 4.7.2 stable**.
+Играбельный production-oriented прототип **v1.20.0-alpha.1** для **Godot 4.7.2 stable**.
 
 ## Что уже реализовано
 - Главное меню: лагерь, карта, кузница, задания, коллекция, настройки.

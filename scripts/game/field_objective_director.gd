@@ -66,12 +66,12 @@ func _other_event_busy() -> bool:
 func start_objective_for_test(kind: String, wave: int = 0) -> void:
     if not active.is_empty():
         _clear()
-    started_waves[wave] = true
-    _start_kind(kind, wave)
+    if world.encounter_orchestrator != null:
+        world.encounter_orchestrator.cooldown = 0.0
+    if _start_kind(kind, wave):
+        started_waves[wave] = true
 
 func _start_objective(wave: int) -> void:
-    started_waves[wave] = true
-
     var kind: String
     if wave == 0:
         kind = "survey" if randf() < 0.62 else "salvage"
@@ -80,9 +80,15 @@ func _start_objective(wave: int) -> void:
     else:
         kind = "purge" if randf() < 0.58 else "survey"
 
-    _start_kind(kind, wave)
+    if _start_kind(kind, wave):
+        started_waves[wave] = true
+    else:
+        start_delay = 1.5
 
-func _start_kind(kind: String, wave: int) -> void:
+func _start_kind(kind: String, wave: int) -> bool:
+    var owner_id: String = "field:%d:%s" % [wave, kind]
+    if world.encounter_orchestrator != null and not world.encounter_orchestrator.request(owner_id, "field_objective", 40, 6.0):
+        return false
     var occupied: Array = []
     if world.activity_director != null:
         for activity: WorldActivity in world.activity_director.activities:
@@ -112,6 +118,7 @@ func _start_kind(kind: String, wave: int) -> void:
     marker.configure(kind, title, duration, accent)
 
     active = {
+        "owner":owner_id,
         "kind":kind,
         "title":title,
         "point":point,
@@ -131,9 +138,10 @@ func _start_kind(kind: String, wave: int) -> void:
     var resident_prefix: String = "МИРА" if GameState.resident_trust("mira") > 0 else "РАЗВЕДКА"
     if kind == "salvage" and GameState.resident_trust("thorn") > 0:
         resident_prefix = "ТОРН"
-    world.hud.show_banner("%s · %s" % [resident_prefix, title], accent.lightened(0.10))
-    world.hud.set_status(_instruction(kind))
+    world.hud.show_banner("%s · %s" % [resident_prefix, title], accent.lightened(0.10), 40)
+    world.hud.set_status(_instruction(kind), 40)
     Analytics.event("field_objective_started", {"type":kind,"wave":wave,"biome":world.biome_index})
+    return true
 
 func _instruction(kind: String) -> String:
     match kind:
@@ -231,8 +239,8 @@ func _complete() -> void:
                     "neutral",
                     false
                 )
-            world.hud.show_banner("МАРШРУТ ПРОВЕРЕН", Color("dfbd72"))
-            world.hud.set_status("+10 мон. · скорость +6%% до конца забега%s." % (" · следующая ночь ослаблена" if was_perfect else ""))
+            world.hud.show_banner("МАРШРУТ ПРОВЕРЕН", Color("dfbd72"), 50)
+            world.hud.set_status("+10 мон. · скорость +6%% до конца забега%s." % (" · следующая ночь ослаблена" if was_perfect else ""), 50)
         "salvage":
             salvage_done += 1
             world.run_coins += 9
@@ -255,8 +263,8 @@ func _complete() -> void:
                     "neutral",
                     false
                 )
-            world.hud.show_banner("ТАЙНИК РАЗОБРАН", Color("a9c5b4"))
-            world.hud.set_status("+1 деталь · рюкзак +3 · припасы получены.")
+            world.hud.show_banner("ТАЙНИК РАЗОБРАН", Color("a9c5b4"), 50)
+            world.hud.set_status("+1 деталь · рюкзак +3 · припасы получены.", 50)
         "purge":
             purge_done += 1
             world.run_coins += 14
@@ -272,8 +280,8 @@ func _complete() -> void:
                     "neutral",
                     false
                 )
-            world.hud.show_banner("УЧАСТОК ОЧИЩЕН", Color("d18c72"))
-            world.hud.set_status("+14 мон. · +10 опыта · следующая ночь заметно слабее.")
+            world.hud.show_banner("УЧАСТОК ОЧИЩЕН", Color("d18c72"), 50)
+            world.hud.set_status("+14 мон. · +10 опыта · следующая ночь заметно слабее.", 50)
 
     QuestDirector.record("field_objective",1,{"type":kind,"biome":world.biome_index})
     if was_perfect:
@@ -284,7 +292,7 @@ func _complete() -> void:
     Analytics.event("field_objective_completed",{
         "type":kind,"wave":world.wave,"biome":world.biome_index,"perfect":was_perfect
     })
-    _clear()
+    _clear("resolved")
 
 func _fail(reason: String) -> void:
     if active.is_empty():
@@ -304,9 +312,9 @@ func _fail(reason: String) -> void:
 
     GameState.record_field_objective({"failed":1})
     Analytics.event("field_objective_failed",{"type":kind,"wave":world.wave,"biome":world.biome_index})
-    world.hud.show_banner("ПОЛЕВАЯ ЦЕЛЬ УПУЩЕНА", Color("c97a6d"))
-    world.hud.set_status(reason + " Угроза немного выросла.")
-    _clear()
+    world.hud.show_banner("ПОЛЕВАЯ ЦЕЛЬ УПУЩЕНА", Color("c97a6d"), 50)
+    world.hud.set_status(reason + " Угроза немного выросла.", 50)
+    _clear("failed")
 
 func _alive_enemies() -> int:
     var alive: int = 0
@@ -329,12 +337,15 @@ func _clear_player_target() -> void:
     if world != null and world.player != null:
         world.player.set_field_target(Vector2.ZERO, false, Color.WHITE)
 
-func _clear() -> void:
+func _clear(outcome: String = "cancelled") -> void:
+    var owner_id: String = str(active.get("owner", ""))
     var marker: FieldObjectiveMarker = active.get("marker") as FieldObjectiveMarker
     if marker != null and is_instance_valid(marker):
         marker.queue_free()
     _clear_player_target()
     active.clear()
+    if world != null and world.encounter_orchestrator != null and not owner_id.is_empty():
+        world.encounter_orchestrator.release(owner_id, outcome)
     world.hud.set_run_objective("")
 
 func result_summary() -> Dictionary:
