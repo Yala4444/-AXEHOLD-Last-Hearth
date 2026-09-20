@@ -424,9 +424,9 @@ func _unhandled_input(event: InputEvent) -> void:
             touch_id = -1
             move_input = Vector2.ZERO
     elif event is InputEventScreenDrag and event.index == touch_id:
-        var delta := event.position - touch_origin
-        touch_position = touch_origin + delta.limit_length(42.0)
-        move_input = delta / 42.0
+        var drag_delta: Vector2 = event.position - touch_origin
+        touch_position = touch_origin + drag_delta.limit_length(42.0)
+        move_input = drag_delta / 42.0
     elif event is InputEventMouseButton:
         if event.button_index == MOUSE_BUTTON_LEFT:
             if event.pressed and event.position.x < VIEW.x * 0.62 and event.position.y > 150:
@@ -437,9 +437,9 @@ func _unhandled_input(event: InputEvent) -> void:
                 touch_id = -1
                 move_input = Vector2.ZERO
     elif event is InputEventMouseMotion and touch_id == 999:
-        var delta := event.position - touch_origin
-        touch_position = touch_origin + delta.limit_length(42.0)
-        move_input = delta / 42.0
+        var mouse_delta: Vector2 = event.position - touch_origin
+        touch_position = touch_origin + mouse_delta.limit_length(42.0)
+        move_input = mouse_delta / 42.0
 
 func _return_home() -> void:
     get_tree().change_scene_to_file("res://scenes/app.tscn")
