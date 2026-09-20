@@ -7,7 +7,7 @@ signal level_up_requested(level: int)
 signal build_evolved(evolution_id: String, title: String, description: String)
 signal legendary_triggered(title: String, description: String)
 
-const WANDERER_ART: Texture2D = preload("res://assets/art/forgotten_forest/wanderer.webp")
+const WANDERER_ART: Texture2D = preload("res://assets/art/forgotten_forest/wanderer.png")
 
 var target_position: Vector2 = Vector2.ZERO
 var move_input: Vector2 = Vector2.ZERO
@@ -106,7 +106,7 @@ func visual_identity_profile() -> Dictionary:
         "weapon_readable":true,
         "build_reactive":true,
         "production_art":true,
-        "art_texture":"res://assets/art/forgotten_forest/wanderer.webp"
+        "art_texture":"res://assets/art/forgotten_forest/wanderer.png"
     }
 
 func apply_weapon_profile(id: String) -> void:

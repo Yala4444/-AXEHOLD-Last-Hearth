@@ -1,7 +1,7 @@
 class_name WorldLandmark
 extends Node2D
 
-const ANCIENT_TREE_ART: Texture2D = preload("res://assets/art/forgotten_forest/ancient_sentinel_tree.webp")
+const ANCIENT_TREE_ART: Texture2D = preload("res://assets/art/forgotten_forest/ancient_sentinel_tree.png")
 
 var kind: String = "stump"
 var biome_index: int = 0

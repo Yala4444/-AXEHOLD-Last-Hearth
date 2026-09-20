@@ -9,7 +9,7 @@ const PlayerScene: PackedScene = preload("res://scenes/player.tscn")
 const EnemyScene: PackedScene = preload("res://scenes/enemy.tscn")
 const ResourceScene: PackedScene = preload("res://scenes/resource_spot.tscn")
 const BuildPadScene: PackedScene = preload("res://scenes/build_pad.tscn")
-const LAST_HEARTH_ART: Texture2D = preload("res://assets/art/forgotten_forest/last_hearth.webp")
+const LAST_HEARTH_ART: Texture2D = preload("res://assets/art/forgotten_forest/last_hearth.png")
 
 var biome_index: int = 0
 var biome: Dictionary = {}

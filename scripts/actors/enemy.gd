@@ -3,12 +3,12 @@ extends CharacterBody2D
 
 signal killed(enemy: AxEnemy)
 
-const FOREST_HUSK_ART: Texture2D = preload("res://assets/art/forgotten_forest/root_husk.webp")
-const FOREST_RUNNER_ART: Texture2D = preload("res://assets/art/forgotten_forest/briar_hound.webp")
-const FOREST_BRUTE_ART: Texture2D = preload("res://assets/art/forgotten_forest/ironroot_ravager.webp")
-const FOREST_STALKER_ART: Texture2D = preload("res://assets/art/forgotten_forest/hollow_seer.webp")
-const FOREST_GUARDIAN_ART: Texture2D = preload("res://assets/art/forgotten_forest/oathstone_bulwark.webp")
-const FOREST_BOSS_ART: Texture2D = preload("res://assets/art/forgotten_forest/forest_guardian.webp")
+const FOREST_HUSK_ART: Texture2D = preload("res://assets/art/forgotten_forest/root_husk.png")
+const FOREST_RUNNER_ART: Texture2D = preload("res://assets/art/forgotten_forest/briar_hound.png")
+const FOREST_BRUTE_ART: Texture2D = preload("res://assets/art/forgotten_forest/ironroot_ravager.png")
+const FOREST_STALKER_ART: Texture2D = preload("res://assets/art/forgotten_forest/hollow_seer.png")
+const FOREST_GUARDIAN_ART: Texture2D = preload("res://assets/art/forgotten_forest/oathstone_bulwark.png")
+const FOREST_BOSS_ART: Texture2D = preload("res://assets/art/forgotten_forest/forest_guardian.png")
 
 var enemy_type: String = "normal"
 var biome_index: int = 0

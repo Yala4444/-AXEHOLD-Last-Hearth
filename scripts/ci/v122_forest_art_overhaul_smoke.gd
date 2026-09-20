@@ -2,18 +2,18 @@ extends Node
 
 const GameScene: PackedScene = preload("res://scenes/game.tscn")
 const ART_PATHS: Array[String] = [
-    "res://assets/art/forgotten_forest/wanderer.webp",
-    "res://assets/art/forgotten_forest/root_husk.webp",
-    "res://assets/art/forgotten_forest/briar_hound.webp",
-    "res://assets/art/forgotten_forest/ironroot_ravager.webp",
-    "res://assets/art/forgotten_forest/hollow_seer.webp",
-    "res://assets/art/forgotten_forest/oathstone_bulwark.webp",
-    "res://assets/art/forgotten_forest/forest_guardian.webp",
-    "res://assets/art/forgotten_forest/last_hearth.webp",
-    "res://assets/art/forgotten_forest/ancient_sentinel_tree.webp",
-    "res://assets/art/forgotten_forest/harvest_tree.webp",
-    "res://assets/art/forgotten_forest/stone_deposit.webp",
-    "res://assets/art/forgotten_forest/ore_deposit.webp"
+    "res://assets/art/forgotten_forest/wanderer.png",
+    "res://assets/art/forgotten_forest/root_husk.png",
+    "res://assets/art/forgotten_forest/briar_hound.png",
+    "res://assets/art/forgotten_forest/ironroot_ravager.png",
+    "res://assets/art/forgotten_forest/hollow_seer.png",
+    "res://assets/art/forgotten_forest/oathstone_bulwark.png",
+    "res://assets/art/forgotten_forest/forest_guardian.png",
+    "res://assets/art/forgotten_forest/last_hearth.png",
+    "res://assets/art/forgotten_forest/ancient_sentinel_tree.png",
+    "res://assets/art/forgotten_forest/harvest_tree.png",
+    "res://assets/art/forgotten_forest/stone_deposit.png",
+    "res://assets/art/forgotten_forest/ore_deposit.png"
 ]
 
 var failures: Array[String] = []

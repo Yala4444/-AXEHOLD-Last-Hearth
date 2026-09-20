@@ -1,9 +1,9 @@
 class_name ResourceSpot
 extends Node2D
 
-const FOREST_TREE_ART: Texture2D = preload("res://assets/art/forgotten_forest/harvest_tree.webp")
-const FOREST_ROCK_ART: Texture2D = preload("res://assets/art/forgotten_forest/stone_deposit.webp")
-const FOREST_ORE_ART: Texture2D = preload("res://assets/art/forgotten_forest/ore_deposit.webp")
+const FOREST_TREE_ART: Texture2D = preload("res://assets/art/forgotten_forest/harvest_tree.png")
+const FOREST_ROCK_ART: Texture2D = preload("res://assets/art/forgotten_forest/stone_deposit.png")
+const FOREST_ORE_ART: Texture2D = preload("res://assets/art/forgotten_forest/ore_deposit.png")
 
 var resource_type: String = "tree"
 var hp: float = 52.0
