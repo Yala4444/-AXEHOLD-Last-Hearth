@@ -168,6 +168,11 @@ func _show_home() -> void:
     play.custom_minimum_size = Vector2(0, 48)
     play.pressed.connect(_start_expedition)
 
+    var visual_slice := _button(departure_box, "ПОПРОБОВАТЬ НОВЫЙ ВИЗУАЛ · CONCEPT I", false)
+    visual_slice.custom_minimum_size = Vector2(0, 40)
+    visual_slice.tooltip_text = "Отдельный игровой vertical slice нового cel-shaded направления"
+    visual_slice.pressed.connect(_start_visual_slice)
+
     if GameState.endless_unlocked():
         var endless_stats: Dictionary = GameState.data.get("endless_stats", {})
         var endless_panel := _panel(body)
@@ -469,6 +474,9 @@ func _start_expedition() -> void:
         GameState.data["selected_threat"] = 1
     GameState.save()
     _start_game()
+
+func _start_visual_slice() -> void:
+    get_tree().change_scene_to_file("res://scenes/visual_slice.tscn")
 
 func _start_endless() -> void:
     if not GameState.endless_unlocked():
