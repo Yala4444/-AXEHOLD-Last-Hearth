@@ -793,9 +793,8 @@ func _draw_visual_v2() -> void:
         frame = visual_v2_hero
 
     var breathe: float = sin(motion_time * 2.2) * (0.28 if not moving else 0.0)
-    var step_bob: float = -0.7 if moving and phase_id == "b" else 0.0
     var recoil := Vector2(-visual_facing_direction.x, -visual_facing_direction.y) * damage_flash * 3.0
-    var body_offset := recoil + Vector2(0.0, breathe + step_bob - weapon_action_ratio() * 0.8)
+    var body_offset := recoil + Vector2(0.0, breathe - weapon_action_ratio() * 0.8)
     var tint := Color.WHITE.lerp(Color(1.0, 0.62, 0.54), clampf(damage_flash, 0.0, 1.0) * 0.68)
 
     _draw_shadow_ellipse(Vector2(0, 30), Vector2(21.0, 5.5), Color(0.025, 0.035, 0.03, 0.24))
