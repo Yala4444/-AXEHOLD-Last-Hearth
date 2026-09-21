@@ -45,6 +45,7 @@ var inventory: Dictionary = {"wood": 0, "stone": 0, "ore": 0}
 var skin_body: Color = Color("466bc8")
 var skin_cape: Color = Color("364f9c")
 var motion_time: float = 0.0
+var walk_clock: float = 0.0
 var damage_flash: float = 0.0
 var block_flash: float = 0.0
 var perk_flash: float = 0.0
@@ -255,6 +256,10 @@ func _physics_process(delta: float) -> void:
             target_position = global_position
     else:
         velocity = Vector2.ZERO
+
+    var visual_speed_ratio: float = clampf(velocity.length() / maxf(1.0, move_speed), 0.0, 1.0)
+    if visual_speed_ratio > 0.04:
+        walk_clock += delta * (1.75 + visual_speed_ratio * 2.45)
 
     var rotation_speed: float = 3.65 + float(axes - 1) * 0.06
     if weapon_style == "hammer":
@@ -774,6 +779,7 @@ func _draw() -> void:
 
 func _draw_visual_v2() -> void:
     var moving: bool = velocity.length_squared() > 36.0
+    var speed_ratio: float = clampf(velocity.length() / maxf(1.0, move_speed), 0.0, 1.0)
     var view_id: String = "front"
     var mirror: bool = false
     if absf(visual_facing_direction.x) > absf(visual_facing_direction.y) * 0.78:
@@ -785,27 +791,41 @@ func _draw_visual_v2() -> void:
     else:
         mirror = visual_facing_direction.x < 0.0
 
-    var phase_id: String = "a"
-    if moving and int(floor(motion_time * 6.4)) % 2 == 1:
-        phase_id = "b"
+    var phase_unit: float = walk_clock * 2.0
+    var phase_number: int = int(floor(phase_unit)) % 2 if moving else 0
+    var phase_fraction: float = phase_unit - floor(phase_unit)
+    var transition: float = clampf((phase_fraction - 0.82) / 0.18, 0.0, 1.0) if moving else 0.0
+    var phase_id: String = "b" if phase_number == 1 else "a"
+    var next_phase_id: String = "a" if phase_number == 1 else "b"
     var frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, phase_id]) as Texture2D
+    var next_frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, next_phase_id]) as Texture2D
     if frame == null:
         frame = visual_v2_hero
+    if next_frame == null:
+        next_frame = frame
 
     var breathe: float = sin(motion_time * 2.2) * (0.28 if not moving else 0.0)
     var recoil := Vector2(-visual_facing_direction.x, -visual_facing_direction.y) * damage_flash * 3.0
     var body_offset := recoil + Vector2(0.0, breathe - weapon_action_ratio() * 0.8)
     var tint := Color.WHITE.lerp(Color(1.0, 0.62, 0.54), clampf(damage_flash, 0.0, 1.0) * 0.68)
+    var body_lean: float = sin(phase_unit * PI) * 0.018 * speed_ratio
+    var body_scale: Vector2 = Vector2(1.0 + absf(sin(phase_unit * PI)) * 0.012, 1.0 - absf(sin(phase_unit * PI)) * 0.008)
 
-    _draw_shadow_ellipse(Vector2(0, 30), Vector2(21.0, 5.5), Color(0.025, 0.035, 0.03, 0.24))
+    _draw_shadow_ellipse(Vector2(0, 30), Vector2(21.0 - absf(sin(phase_unit * PI)) * 1.0, 5.5), Color(0.025, 0.035, 0.03, 0.24))
     _draw_relic_auras()
 
     var ring_radius: float = orbit_radius + sin(motion_time * 2.2) * 1.2
     _draw_visual_v2_orbit(false, ring_radius)
 
     if frame != null:
-        draw_set_transform(body_offset, 0.0, Vector2(-1.0 if mirror else 1.0, 1.0))
-        draw_texture_rect(frame, Rect2(-32.0, -70.0, 64.0, 100.0), false, tint)
+        draw_set_transform(body_offset, body_lean, Vector2((-1.0 if mirror else 1.0) * body_scale.x, body_scale.y))
+        var current_tint := tint
+        current_tint.a *= 1.0 - transition
+        draw_texture_rect(frame, Rect2(-32.0, -70.0, 64.0, 100.0), false, current_tint)
+        if transition > 0.0 and next_frame != null:
+            var next_tint := tint
+            next_tint.a *= transition
+            draw_texture_rect(next_frame, Rect2(-32.0, -70.0, 64.0, 100.0), false, next_tint)
         draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
     _draw_visual_v2_orbit(true, ring_radius)
