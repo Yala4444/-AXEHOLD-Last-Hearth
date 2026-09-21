@@ -398,7 +398,7 @@ jobs:
           sed -i 's/draw_ellipse(draw_pos + Vector2(0,18), Vector2(20,7), Color(0,0,0,0.30))/_draw_ellipse_custom(draw_pos + Vector2(0,18), Vector2(20,7), Color(0,0,0,0.30))/' /tmp/game2/hearth_prototype_01/scripts/main.gd
           sed -i 's/^func draw_ellipse(center: Vector2, radii: Vector2, color: Color) -> void:/func _draw_ellipse_custom(center: Vector2, radii: Vector2, color: Color) -> void:/' /tmp/game2/hearth_prototype_01/scripts/main.gd
           (cd /tmp/game2/hearth_prototype_01 && git apply "$GITHUB_WORKSPACE/.game2/floating_joystick.patch")
-          base64 -d .game2/main_v02.gd.gz.b64 | gzip -dc > /tmp/game2/hearth_prototype_01/scripts/main.gd
+          sed 's/==[[:space:]]*$//' .game2/main_v02.gd.gz.b64 | base64 -d | gzip -dc > /tmp/game2/hearth_prototype_01/scripts/main.gd
           sed -i 's/config\/name="Hearth Prototype 0.1"/config\/name="Hearth Prototype 0.2 — Three Nights"/' /tmp/game2/hearth_prototype_01/project.godot
 
       - name: Validate Game 2 prototype
