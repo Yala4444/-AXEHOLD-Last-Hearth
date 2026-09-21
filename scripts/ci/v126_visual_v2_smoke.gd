@@ -20,9 +20,9 @@ func _run() -> void:
             _fail("Missing orbit tool asset: " + path)
     if not ResourceLoader.exists(AxPlayer.VISUAL_V2_SPEAR_PATH):
         _fail("Missing Root Spear asset")
-    for part_id: String in AxPlayer.VISUAL_V2_RIG_PATHS:
-        if not ResourceLoader.exists(str(AxPlayer.VISUAL_V2_RIG_PATHS[part_id])):
-            _fail("Missing skeletal rig component: " + part_id)
+    for frame_id: String in AxPlayer.VISUAL_V2_FRAME_PATHS:
+        if not ResourceLoader.exists(str(AxPlayer.VISUAL_V2_FRAME_PATHS[frame_id])):
+            _fail("Missing coherent hero frame: " + frame_id)
     if not ResourceLoader.exists(AxPlayer.VISUAL_V2_HERO_PATH):
         _fail("Missing production hero asset")
 
@@ -35,11 +35,11 @@ func _run() -> void:
     if not world.visual_v2_enabled:
         _fail("Full expedition did not receive the visual preview flag")
     if world.player == null or not world.player.visual_v2_enabled:
-        _fail("Player production-art rig is not enabled")
+        _fail("Player production-art animation is not enabled")
     elif world.player.visual_v2_tools.size() != 4:
         _fail("Preview must load the four available weapon-family assets")
-    elif world.player.visual_v2_rig.size() != 6:
-        _fail("Production hero must load all six skeletal components")
+    elif world.player.visual_v2_frames.size() != 6:
+        _fail("Production hero must load all six coherent animation frames")
     elif world.player.weapon_style != "axes":
         _fail("Preview changed the equipped weapon profile")
     elif int(world.player.call("_visual_v2_orbit_count")) != world.player.axes:

@@ -170,7 +170,7 @@ func _show_home() -> void:
 
     var visual_slice := _button(departure_box, "ПОПРОБОВАТЬ НОВЫЙ ДИЗАЙН · ЖИВОЙ ГЕРОЙ", false)
     visual_slice.custom_minimum_size = Vector2(0, 40)
-    visual_slice.tooltip_text = "Полная экспедиция с составным анимированным героем и выбранным оружием"
+    visual_slice.tooltip_text = "Полная экспедиция с цельным героем в спокойной анимации и выбранным оружием"
     visual_slice.pressed.connect(_start_visual_slice)
 
     if GameState.endless_unlocked():
