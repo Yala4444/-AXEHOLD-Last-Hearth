@@ -18,6 +18,11 @@ func _run() -> void:
     for path: String in AxPlayer.VISUAL_V2_TOOL_PATHS:
         if not ResourceLoader.exists(path):
             _fail("Missing orbit tool asset: " + path)
+    if not ResourceLoader.exists(AxPlayer.VISUAL_V2_SPEAR_PATH):
+        _fail("Missing Root Spear asset")
+    for part_id: String in AxPlayer.VISUAL_V2_RIG_PATHS:
+        if not ResourceLoader.exists(str(AxPlayer.VISUAL_V2_RIG_PATHS[part_id])):
+            _fail("Missing skeletal rig component: " + part_id)
     if not ResourceLoader.exists(AxPlayer.VISUAL_V2_HERO_PATH):
         _fail("Missing production hero asset")
 
@@ -32,9 +37,13 @@ func _run() -> void:
     if world.player == null or not world.player.visual_v2_enabled:
         _fail("Player production-art rig is not enabled")
     elif world.player.visual_v2_tools.size() != 4:
-        _fail("Preview must load exactly four autonomous tools")
-    elif world.player.axes != 4:
-        _fail("Preview orbit contract must expose exactly four tools")
+        _fail("Preview must load the four available weapon-family assets")
+    elif world.player.visual_v2_rig.size() != 6:
+        _fail("Production hero must load all six skeletal components")
+    elif world.player.weapon_style != "axes":
+        _fail("Preview changed the equipped weapon profile")
+    elif int(world.player.call("_visual_v2_orbit_count")) != world.player.axes:
+        _fail("Visible orbit does not match the equipped weapon count")
     elif world.player.visual_v2_hero == null:
         _fail("Production hero texture failed to load")
 

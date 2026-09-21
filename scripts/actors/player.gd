@@ -15,6 +15,15 @@ const VISUAL_V2_TOOL_PATHS: Array[String] = [
     "res://assets/art/visual_v2/tool_sword.webp",
     "res://assets/art/visual_v2/tool_hammer.webp"
 ]
+const VISUAL_V2_SPEAR_PATH: String = "res://assets/art/visual_v2/tool_spear.webp"
+const VISUAL_V2_RIG_PATHS: Dictionary = {
+    "torso_front":"res://assets/art/visual_v2/rig/torso_front.webp",
+    "torso_back":"res://assets/art/visual_v2/rig/torso_back.webp",
+    "upper_arm":"res://assets/art/visual_v2/rig/upper_arm.webp",
+    "forearm":"res://assets/art/visual_v2/rig/forearm_hand.webp",
+    "thigh":"res://assets/art/visual_v2/rig/thigh.webp",
+    "shin":"res://assets/art/visual_v2/rig/shin_boot.webp"
+}
 
 var target_position: Vector2 = Vector2.ZERO
 var move_input: Vector2 = Vector2.ZERO
@@ -91,6 +100,9 @@ var wanderer_art: Texture2D
 var visual_v2_enabled: bool = false
 var visual_v2_hero: Texture2D
 var visual_v2_tools: Array[Texture2D] = []
+var visual_v2_spear: Texture2D
+var visual_v2_rig: Dictionary = {}
+var visual_facing_direction: Vector2 = Vector2(0.35, 0.94)
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -112,12 +124,14 @@ func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
 func visual_identity_profile() -> Dictionary:
     return {
         "version":visual_identity_version,
-        "silhouette":"hooded_wanderer",
+        "silhouette":"articulated_wanderer" if visual_v2_enabled else "hooded_wanderer",
         "anchor":"hearth_rune",
         "weapon_readable":true,
         "build_reactive":true,
         "production_art":true,
-        "art_texture":"res://assets/art/forgotten_forest/wanderer.png"
+        "art_texture":VISUAL_V2_RIG_PATHS.get("torso_back", "") if visual_v2_enabled else WANDERER_ART_PATH,
+        "rigged":visual_v2_enabled,
+        "equipped_weapon_only":visual_v2_enabled
     }
 
 func enable_visual_v2() -> void:
@@ -127,10 +141,12 @@ func enable_visual_v2() -> void:
     visual_v2_tools.clear()
     for path: String in VISUAL_V2_TOOL_PATHS:
         visual_v2_tools.append(ResourceLoader.load(path) as Texture2D)
-    # Exactly four autonomous tools share one readable ring. The player's saved
-    # weapon and skin stay untouched and return when the preview ends.
-    axes = 4
-    orbit_radius = 58.0
+    visual_v2_spear = ResourceLoader.load(VISUAL_V2_SPEAR_PATH) as Texture2D
+    visual_v2_rig.clear()
+    for part_id: String in VISUAL_V2_RIG_PATHS:
+        visual_v2_rig[part_id] = ResourceLoader.load(str(VISUAL_V2_RIG_PATHS[part_id])) as Texture2D
+    # Keep the equipped weapon profile intact. Four weapon families are
+    # available in the arsenal, but only the selected one appears in a run.
     queue_redraw()
 
 func apply_weapon_profile(id: String) -> void:
@@ -225,6 +241,7 @@ func _physics_process(delta: float) -> void:
 
     if movement.length_squared() > 0.0025:
         var direction: Vector2 = movement.normalized()
+        visual_facing_direction = visual_facing_direction.lerp(direction, clampf(delta * 11.0, 0.0, 1.0)).normalized()
         if absf(direction.x) > 0.08:
             facing_x = signf(direction.x)
         velocity = direction * move_speed * environment_speed_mult * analog_strength
@@ -757,45 +774,139 @@ func _draw() -> void:
 
 func _draw_visual_v2() -> void:
     var moving: bool = velocity.length_squared() > 36.0
-    var bob: float = sin(motion_time * (9.0 if moving else 2.4)) * (1.8 if moving else 0.55)
+    var speed_ratio: float = clampf(velocity.length() / maxf(1.0, move_speed), 0.0, 1.0)
+    var walk_phase: float = motion_time * lerpf(4.8, 9.4, speed_ratio)
+    var stride_wave: float = sin(walk_phase) * speed_ratio
+    var lift_wave: float = absf(cos(walk_phase * 0.5)) * speed_ratio
+    var breathe: float = sin(motion_time * 2.35)
     var action_ratio: float = weapon_action_ratio()
-    var body_offset := Vector2(0.0, bob - action_ratio * 1.5)
+    var hit_recoil: float = damage_flash * 4.0
+    var bob: float = -lift_wave * 2.3 + breathe * (0.38 if not moving else 0.12)
+    var body_offset := Vector2(-visual_facing_direction.x * hit_recoil, bob - action_ratio * 1.2)
+    var body_lean: float = visual_facing_direction.x * speed_ratio * 0.055 - facing_x * damage_flash * 0.08
+    var mirror: bool = facing_x < 0.0
+    var tint := Color.WHITE.lerp(Color(1.0, 0.62, 0.54), clampf(damage_flash, 0.0, 1.0) * 0.68)
 
-    _draw_shadow_ellipse(Vector2(0, 25), Vector2(23, 7), Color(0.025, 0.035, 0.03, 0.34))
+    var shadow_width: float = 22.0 - lift_wave * 1.5
+    _draw_shadow_ellipse(Vector2(0, 27), Vector2(shadow_width, 6.2), Color(0.025, 0.035, 0.03, 0.34))
     _draw_relic_auras()
 
-    var ring_radius: float = orbit_radius + sin(motion_time * 2.2) * 1.5
-    draw_arc(Vector2.ZERO, ring_radius, 0.0, TAU, 48, Color(0.95, 0.72, 0.30, 0.13), 2.2)
-    for i: int in range(4):
-        var tool_angle: float = angle + float(i) * TAU / 4.0
-        var tool_pos := Vector2(cos(tool_angle), sin(tool_angle)) * ring_radius
-        var tool_tint := Color.WHITE
-        if i == 3:
-            draw_circle(tool_pos, 19.0 + action_ratio * 5.0, Color(0.20, 0.86, 0.89, 0.08 + action_ratio * 0.12))
-            tool_tint = Color(0.88, 1.0, 1.0)
-        var trail_color := Color(0.96, 0.72, 0.30, 0.19)
-        if i == 3:
-            trail_color = Color(0.25, 0.88, 0.91, 0.20)
-        draw_arc(Vector2.ZERO, ring_radius, tool_angle - 0.30, tool_angle - 0.06, 8, trail_color, 4.0)
-        if i < visual_v2_tools.size() and visual_v2_tools[i] != null:
-            var tool_size := Vector2(38, 38) if i != 3 else Vector2(42, 42)
-            draw_set_transform(tool_pos, tool_angle + PI * 0.30, Vector2.ONE)
-            draw_texture_rect(visual_v2_tools[i], Rect2(-tool_size * 0.5, tool_size), false, tool_tint)
-            draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+    var ring_radius: float = orbit_radius + sin(motion_time * 2.2) * 1.2
+    _draw_visual_v2_orbit(false, ring_radius)
 
-    if visual_v2_hero != null:
-        var hero_height: float = 108.0 + sin(motion_time * 8.0) * (1.0 if moving else 0.35)
-        var hero_width: float = hero_height * 0.50
-        var hero_tint := Color.WHITE.lerp(Color(1.0, 0.68, 0.58), clampf(damage_flash, 0.0, 1.0) * 0.72)
-        draw_set_transform(body_offset + Vector2(0, -18), -facing_x * action_ratio * 0.035, Vector2(facing_x, 1.0))
-        draw_texture_rect(visual_v2_hero, Rect2(-hero_width * 0.5, -hero_height * 0.5, hero_width, hero_height), false, hero_tint)
-        draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+    var hip_y: float = body_offset.y + 6.0
+    var left_stride: float = stride_wave * 0.48
+    var right_stride: float = -left_stride
+    _draw_visual_v2_leg(Vector2(-7.0, hip_y), left_stride, false, tint)
+    _draw_visual_v2_leg(Vector2(7.0, hip_y), right_stride, true, tint)
+
+    var shoulder_y: float = body_offset.y - 31.0
+    _draw_visual_v2_arm(Vector2(-17.0, shoulder_y), -left_stride * 0.72, false, tint)
+    _draw_visual_v2_arm(Vector2(17.0, shoulder_y), -right_stride * 0.72, true, tint)
+
+    var front_weight: float = clampf((visual_facing_direction.y + 0.20) * 1.65, 0.0, 1.0)
+    var torso_front: Texture2D = visual_v2_rig.get("torso_front") as Texture2D
+    var torso_back: Texture2D = visual_v2_rig.get("torso_back") as Texture2D
+    var torso_rect := Rect2(-31.0, -73.0, 62.0, 88.0)
+    draw_set_transform(body_offset + Vector2(0, -1), body_lean, Vector2(-1.0 if mirror else 1.0, 1.0))
+    if torso_back != null and front_weight < 0.99:
+        draw_texture_rect(torso_back, torso_rect, false, Color(tint, 1.0 - front_weight))
+    if torso_front != null and front_weight > 0.01:
+        draw_texture_rect(torso_front, torso_rect, false, Color(tint, front_weight))
+    if torso_front == null and torso_back == null and visual_v2_hero != null:
+        draw_texture_rect(visual_v2_hero, Rect2(-27, -70, 54, 108), false, tint)
+    draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+    _draw_visual_v2_orbit(true, ring_radius)
 
     if shield_hits > 0 or block_flash > 0.0:
         draw_arc(Vector2.ZERO, 40.0, 0.0, TAU, 32, Color(0.55, 0.88, 1.0, 0.44 + block_flash * 0.30), 2.5)
     if perk_flash > 0.0:
         draw_arc(Vector2.ZERO, 46.0 + (1.0 - perk_flash) * 10.0, 0.0, TAU, 32, Color(1.0, 0.85, 0.42, perk_flash * 0.55), 2.0)
     _draw_inventory_gauge()
+
+func _draw_visual_v2_leg(hip: Vector2, stride: float, right_side: bool, tint: Color) -> void:
+    var thigh: Texture2D = visual_v2_rig.get("thigh") as Texture2D
+    var shin: Texture2D = visual_v2_rig.get("shin") as Texture2D
+    var knee_lift: float = maxf(0.0, -stride if right_side else stride)
+    var thigh_angle: float = stride
+    var thigh_length: float = 18.0
+    _draw_visual_v2_segment(thigh, hip, Vector2(15, 24), thigh_angle, right_side, tint)
+    var knee := hip + Vector2(sin(thigh_angle), cos(thigh_angle)) * thigh_length
+    var shin_angle: float = -stride * 0.52 - knee_lift * 0.30
+    _draw_visual_v2_segment(shin, knee + Vector2(0, -knee_lift * 2.0), Vector2(16, 27), shin_angle, right_side, tint)
+
+func _draw_visual_v2_arm(shoulder: Vector2, swing: float, right_side: bool, tint: Color) -> void:
+    var upper_arm: Texture2D = visual_v2_rig.get("upper_arm") as Texture2D
+    var forearm: Texture2D = visual_v2_rig.get("forearm") as Texture2D
+    var upper_angle: float = swing * 0.72 + (-0.08 if right_side else 0.08)
+    _draw_visual_v2_segment(upper_arm, shoulder, Vector2(15, 21), upper_angle, right_side, tint)
+    var elbow := shoulder + Vector2(sin(upper_angle), cos(upper_angle)) * 15.0
+    var forearm_angle: float = swing * 0.38 + (-0.10 if right_side else 0.10)
+    _draw_visual_v2_segment(forearm, elbow, Vector2(13, 23), forearm_angle, right_side, tint)
+
+func _draw_visual_v2_segment(texture: Texture2D, pivot: Vector2, size: Vector2, segment_angle: float, mirror: bool, tint: Color) -> void:
+    if texture == null:
+        return
+    draw_set_transform(pivot, segment_angle, Vector2(-1.0 if mirror else 1.0, 1.0))
+    draw_texture_rect(texture, Rect2(-size.x * 0.42, -1.0, size.x, size.y), false, tint)
+    draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+func _visual_v2_orbit_count() -> int:
+    match weapon_style:
+        "axes":
+            return maxi(1, axes)
+        "twin_blades":
+            return 2
+        _:
+            return 1
+
+func _visual_v2_weapon_texture() -> Texture2D:
+    match weapon_style:
+        "spear":
+            return visual_v2_spear
+        "hammer":
+            return visual_v2_tools[3] if visual_v2_tools.size() > 3 else null
+        "twin_blades":
+            return visual_v2_tools[2] if visual_v2_tools.size() > 2 else null
+        _:
+            return visual_v2_tools[0] if not visual_v2_tools.is_empty() else null
+
+func _draw_visual_v2_orbit(front_pass: bool, ring_radius: float) -> void:
+    var count: int = _visual_v2_orbit_count()
+    var texture: Texture2D = _visual_v2_weapon_texture()
+    if texture == null:
+        return
+    var action_ratio: float = weapon_action_ratio()
+    for i: int in range(count):
+        var weapon_angle: float = angle + float(i) * TAU / float(count)
+        var weapon_distance: float = ring_radius
+        if weapon_style == "spear" and weapon_action_time > 0.0:
+            weapon_angle = weapon_action_direction.angle()
+            weapon_distance += action_ratio * 18.0
+        elif weapon_style == "hammer" and weapon_action_time > 0.0:
+            weapon_angle = weapon_action_direction.angle()
+            weapon_distance += action_ratio * 8.0
+        var weapon_pos := Vector2(cos(weapon_angle), sin(weapon_angle)) * weapon_distance
+        if (weapon_pos.y >= 0.0) != front_pass:
+            continue
+        var trail_color := Color(0.96, 0.72, 0.30, 0.20)
+        if weapon_style == "hammer":
+            trail_color = Color(0.25, 0.88, 0.91, 0.22)
+            draw_circle(weapon_pos, 17.0 + action_ratio * 4.0, Color(0.20, 0.86, 0.89, 0.08 + action_ratio * 0.12))
+        elif weapon_style == "spear":
+            trail_color = Color(0.52, 0.78, 0.34, 0.20)
+        elif weapon_style == "twin_blades":
+            trail_color = Color(0.96, 0.46, 0.28, 0.21)
+        draw_arc(Vector2.ZERO, weapon_distance, weapon_angle - 0.32, weapon_angle - 0.06, 8, trail_color, 3.5)
+        var weapon_size := Vector2(38, 38)
+        if weapon_style == "spear":
+            weapon_size = Vector2(23, 55)
+        elif weapon_style == "hammer":
+            weapon_size = Vector2(43, 43)
+        draw_set_transform(weapon_pos, weapon_angle + PI * 0.30, Vector2.ONE)
+        draw_texture_rect(texture, Rect2(-weapon_size * 0.5, weapon_size), false, Color.WHITE)
+        draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_illustrated_wanderer(body_offset: Vector2, moving: bool) -> void:
     if wanderer_art == null:
@@ -814,7 +925,8 @@ func _draw_illustrated_wanderer(body_offset: Vector2, moving: bool) -> void:
 func _draw_inventory_gauge() -> void:
     var ratio: float = clampf(float(inventory_total()) / float(maxi(1, capacity)), 0.0, 1.0)
     var pulse: float = (sin(motion_time * 7.0) + 1.0) * 0.5
-    var track := Rect2(-24, -62, 48, 6)
+    var gauge_y: float = -92.0 if visual_v2_enabled else -62.0
+    var track := Rect2(-24, gauge_y, 48, 6)
     draw_rect(track, Color(0.035, 0.05, 0.05, 0.78))
     draw_rect(track, Color(0.72, 0.79, 0.72, 0.26), false, 1.0)
 
@@ -825,21 +937,21 @@ func _draw_inventory_gauge() -> void:
         fill_color = Color("ce6257").lightened(pulse * 0.10)
 
     if ratio > 0.0:
-        draw_rect(Rect2(-23, -61, 46.0 * ratio, 4), fill_color)
+        draw_rect(Rect2(-23, gauge_y + 1.0, 46.0 * ratio, 4), fill_color)
 
     if ratio >= 0.60:
         var font: Font = ThemeDB.fallback_font
         var text: String = "%d/%d" % [inventory_total(), capacity]
-        draw_string(font, Vector2(-24, -66), text, HORIZONTAL_ALIGNMENT_CENTER, 48, 7, Color("f2ecdc"))
+        draw_string(font, Vector2(-24, gauge_y - 4.0), text, HORIZONTAL_ALIGNMENT_CENTER, 48, 7, Color("f2ecdc"))
 
     if ratio >= 0.98:
         var font_full: Font = ThemeDB.fallback_font
-        draw_string(font_full, Vector2(-24, -71), "ПОЛОН", HORIZONTAL_ALIGNMENT_CENTER, 48, 6, Color("f4c0a0"))
+        draw_string(font_full, Vector2(-24, gauge_y - 9.0), "ПОЛОН", HORIZONTAL_ALIGNMENT_CENTER, 48, 6, Color("f4c0a0"))
 
     if home_hint_active and global_position.distance_to(home_target) > 70.0:
         var dir: Vector2 = global_position.direction_to(home_target)
         if dir.length_squared() > 0.01:
-            var anchor := Vector2(0, -76)
+            var anchor := Vector2(0, gauge_y - 14.0)
             var side := Vector2(-dir.y, dir.x)
             draw_colored_polygon(PackedVector2Array([
                 anchor + dir * 8.0,

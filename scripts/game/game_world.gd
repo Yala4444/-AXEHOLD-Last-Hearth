@@ -202,8 +202,8 @@ func _start_run() -> void:
 
     Analytics.event("run_start", {"biome":biome_index,"weapon":player.weapon_id,"threat":threat_level,"mode":run_mode})
     if visual_v2_enabled:
-        hud.show_banner("НОВЫЙ ДИЗАЙН · ЧЕТЫРЕ ОРУДИЯ", Color("e7bd67"))
-        hud.set_run_objective("ПОЛНАЯ ЭКСПЕДИЦИЯ · АВТОДОБЫЧА И АВТОБОЙ")
+        hud.show_banner("НОВЫЙ ДИЗАЙН · ЖИВОЙ СТРАННИК", Color("e7bd67"))
+        hud.set_run_objective("ПОЛНАЯ ЭКСПЕДИЦИЯ · ВЫБРАННОЕ ОРУЖИЕ")
     elif run_mode == "endless":
         hud.show_banner("ПОСЛЕДНИЙ РУБЕЖ · " + str(biome["name"]).to_upper(), Color("e3b56a"))
         hud.set_run_objective("БЕСКОНЕЧНЫЙ РЕЖИМ · рекорд %d" % int((GameState.data.get("endless_stats",{}) as Dictionary).get("best_wave",0)))
@@ -219,7 +219,7 @@ func _start_run() -> void:
 
     var settings: Dictionary = GameState.data["settings"]
     if visual_v2_enabled:
-        hud.set_status("Веди Странника. Топор, кирка, меч и рунический молот работают сами.")
+        hud.set_status("Веди Странника. Экипированное оружие работает автоматически.")
     elif tutorial_run:
         hud.show_banner("ПЕРВЫЙ ПУТЬ СТРАННИКА", Color("f3d58d"))
         hud.set_run_objective("ОБУЧЕНИЕ · 1/5 · ОСВОЙ ДВИЖЕНИЕ")
@@ -948,10 +948,6 @@ func _resolve_player_weapon(enemy_snapshot: Array[AxEnemy], delta: float) -> voi
     weapon_last_hit_count = 0
     weapon_attack_timer = maxf(0.0, weapon_attack_timer - delta)
 
-    if visual_v2_enabled:
-        _weapon_visual_v2_arsenal(enemy_snapshot, delta)
-        return
-
     if player.weapon_style == "twin_blades":
         weapon_combo_timeout = maxf(0.0, weapon_combo_timeout - delta)
         if weapon_combo_timeout <= 0.0 and weapon_combo > 0:
@@ -971,45 +967,6 @@ func _resolve_player_weapon(enemy_snapshot: Array[AxEnemy], delta: float) -> voi
             _weapon_twin_blades(enemy_snapshot)
         _:
             _weapon_axes(enemy_snapshot, delta)
-
-func _weapon_visual_v2_arsenal(enemy_snapshot: Array[AxEnemy], delta: float) -> void:
-    # Axe and pickaxe inherit the existing automatic harvest pass. The sword
-    # supplies orbit damage; the slower runic hammer adds a close-range impact.
-    var reach: float = player.orbit_radius + 18.0
-    for enemy: AxEnemy in enemy_snapshot:
-        if not is_instance_valid(enemy) or enemy.dying:
-            continue
-        var enemy_radius: float = 24.0 if enemy.boss else 12.0
-        if player.global_position.distance_to(enemy.global_position) > reach + enemy_radius:
-            continue
-        var critical: bool = _deal_weapon_damage(enemy, player.damage * delta * 1.08)
-        weapon_last_hit_count += 1
-        if core_fx != null and randf() < delta * 5.0:
-            core_fx.enemy_hit(enemy.global_position, critical)
-
-    if weapon_attack_timer > 0.0:
-        return
-    var hammer_target: AxEnemy = null
-    var nearest: float = INF
-    for enemy: AxEnemy in enemy_snapshot:
-        if not is_instance_valid(enemy) or enemy.dying:
-            continue
-        var distance: float = player.global_position.distance_to(enemy.global_position)
-        if distance <= reach + 22.0 and distance < nearest:
-            nearest = distance
-            hammer_target = enemy
-    if hammer_target == null:
-        return
-    weapon_attack_timer = 1.15 * player.weapon_cooldown_mult
-    player.trigger_weapon_action(player.global_position.direction_to(hammer_target.global_position), 0.26)
-    for enemy: AxEnemy in enemy_snapshot:
-        if not is_instance_valid(enemy) or enemy.dying:
-            continue
-        if hammer_target.global_position.distance_to(enemy.global_position) <= 48.0:
-            var critical: bool = _deal_weapon_damage(enemy, player.damage * 0.72)
-            weapon_last_hit_count += 1
-            if core_fx != null:
-                core_fx.enemy_hit(enemy.global_position, critical)
 
 func _weapon_axes(enemy_snapshot: Array[AxEnemy], delta: float) -> void:
     var reach: float = player.orbit_radius + player.axes * 4.0
