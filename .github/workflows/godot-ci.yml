@@ -394,13 +394,13 @@ jobs:
           base64 -d .game2/hearth_prototype_01.zip.b64 > /tmp/game2.zip
           unzip -q /tmp/game2.zip -d /tmp/game2
           cp .game2/export_presets.cfg /tmp/game2/hearth_prototype_01/export_presets.cfg
-          cp .game2/main_mvp_a.gd /tmp/game2/hearth_prototype_01/scripts/main.gd
+          cp .game2/main_mvp_b.gd /tmp/game2/hearth_prototype_01/scripts/main.gd
           mkdir -p /tmp/game2/hearth_prototype_01/assets
           cp assets/art/visual_v2/hero_wanderer.webp /tmp/game2/hearth_prototype_01/assets/hero_wanderer.webp
           cp assets/art/forgotten_forest/harvest_tree.png /tmp/game2/hearth_prototype_01/assets/harvest_tree.png
           cp assets/art/forgotten_forest/stone_deposit.png /tmp/game2/hearth_prototype_01/assets/stone_deposit.png
           cp assets/art/forgotten_forest/last_hearth.png /tmp/game2/hearth_prototype_01/assets/last_hearth.png
-          sed -i 's/config\/name="Hearth Prototype 0.1"/config\/name="AXEHOLD MVP A — Movement"/' /tmp/game2/hearth_prototype_01/project.godot
+          sed -i 's/config\/name="Hearth Prototype 0.1"/config\/name="AXEHOLD MVP B — Gathering"/' /tmp/game2/hearth_prototype_01/project.godot
 
       - name: Validate Game 2 prototype
         shell: bash
