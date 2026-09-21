@@ -395,7 +395,7 @@ jobs:
           unzip -q /tmp/game2.zip -d /tmp/game2
           cp .game2/export_presets.cfg /tmp/game2/hearth_prototype_01/export_presets.cfg
           cp .game2/main_v03.gd /tmp/game2/hearth_prototype_01/scripts/main.gd
-          sed -i 's/config\/name="Hearth Prototype 0.1"/config\/name="Hearth Prototype 0.3 — Last Hearth"/' /tmp/game2/hearth_prototype_01/project.godot
+          sed -i 's/config\/name="Hearth Prototype 0.1"/config\/name="Hearth Prototype 0.4 — Living Survivors"/' /tmp/game2/hearth_prototype_01/project.godot
 
       - name: Validate Game 2 prototype
         shell: bash
