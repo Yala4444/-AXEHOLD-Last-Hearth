@@ -380,16 +380,44 @@ jobs:
             exit 1
           fi
 
-      - name: Export Web build
+      - name: Export AXEHOLD Web build
         run: |
           mkdir -p build/web
           godot --headless --path . --export-release Web build/web/index.html
+
+      - name: Prepare Game 2 prototype
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/game2
+          mkdir -p /tmp/game2
+          base64 -d .game2/hearth_prototype_01.zip.b64 > /tmp/game2.zip
+          unzip -q /tmp/game2.zip -d /tmp/game2
+          cp .game2/export_presets.cfg /tmp/game2/hearth_prototype_01/export_presets.cfg
+
+      - name: Validate Game 2 prototype
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --editor --path /tmp/game2/hearth_prototype_01 --quit 2>&1 | tee /tmp/game2-import.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/game2-import.log; then
+            echo "Game 2 GDScript parse errors detected"
+            exit 1
+          fi
+
+      - name: Export Game 2 Web build
+        run: |
+          mkdir -p build/web/game2
+          godot --headless --path /tmp/game2/hearth_prototype_01 --export-release Web "$GITHUB_WORKSPACE/build/web/game2/index.html"
 
       - name: Verify Web output
         run: |
           test -f build/web/index.html
           test -f build/web/index.wasm
+          test -f build/web/game2/index.html
+          test -f build/web/game2/index.wasm
           ls -lah build/web
+          ls -lah build/web/game2
 
       - name: Upload playable Web build
         uses: actions/upload-artifact@v4
