@@ -360,6 +360,16 @@ jobs:
             exit 1
           fi
 
+      - name: V1.26 production art full expedition regression
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --quit-after 15 res://scenes/ci_v126_visual_v2_smoke.tscn 2>&1 | tee /tmp/godot-v126-visual-v2.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v126-visual-v2.log; then
+            echo "GDScript parse errors detected during v1.26 production art test"
+            exit 1
+          fi
+
       - name: Boot main scene briefly
         shell: bash
         run: |

@@ -8,6 +8,13 @@ signal build_evolved(evolution_id: String, title: String, description: String)
 signal legendary_triggered(title: String, description: String)
 
 const WANDERER_ART_PATH: String = "res://assets/art/forgotten_forest/wanderer.png"
+const VISUAL_V2_HERO_PATH: String = "res://assets/art/visual_v2/hero_wanderer.webp"
+const VISUAL_V2_TOOL_PATHS: Array[String] = [
+    "res://assets/art/visual_v2/tool_axe.webp",
+    "res://assets/art/visual_v2/tool_pickaxe.webp",
+    "res://assets/art/visual_v2/tool_sword.webp",
+    "res://assets/art/visual_v2/tool_hammer.webp"
+]
 
 var target_position: Vector2 = Vector2.ZERO
 var move_input: Vector2 = Vector2.ZERO
@@ -81,6 +88,9 @@ var evolutions: Dictionary = {}
 var legendary_traits: Dictionary = {}
 var visual_identity_version: int = 3
 var wanderer_art: Texture2D
+var visual_v2_enabled: bool = false
+var visual_v2_hero: Texture2D
+var visual_v2_tools: Array[Texture2D] = []
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -109,6 +119,19 @@ func visual_identity_profile() -> Dictionary:
         "production_art":true,
         "art_texture":"res://assets/art/forgotten_forest/wanderer.png"
     }
+
+func enable_visual_v2() -> void:
+    visual_v2_enabled = true
+    visual_identity_version = 4
+    visual_v2_hero = ResourceLoader.load(VISUAL_V2_HERO_PATH) as Texture2D
+    visual_v2_tools.clear()
+    for path: String in VISUAL_V2_TOOL_PATHS:
+        visual_v2_tools.append(ResourceLoader.load(path) as Texture2D)
+    # Exactly four autonomous tools share one readable ring. The player's saved
+    # weapon and skin stay untouched and return when the preview ends.
+    axes = 4
+    orbit_radius = 58.0
+    queue_redraw()
 
 func apply_weapon_profile(id: String) -> void:
     weapon_id = id if WeaponRules.WEAPONS.has(id) else "axes"
@@ -526,6 +549,9 @@ func buildcraft_snapshot() -> Dictionary:
     }
 
 func _draw() -> void:
+    if visual_v2_enabled:
+        _draw_visual_v2()
+        return
     var moving: bool = velocity.length_squared() > 36.0
     var bob: float = round(sin(motion_time * (10.0 if moving else 2.2)) * (1.0 if moving else 0.35))
     var stride: int = int(round(sin(motion_time * 11.0) * 2.0)) if moving else 0
@@ -727,6 +753,48 @@ func _draw() -> void:
         var grow: float = (1.0 - perk_flash) * 12.0
         draw_rect(Rect2(-25 - grow, -25 - grow, 50 + grow * 2.0, 50 + grow * 2.0), Color(1.0, 0.85, 0.42, perk_flash * 0.55), false, 2.0)
 
+    _draw_inventory_gauge()
+
+func _draw_visual_v2() -> void:
+    var moving: bool = velocity.length_squared() > 36.0
+    var bob: float = sin(motion_time * (9.0 if moving else 2.4)) * (1.8 if moving else 0.55)
+    var action_ratio: float = weapon_action_ratio()
+    var body_offset := Vector2(0.0, bob - action_ratio * 1.5)
+
+    _draw_shadow_ellipse(Vector2(0, 25), Vector2(23, 7), Color(0.025, 0.035, 0.03, 0.34))
+    _draw_relic_auras()
+
+    var ring_radius: float = orbit_radius + sin(motion_time * 2.2) * 1.5
+    draw_arc(Vector2.ZERO, ring_radius, 0.0, TAU, 48, Color(0.95, 0.72, 0.30, 0.13), 2.2)
+    for i: int in range(4):
+        var tool_angle: float = angle + float(i) * TAU / 4.0
+        var tool_pos := Vector2(cos(tool_angle), sin(tool_angle)) * ring_radius
+        var tool_tint := Color.WHITE
+        if i == 3:
+            draw_circle(tool_pos, 19.0 + action_ratio * 5.0, Color(0.20, 0.86, 0.89, 0.08 + action_ratio * 0.12))
+            tool_tint = Color(0.88, 1.0, 1.0)
+        var trail_color := Color(0.96, 0.72, 0.30, 0.19)
+        if i == 3:
+            trail_color = Color(0.25, 0.88, 0.91, 0.20)
+        draw_arc(Vector2.ZERO, ring_radius, tool_angle - 0.30, tool_angle - 0.06, 8, trail_color, 4.0)
+        if i < visual_v2_tools.size() and visual_v2_tools[i] != null:
+            var tool_size := Vector2(38, 38) if i != 3 else Vector2(42, 42)
+            draw_set_transform(tool_pos, tool_angle + PI * 0.30, Vector2.ONE)
+            draw_texture_rect(visual_v2_tools[i], Rect2(-tool_size * 0.5, tool_size), false, tool_tint)
+            draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+    if visual_v2_hero != null:
+        var hero_height: float = 108.0 + sin(motion_time * 8.0) * (1.0 if moving else 0.35)
+        var hero_width: float = hero_height * 0.50
+        var hero_tint := Color.WHITE.lerp(Color(1.0, 0.68, 0.58), clampf(damage_flash, 0.0, 1.0) * 0.72)
+        draw_set_transform(body_offset + Vector2(0, -18), -facing_x * action_ratio * 0.035, Vector2(facing_x, 1.0))
+        draw_texture_rect(visual_v2_hero, Rect2(-hero_width * 0.5, -hero_height * 0.5, hero_width, hero_height), false, hero_tint)
+        draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+    if shield_hits > 0 or block_flash > 0.0:
+        draw_arc(Vector2.ZERO, 40.0, 0.0, TAU, 32, Color(0.55, 0.88, 1.0, 0.44 + block_flash * 0.30), 2.5)
+    if perk_flash > 0.0:
+        draw_arc(Vector2.ZERO, 46.0 + (1.0 - perk_flash) * 10.0, 0.0, TAU, 32, Color(1.0, 0.85, 0.42, perk_flash * 0.55), 2.0)
     _draw_inventory_gauge()
 
 func _draw_illustrated_wanderer(body_offset: Vector2, moving: bool) -> void:

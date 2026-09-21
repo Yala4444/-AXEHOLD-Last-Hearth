@@ -168,9 +168,9 @@ func _show_home() -> void:
     play.custom_minimum_size = Vector2(0, 48)
     play.pressed.connect(_start_expedition)
 
-    var visual_slice := _button(departure_box, "ПОПРОБОВАТЬ НОВЫЙ ВИЗУАЛ · CONCEPT I", false)
+    var visual_slice := _button(departure_box, "ПОПРОБОВАТЬ НОВЫЙ ДИЗАЙН · 4 ОРУДИЯ", false)
     visual_slice.custom_minimum_size = Vector2(0, 40)
-    visual_slice.tooltip_text = "Отдельный игровой vertical slice нового cel-shaded направления"
+    visual_slice.tooltip_text = "Полная экспедиция с новым героем и четырьмя автономными орудиями"
     visual_slice.pressed.connect(_start_visual_slice)
 
     if GameState.endless_unlocked():
@@ -467,6 +467,7 @@ func _select_threat_from_map(level: int) -> void:
     _show_map()
 
 func _start_expedition() -> void:
+    GameState.visual_preview_v2 = false
     GameState.data["run_mode"] = "expedition"
     if GameState.tutorial_should_run():
         selected_biome = 0
@@ -476,11 +477,15 @@ func _start_expedition() -> void:
     _start_game()
 
 func _start_visual_slice() -> void:
-    get_tree().change_scene_to_file("res://scenes/visual_slice.tscn")
+    GameState.visual_preview_v2 = true
+    GameState.data["run_mode"] = "expedition"
+    GameState.save()
+    _start_game()
 
 func _start_endless() -> void:
     if not GameState.endless_unlocked():
         return
+    GameState.visual_preview_v2 = false
     GameState.data["run_mode"] = "endless"
     GameState.save()
     _start_game()

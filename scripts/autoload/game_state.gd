@@ -4,6 +4,8 @@ const SAVE_PATH := "user://axehold_save.json"
 const SAVE_VERSION := 14
 
 var data: Dictionary = {}
+## Transient preview switch. The approved art pass never overwrites the stable run.
+var visual_preview_v2: bool = false
 
 func _ready() -> void:
     _load_save()

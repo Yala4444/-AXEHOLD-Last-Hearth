@@ -298,6 +298,7 @@ func _on_game_quit() -> void:
         active_game.queue_free()
         active_game = null
     shell.visible = true
+    GameState.visual_preview_v2 = false
     _show_home()
 
 func _on_run_finished(result: Dictionary) -> void:
@@ -306,6 +307,7 @@ func _on_run_finished(result: Dictionary) -> void:
         active_game.queue_free()
         active_game = null
     shell.visible = true
+    GameState.visual_preview_v2 = false
     _show_result()
 
 func _show_result() -> void:
