@@ -64,6 +64,7 @@ var carried_stone := 0
 var camp_wood := 0
 var camp_stone := 0
 var survivors := 1
+var survivor_agents: Array[Dictionary] = []
 var hearth_level := 1
 var hearth_hp := 150.0
 var hearth_max_hp := 150.0
@@ -202,6 +203,7 @@ func _start_expedition() -> void:
 	camp_wood = 0
 	camp_stone = 0
 	survivors = 1
+	survivor_agents.clear()
 	hearth_level = 1
 	hearth_max_hp = 150.0
 	hearth_hp = hearth_max_hp
@@ -344,6 +346,7 @@ func _update_hub_interactions() -> void:
 func _update_expedition(delta: float) -> void:
 	_deposit_resources_if_close()
 	_update_resource_gathering()
+	_update_survivor_agents(delta)
 
 	if enemies.size() > 0:
 		_update_combat()
@@ -356,16 +359,16 @@ func _update_expedition(delta: float) -> void:
 		Stage.DAY1_RESCUE:
 			if hero_pos.distance_to(survivor_one_pos) < 42.0:
 				survivor_one_found = true
-				survivors = 2
-				_banner("Охотник присоединился", 1.8)
+				_add_survivor("hunter", survivor_one_pos)
+				_banner("Охотник присоединился и идёт к очагу", 2.0)
 				_start_night(1)
 		Stage.WORKSHOP_CHOICE:
 			_update_workshop_choice()
 		Stage.DAY2_RESCUE:
 			if enemies.is_empty() and hero_pos.distance_to(survivor_two_pos) < 44.0:
 				survivor_two_found = true
-				survivors = 3
-				_banner("Рабочий спасён · людей 3", 1.8)
+				_add_survivor("worker", survivor_two_pos)
+				_banner("Рабочий спасён и возвращается к лагерю", 2.0)
 				_start_night(2)
 		Stage.EXPEDITION_CHOICE:
 			_update_expedition_choice()
@@ -490,8 +493,9 @@ func _spawn_rescue_guards() -> void:
 func _update_expedition_choice() -> void:
 	if hero_pos.distance_to(left_choice_pos) < 50.0:
 		expedition_choice = "people"
-		survivors += 2
-		_banner("Алтарь отозвался · +2 бойца", 2.0)
+		_add_survivor("guard", left_choice_pos + Vector2(-22, 18))
+		_add_survivor("guard", left_choice_pos + Vector2(22, 18))
+		_banner("Два бойца вышли к свету", 2.0)
 		_start_night(3)
 	elif hero_pos.distance_to(right_choice_pos) < 50.0:
 		expedition_choice = "damage"
@@ -619,6 +623,72 @@ func _spawn_enemy_at(kind: String, pos: Vector2) -> void:
 		"radius": radius,
 		"hit_cd": 0.0
 	})
+
+
+func _add_survivor(role: String, spawn_pos: Vector2) -> void:
+	var index := survivor_agents.size()
+	survivor_agents.append({
+		"role": role,
+		"pos": spawn_pos,
+		"phase": float(index) * 1.7,
+		"shot_cd": rng.randf_range(0.05, 0.35)
+	})
+	survivors = 1 + survivor_agents.size()
+	_burst(spawn_pos, 8)
+
+
+func _survivor_day_target(index: int, role: String) -> Vector2:
+	if role == "hunter":
+		return HEARTH_POS + Vector2(-92.0, 42.0)
+	if role == "worker":
+		return HEARTH_POS + Vector2(-112.0, -48.0) if workshop_built else HEARTH_POS + Vector2(82.0, 56.0)
+	var guard_slots: Array[Vector2] = [
+		Vector2(92, -58), Vector2(112, 34), Vector2(72, 82), Vector2(-68, 88)
+	]
+	return HEARTH_POS + guard_slots[index % guard_slots.size()]
+
+
+func _survivor_night_target(index: int) -> Vector2:
+	var count := maxi(1, survivor_agents.size())
+	var angle := -PI * 0.75 + (TAU * float(index) / float(count))
+	return HEARTH_POS + Vector2(cos(angle), sin(angle)) * 78.0
+
+
+func _update_survivor_agents(delta: float) -> void:
+	var night := stage in [Stage.NIGHT1, Stage.NIGHT2, Stage.NIGHT3]
+	for i in range(survivor_agents.size()):
+		var agent: Dictionary = survivor_agents[i]
+		var role := String(agent.get("role", "guard"))
+		var pos: Vector2 = agent["pos"]
+		var target := _survivor_night_target(i) if night else _survivor_day_target(i, role)
+		var to_target := target - pos
+
+		if to_target.length() > 5.0:
+			var speed := 94.0 if night else 66.0
+			pos += to_target.normalized() * minf(to_target.length(), speed * delta)
+			agent["phase"] = float(agent.get("phase", 0.0)) + delta * 6.0
+
+		var cd := maxf(0.0, float(agent.get("shot_cd", 0.0)) - delta)
+		if night and enemies.size() > 0 and cd <= 0.0:
+			var range := 330.0 if role == "hunter" else (285.0 if role == "guard" else 235.0)
+			var targets := _nearest_enemy_indices(pos, range, 1)
+			if targets.size() > 0:
+				var damage := hero_damage * (0.72 if role == "hunter" else (0.58 if role == "guard" else 0.38))
+				shots.append({
+					"pos": pos + Vector2(0, -8),
+					"target": targets[0],
+					"damage": damage,
+					"speed": 500.0,
+					"tower": false,
+					"ally": true
+				})
+				cd = 0.72 if role == "hunter" else (0.88 if role == "guard" else 1.12)
+
+		agent["pos"] = pos
+		agent["shot_cd"] = cd
+		survivor_agents[i] = agent
+
+	survivors = 1 + survivor_agents.size()
 
 
 func _update_combat() -> void:
@@ -1087,11 +1157,24 @@ func _draw_hero(pos: Vector2) -> void:
 
 
 func _draw_companions() -> void:
-	var visible_count := mini(survivors - 1, 4)
-	for i in range(visible_count):
-		var angle := float(i) * 1.35 + 0.8
-		var pos := hero_pos + Vector2(cos(angle), sin(angle)) * 34.0
-		_draw_person(pos, Color("#c6c3b0"), hero_walk_phase + float(i))
+	for agent: Dictionary in survivor_agents:
+		var role := String(agent.get("role", "guard"))
+		var pos: Vector2 = agent["pos"]
+		var phase := float(agent.get("phase", 0.0))
+		var color := Color("#758d68")
+		if role == "worker":
+			color = Color("#a27a52")
+		elif role == "guard":
+			color = Color("#6c8196")
+		_draw_person(pos, color, phase)
+		if role == "hunter":
+			draw_line(pos + Vector2(8, -3), pos + Vector2(18, -12), Color("#d5c39d"), 2.0)
+			draw_arc(pos + Vector2(17, -8), 7.0, -1.6, 1.4, 10, Color("#d5c39d"), 1.5)
+		elif role == "worker":
+			draw_line(pos + Vector2(8, 0), pos + Vector2(18, -8), Color("#c8b086"), 3.0)
+			draw_rect(Rect2(pos + Vector2(16, -12), Vector2(7, 7)), Color("#8f7657"))
+		else:
+			draw_line(pos + Vector2(8, -2), pos + Vector2(20, -11), Color("#c6ccd0"), 2.0)
 
 
 func _draw_person(pos: Vector2, color: Color, phase: float) -> void:
@@ -1207,10 +1290,10 @@ func _draw_hud() -> void:
 	draw_rect(Rect2(Vector2(0, 0), Vector2(480, 108)), Color(0.035, 0.05, 0.04, 0.93))
 
 	if mode == Mode.HUB:
-		draw_string(font, Vector2(16, 30), "🔥 Угли: %d" % int(meta.get("embers", 0)), HORIZONTAL_ALIGNMENT_LEFT, 150, 16, Color("#f0d298"))
-		draw_string(font, Vector2(168, 30), "🎒 +%d" % int(meta.get("carry_level", 0)), HORIZONTAL_ALIGNMENT_LEFT, 90, 16, Color("#d7cab0"))
-		draw_string(font, Vector2(265, 30), "⚔ +%d%%" % (int(meta.get("damage_level", 0)) * 10), HORIZONTAL_ALIGNMENT_LEFT, 100, 16, Color("#d7cab0"))
-		draw_string(font, Vector2(372, 30), "v0.3", HORIZONTAL_ALIGNMENT_LEFT, 80, 13, Color("#87968a"))
+		draw_string(font, Vector2(16, 30), "УГЛИ %d" % int(meta.get("embers", 0)), HORIZONTAL_ALIGNMENT_LEFT, 120, 15, Color("#f0d298"))
+		draw_string(font, Vector2(145, 30), "РЮКЗАК +%d" % int(meta.get("carry_level", 0)), HORIZONTAL_ALIGNMENT_LEFT, 110, 14, Color("#d7cab0"))
+		draw_string(font, Vector2(270, 30), "УРОН +%d%%" % (int(meta.get("damage_level", 0)) * 10), HORIZONTAL_ALIGNMENT_LEFT, 115, 14, Color("#d7cab0"))
+		draw_string(font, Vector2(402, 30), "v0.4", HORIZONTAL_ALIGNMENT_LEFT, 62, 12, Color("#87968a"))
 		draw_string(font, Vector2(16, 70), "Хаб живёт между вылазками. Всё здесь сохраняется.", HORIZONTAL_ALIGNMENT_LEFT, 448, 13, Color("#a9b5a8"))
 		return
 
@@ -1219,12 +1302,12 @@ func _draw_hud() -> void:
 
 	var stage_title := _stage_title()
 	var objective := _objective_text()
-	draw_string(font, Vector2(14, 25), stage_title, HORIZONTAL_ALIGNMENT_LEFT, 250, 17, Color("#f1e7d2"))
-	draw_string(font, Vector2(295, 25), "👥 %d" % survivors, HORIZONTAL_ALIGNMENT_LEFT, 70, 15, Color("#d8cfba"))
-	draw_string(font, Vector2(373, 25), "🔥 %d" % run_embers, HORIZONTAL_ALIGNMENT_LEFT, 70, 15, Color("#efc071"))
+	draw_string(font, Vector2(14, 25), stage_title, HORIZONTAL_ALIGNMENT_LEFT, 280, 15, Color("#f1e7d2"))
+	draw_string(font, Vector2(305, 25), "ЛЮДИ %d" % survivors, HORIZONTAL_ALIGNMENT_LEFT, 82, 13, Color("#d8cfba"))
+	draw_string(font, Vector2(395, 25), "УГЛИ %d" % run_embers, HORIZONTAL_ALIGNMENT_LEFT, 72, 12, Color("#efc071"))
 
-	draw_string(font, Vector2(14, 50), "🪵 %d   🪨 %d   несёшь %d/%d" % [camp_wood, camp_stone, carried_wood + carried_stone, carry_limit], HORIZONTAL_ALIGNMENT_LEFT, 300, 13, Color("#c7baa1"))
-	draw_string(font, Vector2(14, 78), objective, HORIZONTAL_ALIGNMENT_LEFT, 448, 13, Color("#bac7b9"))
+	draw_string(font, Vector2(14, 50), "ДЕРЕВО %d   КАМЕНЬ %d   ГРУЗ %d/%d" % [camp_wood, camp_stone, carried_wood + carried_stone, carry_limit], HORIZONTAL_ALIGNMENT_LEFT, 440, 12, Color("#c7baa1"))
+	draw_string(font, Vector2(14, 78), objective, HORIZONTAL_ALIGNMENT_LEFT, 448, 12, Color("#bac7b9"))
 
 	if stage in [Stage.NIGHT1, Stage.NIGHT2, Stage.NIGHT3]:
 		draw_rect(Rect2(Vector2(14, 90), Vector2(452, 6)), Color("#2d312c"))
