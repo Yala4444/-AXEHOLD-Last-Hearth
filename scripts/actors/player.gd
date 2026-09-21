@@ -16,6 +16,14 @@ const VISUAL_V2_TOOL_PATHS: Array[String] = [
     "res://assets/art/visual_v2/tool_hammer.webp"
 ]
 const VISUAL_V2_SPEAR_PATH: String = "res://assets/art/visual_v2/tool_spear.webp"
+const VISUAL_V2_RIG_PATHS: Dictionary = {
+    "torso_front":"res://assets/art/visual_v2/rig/torso_front.webp",
+    "torso_back":"res://assets/art/visual_v2/rig/torso_back.webp",
+    "thigh":"res://assets/art/visual_v2/rig/thigh.webp",
+    "shin":"res://assets/art/visual_v2/rig/shin_boot.webp",
+    "upper_arm":"res://assets/art/visual_v2/rig/upper_arm.webp",
+    "forearm":"res://assets/art/visual_v2/rig/forearm_hand.webp"
+}
 const VISUAL_V2_FRAME_PATHS: Dictionary = {
     "front_a":"res://assets/art/visual_v2/hero_frames/front_a.webp",
     "front_b":"res://assets/art/visual_v2/hero_frames/front_b.webp",
@@ -103,6 +111,7 @@ var visual_v2_hero: Texture2D
 var visual_v2_tools: Array[Texture2D] = []
 var visual_v2_spear: Texture2D
 var visual_v2_frames: Dictionary = {}
+var visual_v2_rig: Dictionary = {}
 var visual_facing_direction: Vector2 = Vector2(0.35, 0.94)
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
@@ -131,7 +140,7 @@ func visual_identity_profile() -> Dictionary:
         "build_reactive":true,
         "production_art":true,
         "art_texture":VISUAL_V2_FRAME_PATHS.get("back_a", "") if visual_v2_enabled else WANDERER_ART_PATH,
-        "rigged":false,
+        "rigged":visual_v2_enabled,
         "equipped_weapon_only":visual_v2_enabled
     }
 
@@ -143,6 +152,9 @@ func enable_visual_v2() -> void:
     for path: String in VISUAL_V2_TOOL_PATHS:
         visual_v2_tools.append(ResourceLoader.load(path) as Texture2D)
     visual_v2_spear = ResourceLoader.load(VISUAL_V2_SPEAR_PATH) as Texture2D
+    visual_v2_rig.clear()
+    for part_id: String in VISUAL_V2_RIG_PATHS:
+        visual_v2_rig[part_id] = ResourceLoader.load(str(VISUAL_V2_RIG_PATHS[part_id])) as Texture2D
     visual_v2_frames.clear()
     for frame_id: String in VISUAL_V2_FRAME_PATHS:
         visual_v2_frames[frame_id] = ResourceLoader.load(str(VISUAL_V2_FRAME_PATHS[frame_id])) as Texture2D
@@ -259,7 +271,10 @@ func _physics_process(delta: float) -> void:
 
     var visual_speed_ratio: float = clampf(velocity.length() / maxf(1.0, move_speed), 0.0, 1.0)
     if visual_speed_ratio > 0.04:
-        walk_clock += delta * (1.75 + visual_speed_ratio * 2.45)
+        # One complete stride takes about 0.75 s at full speed. The phase is
+        # continuous, so feet travel through the step instead of swapping
+        # between two whole-body drawings.
+        walk_clock += delta * (1.25 + visual_speed_ratio * 1.35)
 
     var rotation_speed: float = 3.65 + float(axes - 1) * 0.06
     if weapon_style == "hammer":
@@ -791,42 +806,54 @@ func _draw_visual_v2() -> void:
     else:
         mirror = visual_facing_direction.x < 0.0
 
-    var phase_unit: float = walk_clock * 2.0
-    var phase_number: int = int(floor(phase_unit)) % 2 if moving else 0
-    var phase_fraction: float = phase_unit - floor(phase_unit)
-    var transition: float = clampf((phase_fraction - 0.82) / 0.18, 0.0, 1.0) if moving else 0.0
-    var phase_id: String = "b" if phase_number == 1 else "a"
-    var next_phase_id: String = "a" if phase_number == 1 else "b"
-    var frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, phase_id]) as Texture2D
-    var next_frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, next_phase_id]) as Texture2D
-    if frame == null:
-        frame = visual_v2_hero
-    if next_frame == null:
-        next_frame = frame
-
+    var walk_phase: float = walk_clock * PI if moving else 0.0
+    var stride: float = sin(walk_phase) * speed_ratio
+    var left_lift: float = maxf(0.0, stride) * 4.0
+    var right_lift: float = maxf(0.0, -stride) * 4.0
     var breathe: float = sin(motion_time * 2.2) * (0.28 if not moving else 0.0)
     var recoil := Vector2(-visual_facing_direction.x, -visual_facing_direction.y) * damage_flash * 3.0
     var body_offset := recoil + Vector2(0.0, breathe - weapon_action_ratio() * 0.8)
     var tint := Color.WHITE.lerp(Color(1.0, 0.62, 0.54), clampf(damage_flash, 0.0, 1.0) * 0.68)
-    var body_lean: float = sin(phase_unit * PI) * 0.018 * speed_ratio
-    var body_scale: Vector2 = Vector2(1.0 + absf(sin(phase_unit * PI)) * 0.012, 1.0 - absf(sin(phase_unit * PI)) * 0.008)
+    var body_lean: float = stride * 0.026
+    var body_scale: Vector2 = Vector2(1.0 + absf(stride) * 0.008, 1.0 - absf(stride) * 0.006)
 
-    _draw_shadow_ellipse(Vector2(0, 30), Vector2(21.0 - absf(sin(phase_unit * PI)) * 1.0, 5.5), Color(0.025, 0.035, 0.03, 0.24))
+    _draw_shadow_ellipse(Vector2(0, 30), Vector2(21.0 - absf(stride) * 1.1, 5.5), Color(0.025, 0.035, 0.03, 0.24))
     _draw_relic_auras()
 
     var ring_radius: float = orbit_radius + sin(motion_time * 2.2) * 1.2
     _draw_visual_v2_orbit(false, ring_radius)
 
-    if frame != null:
-        draw_set_transform(body_offset, body_lean, Vector2((-1.0 if mirror else 1.0) * body_scale.x, body_scale.y))
-        var current_tint := tint
-        current_tint.a *= 1.0 - transition
-        draw_texture_rect(frame, Rect2(-32.0, -70.0, 64.0, 100.0), false, current_tint)
-        if transition > 0.0 and next_frame != null:
-            var next_tint := tint
-            next_tint.a *= transition
-            draw_texture_rect(next_frame, Rect2(-32.0, -70.0, 64.0, 100.0), false, next_tint)
+    var left_stride: float = stride * 9.0
+    var right_stride: float = -left_stride
+    var hip_y: float = body_offset.y + 4.0
+    var shoulder_y: float = body_offset.y - 31.0
+    var torso_front: Texture2D = visual_v2_rig.get("torso_front") as Texture2D
+    var torso_back: Texture2D = visual_v2_rig.get("torso_back") as Texture2D
+    var use_rig: bool = torso_front != null and torso_back != null
+
+    if use_rig:
+        # The rear limbs are drawn first. Their small value changes create
+        # depth without lifting the character off the ground.
+        _draw_visual_v2_leg(Vector2(-7.0, hip_y), left_stride, left_lift, false, tint)
+        _draw_visual_v2_arm(Vector2(-17.0, shoulder_y), -left_stride * 0.48, false, tint)
+
+        var front_weight: float = clampf((visual_facing_direction.y + 0.22) * 1.55, 0.0, 1.0)
+        var torso_rect := Rect2(-31.0, -73.0, 62.0, 88.0)
+        draw_set_transform(body_offset + Vector2(0, -1), body_lean, Vector2((-1.0 if mirror else 1.0) * body_scale.x, body_scale.y))
+        draw_texture_rect(torso_back, torso_rect, false, Color(tint, 1.0 - front_weight))
+        draw_texture_rect(torso_front, torso_rect, false, Color(tint, front_weight))
         draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+        _draw_visual_v2_leg(Vector2(7.0, hip_y), right_stride, right_lift, true, tint)
+        _draw_visual_v2_arm(Vector2(17.0, shoulder_y), -right_stride * 0.48, true, tint)
+    else:
+        var frame: Texture2D = visual_v2_frames.get("%s_a" % view_id) as Texture2D
+        if frame == null:
+            frame = visual_v2_hero
+        if frame != null:
+            draw_set_transform(body_offset, body_lean, Vector2((-1.0 if mirror else 1.0) * body_scale.x, body_scale.y))
+            draw_texture_rect(frame, Rect2(-32.0, -70.0, 64.0, 100.0), false, tint)
+            draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
     _draw_visual_v2_orbit(true, ring_radius)
 
@@ -835,6 +862,33 @@ func _draw_visual_v2() -> void:
     if perk_flash > 0.0:
         draw_arc(Vector2.ZERO, 46.0 + (1.0 - perk_flash) * 10.0, 0.0, TAU, 32, Color(1.0, 0.85, 0.42, perk_flash * 0.55), 2.0)
     _draw_inventory_gauge()
+
+func _draw_visual_v2_leg(hip: Vector2, stride: float, lift: float, right_side: bool, tint: Color) -> void:
+    var thigh: Texture2D = visual_v2_rig.get("thigh") as Texture2D
+    var shin: Texture2D = visual_v2_rig.get("shin") as Texture2D
+    if thigh == null or shin == null:
+        return
+    var thigh_angle: float = stride * 0.024
+    var knee := hip + Vector2(stride * 0.42, 15.5 - lift * 0.35)
+    var shin_angle: float = -stride * 0.016 + lift * 0.022
+    _draw_visual_v2_segment(thigh, hip, Vector2(16.0, 23.0), thigh_angle, right_side, tint)
+    _draw_visual_v2_segment(shin, knee + Vector2(stride * 0.24, -lift * 0.55), Vector2(17.0, 26.0), shin_angle, right_side, tint)
+
+func _draw_visual_v2_arm(shoulder: Vector2, swing: float, right_side: bool, tint: Color) -> void:
+    var upper_arm: Texture2D = visual_v2_rig.get("upper_arm") as Texture2D
+    var forearm: Texture2D = visual_v2_rig.get("forearm") as Texture2D
+    if upper_arm == null or forearm == null:
+        return
+    var upper_angle: float = swing * 0.018 + (-0.08 if right_side else 0.08)
+    _draw_visual_v2_segment(upper_arm, shoulder, Vector2(15.0, 21.0), upper_angle, right_side, tint)
+    var elbow := shoulder + Vector2(sin(upper_angle), cos(upper_angle)) * 15.0
+    var forearm_angle: float = swing * 0.011 + (-0.10 if right_side else 0.10)
+    _draw_visual_v2_segment(forearm, elbow, Vector2(13.0, 23.0), forearm_angle, right_side, tint)
+
+func _draw_visual_v2_segment(texture: Texture2D, pivot: Vector2, size: Vector2, angle_value: float, mirror: bool, tint: Color) -> void:
+    draw_set_transform(pivot, angle_value, Vector2(-1.0 if mirror else 1.0, 1.0))
+    draw_texture_rect(texture, Rect2(-size.x * 0.5, -1.0, size.x, size.y), false, tint)
+    draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _visual_v2_orbit_count() -> int:
     match weapon_style:
