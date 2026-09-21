@@ -693,7 +693,7 @@ func _update_survivor_agents(delta: float) -> void:
 
 func _update_combat() -> void:
 	if hero_shot_cd <= 0.0:
-		var targets: Array[int] = _nearest_enemy_indices(hero_pos, 285.0, maxi(1, survivors))
+		var targets: Array[int] = _nearest_enemy_indices(hero_pos, 285.0, 1)
 		for j in range(targets.size()):
 			var index: int = targets[j]
 			if index < 0 or index >= enemies.size():
