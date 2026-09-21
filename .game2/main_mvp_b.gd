@@ -550,6 +550,8 @@ func _draw_stone(screen_pos: Vector2, data: Dictionary) -> void:
 func _draw_resource_bar(screen_pos: Vector2, data: Dictionary) -> void:
 	var amount := float(data.get("amount", 1))
 	var max_amount := maxf(1.0, float(data.get("max_amount", 1)))
+	if amount >= max_amount:
+		return
 	var width := 54.0
 	draw_rect(Rect2(screen_pos + Vector2(-width * 0.5, 0), Vector2(width, 5)), Color(0.04, 0.05, 0.04, 0.55))
 	draw_rect(Rect2(screen_pos + Vector2(-width * 0.5, 0), Vector2(width * clampf(amount / max_amount, 0.0, 1.0), 5)), Color("#d9bd78"))
