@@ -20,9 +20,9 @@ const HEARTH_WORLD_POS := Vector2(800.0, 1100.0)
 
 var hero_idle_tex: Texture2D = preload("res://assets/hero_wanderer.webp")
 var hero_walk_tex: Texture2D = preload("res://assets/hero_walk.webp")
-var tree_tex: Texture2D = preload("res://assets/harvest_tree.png")
+var tree_tex: Texture2D = preload("res://assets/tree_damage.webp")
 var stone_tex: Texture2D = preload("res://assets/stone_deposit.png")
-var hearth_tex: Texture2D = preload("res://assets/last_hearth.png")
+var hearth_tex: Texture2D = preload("res://assets/hearth_fire.webp")
 
 var font: Font
 var rng := RandomNumberGenerator.new()
@@ -516,16 +516,19 @@ func _draw_cargo(screen_pos: Vector2) -> void:
 
 
 func _draw_hearth(screen_pos: Vector2) -> void:
-	_draw_ellipse(screen_pos + Vector2(0, 22), Vector2(62, 23), Color(0.02, 0.02, 0.01, 0.28))
-	var pulse := 1.0 + sin(Time.get_ticks_msec() * 0.004) * 0.025
+	# Последний Очаг — именно живое кострище, а не корневая печь/монумент.
+	_draw_ellipse(screen_pos + Vector2(0, 24), Vector2(58, 20), Color(0.02, 0.02, 0.01, 0.28))
+	var pulse := 1.0 + sin(Time.get_ticks_msec() * 0.004) * 0.018
+	var frame := int(Time.get_ticks_msec() / 180) % 3
+	var src := Rect2(Vector2(float(frame) * 361.0, 0.0), Vector2(361.0, 361.0))
 	draw_set_transform(screen_pos, 0.0, Vector2(pulse, pulse))
-	draw_texture_rect(hearth_tex, Rect2(Vector2(-74.0, -74.0), Vector2(148.0, 148.0)), false)
+	draw_texture_rect_region(hearth_tex, Rect2(Vector2(-72.0, -66.0), Vector2(144.0, 144.0)), src)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	for i in range(3):
 		var angle := Time.get_ticks_msec() * 0.0016 + float(i) * TAU / 3.0
-		var ember := screen_pos + Vector2(cos(angle) * (20.0 + i * 4.0), -25.0 - i * 8.0)
-		draw_circle(ember, 2.4, Color(1.0, 0.61, 0.18, 0.72))
+		var ember := screen_pos + Vector2(cos(angle) * (18.0 + i * 3.0), -24.0 - i * 9.0)
+		draw_circle(ember, 2.2, Color(1.0, 0.61, 0.18, 0.72))
 
 
 func _draw_tree(screen_pos: Vector2, data: Dictionary) -> void:
@@ -536,11 +539,21 @@ func _draw_tree(screen_pos: Vector2, data: Dictionary) -> void:
 		return
 
 	var scale_value := float(data.get("scale", 1.0))
-	_draw_ellipse(screen_pos + Vector2(0, 28), Vector2(39, 13), Color(0.02, 0.03, 0.02, 0.26))
+	var amount := float(data.get("amount", 1))
+	var max_amount := maxf(1.0, float(data.get("max_amount", 1)))
+	var ratio := amount / max_amount
+	var frame := 0
+	if ratio <= 0.34:
+		frame = 2
+	elif ratio <= 0.67:
+		frame = 1
+	var src := Rect2(Vector2(float(frame) * 361.0, 0.0), Vector2(361.0, 361.0))
+
+	_draw_ellipse(screen_pos + Vector2(0, 26), Vector2(36, 12), Color(0.02, 0.03, 0.02, 0.25))
 	draw_set_transform(screen_pos, 0.0, Vector2(scale_value, scale_value))
-	draw_texture_rect(tree_tex, Rect2(Vector2(-58.0, -104.0), Vector2(116.0, 145.0)), false)
+	draw_texture_rect_region(tree_tex, Rect2(Vector2(-60.0, -78.0), Vector2(120.0, 120.0)), src)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	_draw_resource_bar(screen_pos + Vector2(0, -88), data)
+	_draw_resource_bar(screen_pos + Vector2(0, -66), data)
 
 
 func _draw_stone(screen_pos: Vector2, data: Dictionary) -> void:
