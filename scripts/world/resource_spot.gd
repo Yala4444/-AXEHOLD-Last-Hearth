@@ -14,10 +14,9 @@ var variant: int = 0
 var radius: float = 15.0
 var hit_pulse: float = 0.0
 var hit_gate: float = 0.0
-var harvest_contact: float = 0.0
 var wobble_phase: float = 0.0
 var biome_index: int = 0
-var visual_identity_version: int = 4
+var visual_identity_version: int = 3
 var forest_art_cache: Dictionary = {}
 
 func configure(kind: String, v: int = 0, biome: int = 0) -> void:
@@ -47,7 +46,6 @@ func visual_identity_profile() -> Dictionary:
 
 func _process(delta: float) -> void:
     hit_gate = maxf(0.0, hit_gate - delta)
-    harvest_contact = maxf(0.0, harvest_contact - delta * 2.7)
     if hit_pulse > 0.0:
         hit_pulse = maxf(0.0, hit_pulse - delta * 5.5)
         wobble_phase += delta * 34.0
@@ -59,7 +57,6 @@ func _process(delta: float) -> void:
 
 func damage(amount: float) -> bool:
     hp -= amount
-    harvest_contact = 1.0
     if hit_gate <= 0.0:
         hit_gate = 0.11
         hit_pulse = 1.0
@@ -79,19 +76,6 @@ func _draw() -> void:
         _draw_rock(flash)
     else:
         _draw_ore(flash)
-
-    if harvest_contact > 0.02 and hp > 0.0:
-        var work_radius: float = radius + 8.0 + (1.0 - harvest_contact) * 3.0
-        var work_color: Color = Color("f1d28a")
-        if resource_type == "ore":
-            work_color = Color("d7b5ee")
-        elif resource_type == "rock":
-            work_color = Color("d8e0dc")
-        draw_arc(Vector2.ZERO, work_radius, -2.7, 0.35, 18, Color(work_color,0.10 + harvest_contact*0.22), 1.4)
-        for i: int in range(3):
-            var a: float = -2.2 + float(i) * 0.72 + wobble_phase * 0.05
-            var p: Vector2 = Vector2(cos(a),sin(a)) * (radius + 4.0)
-            draw_line(p,p + Vector2(cos(a),sin(a))*4.0,Color(work_color,harvest_contact*0.45),1.2)
 
     if hp < max_hp:
         var ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0)

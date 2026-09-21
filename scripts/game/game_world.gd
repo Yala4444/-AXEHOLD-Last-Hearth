@@ -72,7 +72,6 @@ var biome_events: BiomeEventDirector
 var field_objectives: FieldObjectiveDirector
 var expedition_memory: ExpeditionMemoryDirector
 var buildcraft: BuildcraftDirector
-var hearth_growth: HearthGrowthDirector
 var encounter_orchestrator: EncounterOrchestrator
 var world_fill_layer: CanvasLayer
 var world_fill: ColorRect
@@ -176,11 +175,6 @@ func _start_run() -> void:
     player.build_evolved.connect(_on_build_evolved)
     player.legendary_triggered.connect(_on_legendary_triggered)
 
-    hearth_growth = HearthGrowthDirector.new()
-    add_child(hearth_growth)
-    hearth_growth.setup(self)
-    hearth_growth.stage_changed.connect(_on_hearth_stage_changed)
-
     dynamic_world = DynamicWorldDirector.new()
     add_child(dynamic_world)
     dynamic_world.setup(self)
@@ -194,13 +188,11 @@ func _start_run() -> void:
     field_objectives.setup(self)
 
     _create_pads()
-    # Living World: fewer, clearer clusters. The map remains abundant without
-    # carpeting the phone screen with equal-weight harvest targets.
-    for _i in range(38):
+    for _i in range(52):
         _spawn_resource("tree")
-    for _i in range(14):
+    for _i in range(20):
         _spawn_resource("rock")
-    var initial_ore: int = 9 if biome_index == 2 else 7
+    var initial_ore: int = 12 if biome_index == 2 else 9
     for _i in range(initial_ore):
         _spawn_resource("ore")
 
@@ -391,13 +383,13 @@ func _maintain_resources() -> void:
     for spot: ResourceSpot in resources:
         if is_instance_valid(spot):
             counts[spot.resource_type] = int(counts.get(spot.resource_type, 0)) + 1
-    while int(counts["tree"]) < 30:
+    while int(counts["tree"]) < 38:
         _spawn_resource("tree")
         counts["tree"] = int(counts["tree"]) + 1
-    while int(counts["rock"]) < 11:
+    while int(counts["rock"]) < 15:
         _spawn_resource("rock")
         counts["rock"] = int(counts["rock"]) + 1
-    var ore_target: int = 7 if biome_index == 2 else 5
+    var ore_target: int = 9 if biome_index == 2 else 7
     while int(counts["ore"]) < ore_target:
         _spawn_resource("ore")
         counts["ore"] = int(counts["ore"]) + 1
@@ -463,34 +455,17 @@ func _harvest(delta: float) -> void:
         spot.queue_free()
 
 func _deposit_and_build(delta: float) -> void:
-    var deposit_radius: float = hearth_growth.deposit_radius() if hearth_growth != null else 68.0
-    if player.global_position.distance_to(base_position) < deposit_radius and player.inventory_total() > 0:
+    if player.global_position.distance_to(base_position) < 68.0 and player.inventory_total() > 0:
         var inv: Dictionary = player.clear_inventory()
         for key: String in ["wood", "stone", "ore"]:
             storage[key] = int(storage.get(key, 0)) + int(inv.get(key, 0))
         deposit_pulse = 1.0
         bag_full_announced = false
+        hud.show_banner("ДОБЫЧА НА СКЛАДЕ", Color("d9c17e"))
+        hud.set_status("Д +%d  К +%d  Р +%d" % [int(inv["wood"]), int(inv["stone"]), int(inv["ore"])])
         Feedback.play("level", 5)
         if core_fx != null:
             core_fx.deposit(inv, player.global_position, base_position + Vector2(39, 20))
-        if hearth_growth != null:
-            var hearth_state: Dictionary = hearth_growth.record_deposit(inv)
-            hud.show_banner("ОЧАГ ПРИНЯЛ ДОБЫЧУ", Color("e5c16f"), 22)
-            if int(hearth_state.get("stage",0)) < 3:
-                hud.set_status("Д +%d  К +%d  Р +%d · тепло %d/%d" % [
-                    int(inv["wood"]),
-                    int(inv["stone"]),
-                    int(inv["ore"]),
-                    int(hearth_state.get("delivered",0)),
-                    int(hearth_state.get("next_threshold",0))
-                ], 22, 2.2)
-            else:
-                hud.set_status("Д +%d  К +%d  Р +%d · Маяк горит в полную силу" % [
-                    int(inv["wood"]), int(inv["stone"]), int(inv["ore"])
-                ], 22, 2.2)
-        else:
-            hud.show_banner("ДОБЫЧА НА СКЛАДЕ", Color("d9c17e"))
-            hud.set_status("Д +%d  К +%d  Р +%d" % [int(inv["wood"]), int(inv["stone"]), int(inv["ore"])])
 
     var nearest: BuildPad = null
     var nearest_distance: float = INF
@@ -1473,20 +1448,6 @@ func _on_legendary_triggered(title: String, description: String) -> void:
     trigger_camera_shake(5.0, 0.22)
     Analytics.event("legendary_triggered", {"title":title,"wave":wave,"biome":biome_index})
 
-func _on_hearth_stage_changed(stage: int, title: String, description: String) -> void:
-    hud.show_banner("ОЧАГ РАСТЁТ · " + title, Color("f2c56f"), 95)
-    hud.set_status(description, 95, 3.4)
-    trigger_camera_shake(2.8 + float(stage) * 0.7, 0.16 + float(stage) * 0.03)
-    if core_fx != null:
-        core_fx.hearth_flare(base_position, stage >= 2)
-    Analytics.event("hearth_growth", {
-        "stage":stage,
-        "title":title,
-        "delivered":hearth_growth.delivered_total if hearth_growth != null else 0,
-        "wave":wave,
-        "biome":biome_index
-    })
-
 func _finish_run(won: bool) -> void:
     if finishing and player.hp > 0.0:
         return
@@ -1529,8 +1490,7 @@ func _finish_run(won: bool) -> void:
         "field_objectives": field_objectives.result_summary() if field_objectives != null else {},
         "encounter_orchestrator": encounter_orchestrator.result_summary() if encounter_orchestrator != null else {},
         "expedition_memory": expedition_memory.result_summary() if expedition_memory != null else {},
-        "buildcraft": buildcraft.result_summary() if buildcraft != null else {},
-        "hearth_growth": hearth_growth.snapshot() if hearth_growth != null else {}
+        "buildcraft": buildcraft.result_summary() if buildcraft != null else {}
     })
 
 func _refresh_hud() -> void:
@@ -1699,46 +1659,36 @@ func _draw_clearing(night: bool) -> void:
         draw_rect(Rect2(base_position.x - 11 + float((i % 2) * 4), y, 20, 3), Color(0.36, 0.31, 0.21, 0.12))
 
 func _draw_hearth(night: bool) -> void:
-    var hearth_stage: int = hearth_growth.stage if hearth_growth != null else 0
-    var safe_radius: float = hearth_growth.safe_radius() if hearth_growth != null else 92.0
-    var art_scale: float = hearth_growth.art_scale() if hearth_growth != null else 0.82
-    var stage_ratio: float = float(hearth_stage) / 3.0
+    var glow_strength: float = 0.11 if not night else 0.24
+    draw_circle(base_position, 148.0, Color(1.0, 0.55, 0.18, glow_strength * 0.16))
+    draw_circle(base_position, 104.0, Color(1.0, 0.52, 0.16, glow_strength * 0.22))
+    draw_circle(base_position, 64.0, Color(1.0, 0.55, 0.18, glow_strength))
+    draw_circle(base_position, 38.0, Color(1.0, 0.45, 0.12, glow_strength * 0.78))
 
-    # The warm territory is the visual promise of home. It grows only from
-    # resources physically delivered by the player.
-    var territory_alpha: float = (0.045 if not night else 0.085) + stage_ratio * (0.018 if not night else 0.032)
-    draw_circle(base_position, safe_radius, Color(1.0, 0.62, 0.24, territory_alpha))
-    draw_arc(base_position, safe_radius, 0.0, TAU, 64, Color(1.0,0.73,0.36,0.10 + stage_ratio*0.10), 1.4 + stage_ratio)
-
-    var glow_strength: float = (0.10 if not night else 0.22) + stage_ratio * 0.08
-    draw_circle(base_position, 54.0 + hearth_stage * 10.0, Color(1.0, 0.55, 0.18, glow_strength))
-    draw_circle(base_position, 34.0 + hearth_stage * 4.0, Color(1.0, 0.45, 0.12, glow_strength * 0.78))
-
-    var stone_count: int = 8 + hearth_stage * 2
-    var stone_radius: float = 18.0 + hearth_stage * 4.0
-    for i: int in range(stone_count):
-        var angle: float = TAU * float(i) / float(stone_count)
-        var stone_pos: Vector2 = base_position + Vector2(cos(angle), sin(angle)) * stone_radius
+    # Stone fire ring.
+    for i: int in range(10):
+        var angle: float = TAU * float(i) / 10.0
+        var stone_pos: Vector2 = base_position + Vector2(cos(angle), sin(angle)) * 22.0
         var stone_color: Color = Color("73756b") if i % 2 == 0 else Color("85867a")
         draw_rect(Rect2(stone_pos - Vector2(4, 3), Vector2(8, 6)), Color("464941"))
         draw_rect(Rect2(stone_pos - Vector2(3, 3), Vector2(6, 5)), stone_color)
 
-    draw_line(base_position + Vector2(-11, 8), base_position + Vector2(10, -5), Color("54331f"), 5.0 + hearth_stage)
-    draw_line(base_position + Vector2(11, 8), base_position + Vector2(-9, -5), Color("6a4226"), 5.0 + hearth_stage)
+    # Crossed logs.
+    draw_line(base_position + Vector2(-11, 8), base_position + Vector2(10, -5), Color("54331f"), 5.0)
+    draw_line(base_position + Vector2(11, 8), base_position + Vector2(-9, -5), Color("6a4226"), 5.0)
 
     var flicker: float = (sin(Time.get_ticks_msec() * 0.010) + 1.0) * 0.5
-    var flame_height: float = 18.0 + float(hearth_stage) * 6.0
     var flame := PackedVector2Array([
-        base_position + Vector2(-8 - hearth_stage, 5),
-        base_position + Vector2(-4, -flame_height * 0.65 - flicker * 3.0),
+        base_position + Vector2(-8, 5),
+        base_position + Vector2(-4, -13 - flicker * 3.0),
         base_position + Vector2(0, -6),
-        base_position + Vector2(5, -flame_height + flicker * 2.0),
-        base_position + Vector2(9 + hearth_stage, 5)
+        base_position + Vector2(5, -20 + flicker * 2.0),
+        base_position + Vector2(9, 5)
     ])
     draw_colored_polygon(flame, Color("ee7c32"))
     draw_colored_polygon(PackedVector2Array([
         base_position + Vector2(-4, 4),
-        base_position + Vector2(0, -10 - float(hearth_stage)*3.0 - flicker*2.0),
+        base_position + Vector2(0, -10 - flicker * 2.0),
         base_position + Vector2(5, 4)
     ]), Color("ffd879"))
 
@@ -1746,7 +1696,7 @@ func _draw_hearth(night: bool) -> void:
         last_hearth_art = ResourceLoader.load(LAST_HEARTH_ART_PATH) as Texture2D
     if biome_index == 0 and last_hearth_art != null:
         var art_pulse: float = 1.0 + sin(Time.get_ticks_msec() * 0.004) * 0.008
-        var art_size := Vector2(184.0, 155.0) * art_pulse * art_scale
+        var art_size := Vector2(184.0, 155.0) * art_pulse
         draw_texture_rect(
             last_hearth_art,
             Rect2(base_position + Vector2(-art_size.x * 0.5, -art_size.y * 0.49), art_size),
@@ -1754,30 +1704,12 @@ func _draw_hearth(night: bool) -> void:
             Color.WHITE
         )
 
-    var crate_pos := base_position + Vector2(50 + hearth_stage*4, 28)
+    # Storage crate makes deposit function visually obvious.
+    var crate_pos := base_position + Vector2(57, 30) if biome_index == 0 else base_position + Vector2(39, 20)
     draw_rect(Rect2(crate_pos - Vector2(13, 9), Vector2(26, 18)), Color("4e321f"))
     draw_rect(Rect2(crate_pos - Vector2(11, 7), Vector2(22, 14)), Color("865a31"))
     draw_rect(Rect2(crate_pos + Vector2(-11, -1), Vector2(22, 3)), Color("b27c42"))
     draw_rect(Rect2(crate_pos + Vector2(-2, -7), Vector2(4, 14)), Color("5d3d24"))
-
-    if hearth_stage >= 1:
-        var bedroll := base_position + Vector2(-50, 31)
-        draw_colored_polygon(PackedVector2Array([
-            bedroll + Vector2(-15,5), bedroll + Vector2(-10,-5),
-            bedroll + Vector2(11,-4), bedroll + Vector2(16,5)
-        ]), Color("7b5a3e"))
-        draw_line(bedroll + Vector2(-9,-2),bedroll + Vector2(10,-1),Color("c19b61"),2.0)
-
-    if hearth_stage >= 2:
-        for side: float in [-1.0,1.0]:
-            var post := base_position + Vector2(side*72.0, 6)
-            draw_line(post + Vector2(0,14),post + Vector2(0,-22),Color("5c3d27"),4.0)
-            draw_line(post + Vector2(0,-20),post + Vector2(side*14.0,-25),Color("d0a459"),2.0)
-
-    if hearth_stage >= 3:
-        var beacon_y: float = base_position.y - 58.0
-        draw_line(Vector2(base_position.x,beacon_y+18.0),Vector2(base_position.x,beacon_y-18.0),Color(1.0,0.73,0.30,0.28),3.0)
-        draw_circle(Vector2(base_position.x,beacon_y-18.0),5.0,Color(1.0,0.83,0.45,0.70))
 
 func _draw_palisade() -> void:
     var radius_x: float = 112.0 if biome_index == 0 else 78.0

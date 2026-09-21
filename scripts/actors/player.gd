@@ -33,7 +33,6 @@ var damage_flash: float = 0.0
 var block_flash: float = 0.0
 var perk_flash: float = 0.0
 var facing_x: float = 1.0
-var facing_direction: Vector2 = Vector2.DOWN
 var weapon_id: String = "axes"
 var weapon_style: String = "axes"
 var base_meta_damage: float = 25.0
@@ -107,8 +106,6 @@ func visual_identity_profile() -> Dictionary:
         "anchor":"hearth_rune",
         "weapon_readable":true,
         "build_reactive":true,
-        "direction_aware":true,
-        "movement_language":"procedural_4way",
         "production_art":true,
         "art_texture":"res://assets/art/forgotten_forest/wanderer.png"
     }
@@ -205,7 +202,6 @@ func _physics_process(delta: float) -> void:
 
     if movement.length_squared() > 0.0025:
         var direction: Vector2 = movement.normalized()
-        facing_direction = facing_direction.lerp(direction, minf(1.0, delta * 12.0)).normalized()
         if absf(direction.x) > 0.08:
             facing_x = signf(direction.x)
         velocity = direction * move_speed * environment_speed_mult * analog_strength
@@ -738,47 +734,13 @@ func _draw_illustrated_wanderer(body_offset: Vector2, moving: bool) -> void:
         wanderer_art = ResourceLoader.load(WANDERER_ART_PATH) as Texture2D
     if wanderer_art == null:
         return
-
-    var step_wave: float = sin(motion_time * (9.8 if moving else 2.4))
-    var vertical_weight: float = clampf(absf(facing_direction.y), 0.0, 1.0)
-    var side_weight: float = clampf(absf(facing_direction.x), 0.0, 1.0)
+    var breathe: float = sin(motion_time * (8.0 if moving else 2.4))
     var action_tilt: float = -facing_x * weapon_action_ratio() * 0.045
-    var walk_tilt: float = step_wave * 0.026 * side_weight if moving else 0.0
-    var width: float = (64.0 - vertical_weight * 3.0) + step_wave * (1.0 if moving else 0.35)
-    var height: float = 79.0 - step_wave * (1.25 if moving else 0.30)
-    var step_shift := Vector2(
-        step_wave * 1.2 * side_weight,
-        absf(step_wave) * 0.75 if moving else 0.0
-    )
-    var direction_shift := Vector2(0, -2.0 if facing_direction.y < -0.35 else (1.0 if facing_direction.y > 0.35 else 0.0))
+    var width: float = 64.0 + breathe * (1.2 if moving else 0.45)
+    var height: float = 79.0 - breathe * (1.0 if moving else 0.35)
     var tint_color := Color.WHITE.lerp(Color(1.0, 0.68, 0.58), clampf(damage_flash, 0.0, 1.0) * 0.72)
-    if facing_direction.y < -0.45:
-        tint_color = tint_color.lerp(Color(0.86,0.90,0.88),0.08)
-
-    draw_set_transform(
-        body_offset + Vector2(0, -10) + step_shift + direction_shift,
-        action_tilt + walk_tilt,
-        Vector2(facing_x, 1.0)
-    )
+    draw_set_transform(body_offset + Vector2(0, -10), action_tilt, Vector2(facing_x, 1.0))
     draw_texture_rect(wanderer_art, Rect2(-width * 0.5, -height * 0.5, width, height), false, tint_color)
-
-    # With one maintainable production cutout we still need an unmistakable
-    # back-facing read. A compact hood/cape overlay hides the face when moving
-    # north and turns the same asset into a convincing four-way silhouette.
-    if facing_direction.y < -0.45:
-        var hood_back := PackedVector2Array([
-            Vector2(-11,-27), Vector2(0,-36), Vector2(11,-27),
-            Vector2(9,-16), Vector2(0,-11), Vector2(-9,-16)
-        ])
-        draw_colored_polygon(hood_back, skin_cape.darkened(0.14))
-        draw_arc(Vector2(0,-24),10.5,3.25,6.10,14,skin_cape.lightened(0.08),1.3)
-        draw_colored_polygon(PackedVector2Array([
-            Vector2(-14,-10),Vector2(14,-10),Vector2(11,19),
-            Vector2(3,26),Vector2(-4,22),Vector2(-11,18)
-        ]),Color(skin_cape.darkened(0.06),0.54))
-    elif facing_direction.y > 0.50:
-        draw_circle(Vector2(0,-4),3.0,Color(1.0,0.77,0.34,0.12 + perk_flash*0.10))
-
     draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_inventory_gauge() -> void:

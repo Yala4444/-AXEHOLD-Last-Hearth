@@ -354,29 +354,9 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          godot --headless --path . --quit-after 10 res://scenes/ci_v123_visual_slice_smoke.tscn 2>&1 | tee /tmp/godot-v123-visual-slice.log
+          godot --headless --path . res://scenes/ci_v123_visual_slice_smoke.tscn 2>&1 | tee /tmp/godot-v123-visual-slice.log
           if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v123-visual-slice.log; then
             echo "GDScript parse errors detected during v1.23 visual slice test"
-            exit 1
-          fi
-
-      - name: V1.24 Living Illustrated Board proof regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . --quit-after 10 res://scenes/ci_v124_living_board_proof_smoke.tscn 2>&1 | tee /tmp/godot-v124-living-board.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v124-living-board.log; then
-            echo "GDScript parse errors detected during v1.24 living board proof test"
-            exit 1
-          fi
-
-      - name: V1.25 Living World production regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v125_living_world_smoke.tscn 2>&1 | tee /tmp/godot-v125-living-world.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v125-living-world.log; then
-            echo "GDScript parse errors detected during v1.25 Living World test"
             exit 1
           fi
 

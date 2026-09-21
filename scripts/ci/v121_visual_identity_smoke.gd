@@ -74,10 +74,8 @@ func _test_forest_visual_identity() -> void:
     if str(backdrop_profile.get("landmark_language", "")) != "folk_ruins":
         _fail("Forgotten Forest lost its dark folk landmark language")
 
-    # v1.25 deliberately reduces decorative density for phone readability,
-    # while preserving the v1.21 landmark language and required silhouettes.
-    if world.world_generator.landmark_nodes.size() < 20:
-        _fail("Forgotten Forest landmark density fell below the Living World readability target")
+    if world.world_generator.landmark_nodes.size() < 28:
+        _fail("Forgotten Forest landmark density is below the v1.21 target")
     var landmark_kinds: Dictionary = {}
     for landmark: WorldLandmark in world.world_generator.landmark_nodes:
         landmark_kinds[landmark.kind] = true
