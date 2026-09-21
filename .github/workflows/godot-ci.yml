@@ -397,7 +397,7 @@ jobs:
           sed -i 's/var lit := s.distance_to(HEARTH_POS) <= light_radius/var lit: bool = (s as Vector2).distance_to(HEARTH_POS) <= light_radius/' /tmp/game2/hearth_prototype_01/scripts/main.gd
           sed -i 's/draw_ellipse(draw_pos + Vector2(0,18), Vector2(20,7), Color(0,0,0,0.30))/_draw_ellipse_custom(draw_pos + Vector2(0,18), Vector2(20,7), Color(0,0,0,0.30))/' /tmp/game2/hearth_prototype_01/scripts/main.gd
           sed -i 's/^func draw_ellipse(center: Vector2, radii: Vector2, color: Color) -> void:/func _draw_ellipse_custom(center: Vector2, radii: Vector2, color: Color) -> void:/' /tmp/game2/hearth_prototype_01/scripts/main.gd
-          python .game2/apply_floating_joystick.py /tmp/game2/hearth_prototype_01/scripts/main.gd
+          python3 .game2/apply_floating_joystick.py /tmp/game2/hearth_prototype_01/scripts/main.gd
 
       - name: Validate Game 2 prototype
         shell: bash
