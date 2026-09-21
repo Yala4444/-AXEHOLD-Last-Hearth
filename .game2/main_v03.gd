@@ -707,8 +707,8 @@ func _update_enemies(delta: float) -> void:
 		var enemy: Dictionary = enemies[i]
 		var hp := float(enemy.get("hp", 0.0))
 		if hp <= 0.0:
-			_on_enemy_killed(enemy)
 			enemies.remove_at(i)
+			_on_enemy_killed(enemy)
 			continue
 
 		var pos: Vector2 = enemy["pos"]
@@ -734,6 +734,7 @@ func _update_enemies(delta: float) -> void:
 func _on_enemy_killed(enemy: Dictionary) -> void:
 	var pos: Vector2 = enemy["pos"]
 	var kind := String(enemy.get("kind", "basic"))
+	shots.clear()
 	_burst(pos, 10 if kind != "boss" else 28)
 
 	if kind == "elite":
