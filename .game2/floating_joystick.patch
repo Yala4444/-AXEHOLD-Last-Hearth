@@ -1,0 +1,167 @@
+--- a/scripts/main.gd
++++ b/scripts/main.gd
+@@ -12,6 +12,8 @@
+ const HERO_INTERACT_RADIUS := 48.0
+ const TREE_HITS := 3
+ const NIGHT_ENEMY_COUNT := 8
++const JOYSTICK_RADIUS := 64.0
++const JOYSTICK_DEADZONE := 0.10
+ 
+ enum Phase {
+ 	GATHER,
+@@ -52,6 +54,11 @@
+ var banner_timer := 0.0
+ var flash_timer := 0.0
+ var input_dragging := false
++var joystick_active := false
++var joystick_origin := Vector2.ZERO
++var joystick_knob := Vector2.ZERO
++var joystick_vector := Vector2.ZERO
++var joystick_touch_index := -1
+ var tutorial_pulse := 0.0
+ var last_objective := ""
+ 
+@@ -125,6 +132,12 @@
+ 	flash_timer = 0.0
+ 	tutorial_pulse = 0.0
+ 	last_objective = ""
++	input_dragging = false
++	joystick_active = false
++	joystick_origin = Vector2.ZERO
++	joystick_knob = Vector2.ZERO
++	joystick_vector = Vector2.ZERO
++	joystick_touch_index = -1
+ 	queue_redraw()
+ 
+ 
+@@ -152,13 +165,22 @@
+ 
+ func _update_hero(delta: float) -> void:
+ 	var pos: Vector2 = hero["pos"]
+-	var target: Vector2 = hero["target"]
+-	var to_target := target - pos
+-	var dist := to_target.length()
+-	if dist > 3.0:
+-		var step := minf(dist, HERO_SPEED * delta)
+-		pos += to_target.normalized() * step
+-		hero["walk_phase"] = float(hero["walk_phase"]) + delta * 9.0
++	if joystick_active and joystick_vector.length() > JOYSTICK_DEADZONE:
++		var move_strength := clampf(joystick_vector.length(), 0.0, 1.0)
++		var move_dir := joystick_vector.normalized()
++		pos += move_dir * HERO_SPEED * move_strength * delta
++		pos.x = clampf(pos.x, 24.0, VIEW_SIZE.x - 24.0)
++		pos.y = clampf(pos.y, 130.0, VIEW_SIZE.y - 30.0)
++		hero["target"] = pos + move_dir * 24.0
++		hero["walk_phase"] = float(hero["walk_phase"]) + delta * (6.0 + 4.0 * move_strength)
++	else:
++		var target: Vector2 = hero["target"]
++		var to_target := target - pos
++		var dist := to_target.length()
++		if dist > 3.0:
++			var step := minf(dist, HERO_SPEED * delta)
++			pos += to_target.normalized() * step
++			hero["walk_phase"] = float(hero["walk_phase"]) + delta * 9.0
+ 	hero["pos"] = pos
+ 	hero["shot_cd"] = maxf(0.0, float(hero["shot_cd"]) - delta)
+ 	hero["chop_cd"] = maxf(0.0, float(hero["chop_cd"]) - delta)
+@@ -495,20 +517,27 @@
+ 			reset_game()
+ 		return
+ 
+-	if event is InputEventMouseButton:
++	if event is InputEventScreenTouch:
++		if event.pressed:
++			if not joystick_active:
++				joystick_touch_index = event.index
++				_start_joystick(event.position)
++		elif joystick_active and event.index == joystick_touch_index:
++			_end_joystick()
++	elif event is InputEventScreenDrag:
++		if joystick_active and event.index == joystick_touch_index:
++			_update_joystick(event.position)
++	elif event is InputEventMouseButton:
+ 		if event.button_index == MOUSE_BUTTON_LEFT:
+ 			input_dragging = event.pressed
+ 			if event.pressed:
+-				_set_move_target(event.position)
++				joystick_touch_index = -2
++				_start_joystick(event.position)
++			else:
++				_end_joystick()
+ 	elif event is InputEventMouseMotion:
+-		if input_dragging:
+-			_set_move_target(event.position)
+-	elif event is InputEventScreenTouch:
+-		input_dragging = event.pressed
+-		if event.pressed:
+-			_set_move_target(event.position)
+-	elif event is InputEventScreenDrag:
+-		_set_move_target(event.position)
++		if input_dragging and joystick_active:
++			_update_joystick(event.position)
+ 	elif event is InputEventKey and event.pressed:
+ 		var target: Vector2 = hero["target"]
+ 		if event.keycode == KEY_LEFT or event.keycode == KEY_A:
+@@ -526,11 +555,30 @@
+ 		hero["target"] = target
+ 
+ 
+-func _set_move_target(screen_pos: Vector2) -> void:
+-	var target := screen_pos
+-	target.x = clampf(target.x, 24.0, VIEW_SIZE.x - 24.0)
+-	target.y = clampf(target.y, 130.0, VIEW_SIZE.y - 30.0)
+-	hero["target"] = target
++func _start_joystick(screen_pos: Vector2) -> void:
++	joystick_active = true
++	joystick_origin = screen_pos
++	joystick_knob = screen_pos
++	joystick_vector = Vector2.ZERO
++	hero["target"] = hero["pos"]
++
++
++func _update_joystick(screen_pos: Vector2) -> void:
++	var offset := screen_pos - joystick_origin
++	if offset.length() > JOYSTICK_RADIUS:
++		offset = offset.normalized() * JOYSTICK_RADIUS
++	joystick_knob = joystick_origin + offset
++	joystick_vector = offset / JOYSTICK_RADIUS
++	if joystick_vector.length() < JOYSTICK_DEADZONE:
++		joystick_vector = Vector2.ZERO
++
++
++func _end_joystick() -> void:
++	joystick_active = false
++	input_dragging = false
++	joystick_vector = Vector2.ZERO
++	joystick_touch_index = -1
++	hero["target"] = hero["pos"]
+ 
+ 
+ func _draw() -> void:
+@@ -548,6 +596,7 @@
+ 	_draw_floaters()
+ 	_draw_hud()
+ 	_draw_banner()
++	_draw_joystick()
+ 	_draw_flash()
+ 	if phase == Phase.VICTORY:
+ 		_draw_victory_overlay()
+@@ -866,6 +915,18 @@
+ 	draw_string(font,Vector2(78,239),banner_text,HORIZONTAL_ALIGNMENT_CENTER,384,16,Color(0.97,0.95,0.88,alpha))
+ 
+ 
++func _draw_joystick() -> void:
++	if not joystick_active:
++		return
++
++	# Floating joystick: the base appears where the player first touches.
++	draw_circle(joystick_origin, JOYSTICK_RADIUS + 8.0, Color(0.01, 0.02, 0.015, 0.24))
++	draw_circle(joystick_origin, JOYSTICK_RADIUS, Color(0.92, 0.94, 0.89, 0.12))
++	draw_arc(joystick_origin, JOYSTICK_RADIUS, 0.0, TAU, 40, Color(0.95, 0.86, 0.62, 0.46), 2.5)
++	draw_circle(joystick_knob, 24.0, Color(0.95, 0.86, 0.62, 0.30))
++	draw_circle(joystick_knob, 15.0, Color(0.98, 0.91, 0.72, 0.68))
++
++
+ func _draw_flash() -> void:
+ 	if flash_timer <= 0.0:
+ 		return
