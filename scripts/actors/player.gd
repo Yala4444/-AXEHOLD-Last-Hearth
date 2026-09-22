@@ -17,12 +17,10 @@ const VISUAL_V2_TOOL_PATHS: Array[String] = [
 ]
 const VISUAL_V2_SPEAR_PATH: String = "res://assets/art/visual_v2/tool_spear.webp"
 const VISUAL_V2_SIDE_WALK_PATHS: Array[String] = [
-    "res://assets/art/visual_v2/hero_walk_cycle/side_0.webp",
-    "res://assets/art/visual_v2/hero_walk_cycle/side_1.webp",
-    "res://assets/art/visual_v2/hero_walk_cycle/side_2.webp",
-    "res://assets/art/visual_v2/hero_walk_cycle/side_3.webp",
-    "res://assets/art/visual_v2/hero_walk_cycle/side_4.webp",
-    "res://assets/art/visual_v2/hero_walk_cycle/side_5.webp"
+    "res://assets/art/visual_v2/hero_walk_simple/side_0.webp",
+    "res://assets/art/visual_v2/hero_walk_simple/side_1.webp",
+    "res://assets/art/visual_v2/hero_walk_simple/side_2.webp",
+    "res://assets/art/visual_v2/hero_walk_simple/side_1.webp"
 ]
 const VISUAL_V2_FRAME_PATHS: Dictionary = {
     "front_a":"res://assets/art/visual_v2/hero_frames/front_a.webp",
@@ -271,7 +269,9 @@ func _physics_process(delta: float) -> void:
 
     var visual_speed_ratio: float = clampf(velocity.length() / maxf(1.0, move_speed), 0.0, 1.0)
     if visual_speed_ratio > 0.04:
-        walk_clock += delta * (1.75 + visual_speed_ratio * 2.45)
+        # Keep a readable walking cadence. The six side-view frames then
+        # complete one grounded stride in roughly three quarters of a second.
+        walk_clock += delta * (1.25 + visual_speed_ratio * 1.35)
 
     var rotation_speed: float = 3.65 + float(axes - 1) * 0.06
     if weapon_style == "hammer":
@@ -812,7 +812,7 @@ func _draw_visual_v2() -> void:
     var frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, phase_id]) as Texture2D
     var next_frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, next_phase_id]) as Texture2D
     if moving and view_id == "side" and not visual_v2_side_walk.is_empty():
-        var walk_frame_index: int = int(floor(walk_clock * 6.0)) % visual_v2_side_walk.size()
+        var walk_frame_index: int = int(floor(walk_clock * 4.0)) % visual_v2_side_walk.size()
         frame = visual_v2_side_walk[walk_frame_index]
         next_frame = frame
         transition = 0.0
