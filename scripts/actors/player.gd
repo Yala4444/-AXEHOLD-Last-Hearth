@@ -16,6 +16,14 @@ const VISUAL_V2_TOOL_PATHS: Array[String] = [
     "res://assets/art/visual_v2/tool_hammer.webp"
 ]
 const VISUAL_V2_SPEAR_PATH: String = "res://assets/art/visual_v2/tool_spear.webp"
+const VISUAL_V2_SIDE_WALK_PATHS: Array[String] = [
+    "res://assets/art/visual_v2/hero_walk_cycle/side_0.webp",
+    "res://assets/art/visual_v2/hero_walk_cycle/side_1.webp",
+    "res://assets/art/visual_v2/hero_walk_cycle/side_2.webp",
+    "res://assets/art/visual_v2/hero_walk_cycle/side_3.webp",
+    "res://assets/art/visual_v2/hero_walk_cycle/side_4.webp",
+    "res://assets/art/visual_v2/hero_walk_cycle/side_5.webp"
+]
 const VISUAL_V2_FRAME_PATHS: Dictionary = {
     "front_a":"res://assets/art/visual_v2/hero_frames/front_a.webp",
     "front_b":"res://assets/art/visual_v2/hero_frames/front_b.webp",
@@ -103,6 +111,7 @@ var visual_v2_hero: Texture2D
 var visual_v2_tools: Array[Texture2D] = []
 var visual_v2_spear: Texture2D
 var visual_v2_frames: Dictionary = {}
+var visual_v2_side_walk: Array[Texture2D] = []
 var visual_facing_direction: Vector2 = Vector2(0.35, 0.94)
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
@@ -143,6 +152,9 @@ func enable_visual_v2() -> void:
     for path: String in VISUAL_V2_TOOL_PATHS:
         visual_v2_tools.append(ResourceLoader.load(path) as Texture2D)
     visual_v2_spear = ResourceLoader.load(VISUAL_V2_SPEAR_PATH) as Texture2D
+    visual_v2_side_walk.clear()
+    for path: String in VISUAL_V2_SIDE_WALK_PATHS:
+        visual_v2_side_walk.append(ResourceLoader.load(path) as Texture2D)
     visual_v2_frames.clear()
     for frame_id: String in VISUAL_V2_FRAME_PATHS:
         visual_v2_frames[frame_id] = ResourceLoader.load(str(VISUAL_V2_FRAME_PATHS[frame_id])) as Texture2D
@@ -799,6 +811,11 @@ func _draw_visual_v2() -> void:
     var next_phase_id: String = "a" if phase_number == 1 else "b"
     var frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, phase_id]) as Texture2D
     var next_frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, next_phase_id]) as Texture2D
+    if moving and view_id == "side" and not visual_v2_side_walk.is_empty():
+        var walk_frame_index: int = int(floor(walk_clock * 6.0)) % visual_v2_side_walk.size()
+        frame = visual_v2_side_walk[walk_frame_index]
+        next_frame = frame
+        transition = 0.0
     if frame == null:
         frame = visual_v2_hero
     if next_frame == null:
