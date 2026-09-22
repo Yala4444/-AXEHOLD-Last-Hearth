@@ -17,10 +17,12 @@ const VISUAL_V2_TOOL_PATHS: Array[String] = [
 ]
 const VISUAL_V2_SPEAR_PATH: String = "res://assets/art/visual_v2/tool_spear.webp"
 const VISUAL_V2_SIDE_WALK_PATHS: Array[String] = [
-    "res://assets/art/visual_v2/hero_walk_simple/side_0.webp",
-    "res://assets/art/visual_v2/hero_walk_simple/side_1.webp",
-    "res://assets/art/visual_v2/hero_walk_simple/side_2.webp",
-    "res://assets/art/visual_v2/hero_walk_simple/side_1.webp"
+    "res://assets/art/visual_v2/hero_walk_cycle/side_0.webp",
+    "res://assets/art/visual_v2/hero_walk_cycle/side_1.webp",
+    "res://assets/art/visual_v2/hero_walk_cycle/side_2.webp",
+    "res://assets/art/visual_v2/hero_walk_cycle/side_3.webp",
+    "res://assets/art/visual_v2/hero_walk_cycle/side_4.webp",
+    "res://assets/art/visual_v2/hero_walk_cycle/side_5.webp"
 ]
 const VISUAL_V2_FRONT_WALK_PATHS: Array[String] = [
     "res://assets/art/visual_v2/hero_walk_simple/front_0.webp",
@@ -126,7 +128,14 @@ var visual_v2_frames: Dictionary = {}
 var visual_v2_side_walk: Array[Texture2D] = []
 var visual_v2_front_walk: Array[Texture2D] = []
 var visual_v2_back_walk: Array[Texture2D] = []
+var visual_v2_frame_layouts: Dictionary = {}
 var visual_facing_direction: Vector2 = Vector2(0.35, 0.94)
+
+const VISUAL_V2_TARGET_HEIGHT: float = 98.0
+const VISUAL_V2_FOOT_Y: float = 30.0
+const VISUAL_V2_ALPHA_THRESHOLD: float = 0.07
+const VISUAL_V2_ROW_PIXEL_THRESHOLD: int = 3
+const VISUAL_V2_COL_PIXEL_THRESHOLD: int = 2
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
     var hp_level: int = int(meta_upgrades.get("hp", 0))
@@ -178,6 +187,21 @@ func enable_visual_v2() -> void:
     visual_v2_frames.clear()
     for frame_id: String in VISUAL_V2_FRAME_PATHS:
         visual_v2_frames[frame_id] = ResourceLoader.load(str(VISUAL_V2_FRAME_PATHS[frame_id])) as Texture2D
+
+    # VG-2: every generated frame has slightly different transparent padding.
+    # Build a per-texture layout from the actual visible pixels so all poses
+    # share one foot baseline and one physical body height in-game.
+    visual_v2_frame_layouts.clear()
+    for texture: Texture2D in visual_v2_side_walk:
+        _register_visual_v2_frame_layout(texture)
+    for texture: Texture2D in visual_v2_front_walk:
+        _register_visual_v2_frame_layout(texture)
+    for texture: Texture2D in visual_v2_back_walk:
+        _register_visual_v2_frame_layout(texture)
+    for frame_id: String in visual_v2_frames:
+        _register_visual_v2_frame_layout(visual_v2_frames[frame_id] as Texture2D)
+    _register_visual_v2_frame_layout(visual_v2_hero)
+
     # Keep the equipped weapon profile intact. Four weapon families are
     # available in the arsenal, but only the selected one appears in a run.
     queue_redraw()
@@ -819,6 +843,116 @@ func _draw() -> void:
 
     _draw_inventory_gauge()
 
+func _visual_v2_layout_key(texture: Texture2D) -> String:
+    if texture == null:
+        return ""
+    if not texture.resource_path.is_empty():
+        return texture.resource_path
+    return str(texture.get_instance_id())
+
+func _register_visual_v2_frame_layout(texture: Texture2D) -> void:
+    if texture == null:
+        return
+    var key := _visual_v2_layout_key(texture)
+    if key.is_empty() or visual_v2_frame_layouts.has(key):
+        return
+    visual_v2_frame_layouts[key] = _build_visual_v2_frame_layout(texture)
+
+func _build_visual_v2_frame_layout(texture: Texture2D) -> Dictionary:
+    var fallback_source := Rect2(0.0, 0.0, float(texture.get_width()), float(texture.get_height()))
+    var image: Image = texture.get_image()
+    if image == null or image.is_empty():
+        return _visual_v2_layout_from_source(fallback_source, float(texture.get_width()) * 0.5)
+
+    var width: int = image.get_width()
+    var height: int = image.get_height()
+    if width <= 0 or height <= 0:
+        return _visual_v2_layout_from_source(fallback_source, float(texture.get_width()) * 0.5)
+
+    var row_counts := PackedInt32Array()
+    var col_counts := PackedInt32Array()
+    row_counts.resize(height)
+    col_counts.resize(width)
+
+    for y: int in range(height):
+        for x: int in range(width):
+            if image.get_pixel(x, y).a >= VISUAL_V2_ALPHA_THRESHOLD:
+                row_counts[y] += 1
+                col_counts[x] += 1
+
+    var min_y: int = 0
+    while min_y < height and row_counts[min_y] < VISUAL_V2_ROW_PIXEL_THRESHOLD:
+        min_y += 1
+    var max_y: int = height - 1
+    while max_y >= min_y and row_counts[max_y] < VISUAL_V2_ROW_PIXEL_THRESHOLD:
+        max_y -= 1
+
+    var min_x: int = 0
+    while min_x < width and col_counts[min_x] < VISUAL_V2_COL_PIXEL_THRESHOLD:
+        min_x += 1
+    var max_x: int = width - 1
+    while max_x >= min_x and col_counts[max_x] < VISUAL_V2_COL_PIXEL_THRESHOLD:
+        max_x -= 1
+
+    if min_y >= height or max_y < min_y or min_x >= width or max_x < min_x:
+        return _visual_v2_layout_from_source(fallback_source, float(width) * 0.5)
+
+    # A tiny pad preserves antialiased edge pixels while ignoring generated
+    # debris far from the actual character.
+    min_x = maxi(0, min_x - 1)
+    max_x = mini(width - 1, max_x + 1)
+    min_y = maxi(0, min_y - 1)
+    max_y = mini(height - 1, max_y + 1)
+
+    var source := Rect2(
+        float(min_x),
+        float(min_y),
+        float(max_x - min_x + 1),
+        float(max_y - min_y + 1)
+    )
+
+    # Generated frames use a stable canvas centre even when an arm or a stride
+    # changes the alpha bounds. Keep that canvas centre as the root X anchor.
+    var anchor_x: float = clampf(float(width) * 0.5, source.position.x, source.end.x)
+    return _visual_v2_layout_from_source(source, anchor_x)
+
+func _visual_v2_layout_from_source(source: Rect2, anchor_x: float) -> Dictionary:
+    var visible_height: float = maxf(1.0, source.size.y)
+    var scale_factor: float = VISUAL_V2_TARGET_HEIGHT / visible_height
+    var destination := Rect2(
+        Vector2(
+            -(anchor_x - source.position.x) * scale_factor,
+            VISUAL_V2_FOOT_Y - VISUAL_V2_TARGET_HEIGHT
+        ),
+        source.size * scale_factor
+    )
+    return {
+        "source": source,
+        "destination": destination,
+        "scale": scale_factor,
+        "foot_y": VISUAL_V2_FOOT_Y,
+        "target_height": VISUAL_V2_TARGET_HEIGHT
+    }
+
+func _visual_v2_frame_layout(texture: Texture2D) -> Dictionary:
+    if texture == null:
+        return {}
+    var key := _visual_v2_layout_key(texture)
+    if not visual_v2_frame_layouts.has(key):
+        _register_visual_v2_frame_layout(texture)
+    return visual_v2_frame_layouts.get(key, {})
+
+func _draw_visual_v2_frame(texture: Texture2D, tint: Color) -> void:
+    if texture == null:
+        return
+    var layout: Dictionary = _visual_v2_frame_layout(texture)
+    if layout.is_empty():
+        draw_texture_rect(texture, Rect2(-32.0, -70.0, 64.0, 100.0), false, tint)
+        return
+    var source: Rect2 = layout.get("source", Rect2())
+    var destination: Rect2 = layout.get("destination", Rect2())
+    draw_texture_rect_region(texture, destination, source, tint)
+
 func _draw_visual_v2() -> void:
     var moving: bool = velocity.length_squared() > 36.0
     var speed_ratio: float = clampf(velocity.length() / maxf(1.0, move_speed), 0.0, 1.0)
@@ -844,7 +978,9 @@ func _draw_visual_v2() -> void:
     var frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, phase_id]) as Texture2D
     var next_frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, next_phase_id]) as Texture2D
     if moving and view_id == "side" and not visual_v2_side_walk.is_empty():
-        var walk_frame_index: int = int(floor(walk_clock * 2.0)) % visual_v2_side_walk.size()
+        # Six coherent side poses complete one stride in roughly the same time
+        # as the four-pose front/back loops.
+        var walk_frame_index: int = int(floor(walk_clock * 3.0)) % visual_v2_side_walk.size()
         frame = visual_v2_side_walk[walk_frame_index]
         next_frame = frame
         transition = 0.0
@@ -867,24 +1003,25 @@ func _draw_visual_v2() -> void:
     var recoil := Vector2(-visual_facing_direction.x, -visual_facing_direction.y) * damage_flash * 3.0
     var body_offset := recoil + Vector2(0.0, breathe - weapon_action_ratio() * 0.8)
     var tint := Color.WHITE.lerp(Color(1.0, 0.62, 0.54), clampf(damage_flash, 0.0, 1.0) * 0.68)
-    var body_lean: float = sin(phase_unit * PI) * 0.018 * speed_ratio
-    var body_scale: Vector2 = Vector2(1.0 + absf(sin(phase_unit * PI)) * 0.012, 1.0 - absf(sin(phase_unit * PI)) * 0.008)
+    # The image itself carries the stride. Do not squash/stretch the whole
+    # character: that was one of the reasons the hero appeared to change size.
+    var body_lean: float = sin(phase_unit * PI) * 0.006 * speed_ratio
 
-    _draw_shadow_ellipse(Vector2(0, 30), Vector2(21.0 - absf(sin(phase_unit * PI)) * 1.0, 5.5), Color(0.025, 0.035, 0.03, 0.24))
+    _draw_shadow_ellipse(Vector2(0, VISUAL_V2_FOOT_Y), Vector2(20.5 - absf(sin(phase_unit * PI)) * 0.6, 5.2), Color(0.025, 0.035, 0.03, 0.24))
     _draw_relic_auras()
 
     var ring_radius: float = orbit_radius + sin(motion_time * 2.2) * 1.2
     _draw_visual_v2_orbit(false, ring_radius)
 
     if frame != null:
-        draw_set_transform(body_offset, body_lean, Vector2((-1.0 if mirror else 1.0) * body_scale.x, body_scale.y))
+        draw_set_transform(body_offset, body_lean, Vector2(-1.0 if mirror else 1.0, 1.0))
         var current_tint := tint
         current_tint.a *= 1.0 - transition
-        draw_texture_rect(frame, Rect2(-32.0, -70.0, 64.0, 100.0), false, current_tint)
+        _draw_visual_v2_frame(frame, current_tint)
         if transition > 0.0 and next_frame != null:
             var next_tint := tint
             next_tint.a *= transition
-            draw_texture_rect(next_frame, Rect2(-32.0, -70.0, 64.0, 100.0), false, next_tint)
+            _draw_visual_v2_frame(next_frame, next_tint)
         draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
     _draw_visual_v2_orbit(true, ring_radius)
