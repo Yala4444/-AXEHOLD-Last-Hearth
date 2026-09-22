@@ -46,10 +46,25 @@ func _run() -> void:
         _fail("Visible orbit does not match the equipped weapon count")
     elif world.player.visual_v2_hero == null:
         _fail("Production hero texture failed to load")
+    if world.visual_gate_fx == null or not is_instance_valid(world.visual_gate_fx):
+        _fail("Visual Gate FX layer was not created for preview run")
 
     world.queue_free()
     await _wait_frames(3)
+
     GameState.visual_preview_v2 = false
+    var baseline: GameWorld = GameScene.instantiate() as GameWorld
+    baseline.configure(0, 1, "expedition")
+    add_child(baseline)
+    await _wait_frames(6)
+    baseline.set_process(false)
+    if baseline.visual_v2_enabled:
+        _fail("Stable expedition accidentally inherited Visual Gate mode")
+    if baseline.visual_gate_fx != null and is_instance_valid(baseline.visual_gate_fx):
+        _fail("Stable expedition created Visual Gate FX")
+    baseline.queue_free()
+    await _wait_frames(3)
+
     GameState.data = snapshot
     _finish()
 
