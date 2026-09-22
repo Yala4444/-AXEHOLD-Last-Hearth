@@ -125,6 +125,8 @@ func _start_run() -> void:
     backdrop = WorldBackdrop.new()
     add_child(backdrop)
     backdrop.setup(world_size, base_position, biome, biome_index)
+    if visual_v2_enabled:
+        backdrop.set_visual_gate(true)
 
     world_generator = WorldGenerator.new()
     add_child(world_generator)
