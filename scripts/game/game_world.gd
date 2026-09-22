@@ -76,6 +76,7 @@ var buildcraft: BuildcraftDirector
 var encounter_orchestrator: EncounterOrchestrator
 var world_fill_layer: CanvasLayer
 var world_fill: ColorRect
+var visual_gate_fx: VisualGateFX
 
 var resource_yield_multiplier: float = 1.0
 var turret_global_damage_mult: float = 1.0
@@ -173,6 +174,10 @@ func _start_run() -> void:
     player.set_world_bounds(world_rect.grow(-34.0))
     player.set_home_target(base_position)
     _setup_camera()
+    if visual_v2_enabled:
+        visual_gate_fx = VisualGateFX.new()
+        add_child(visual_gate_fx)
+        visual_gate_fx.setup(self)
     player.died.connect(_on_player_died)
     player.damaged.connect(_on_player_damaged)
     player.level_up_requested.connect(_show_perks)
@@ -202,8 +207,8 @@ func _start_run() -> void:
 
     Analytics.event("run_start", {"biome":biome_index,"weapon":player.weapon_id,"threat":threat_level,"mode":run_mode})
     if visual_v2_enabled:
-        hud.show_banner("НОВЫЙ ДИЗАЙН · ЖИВОЙ СТРАННИК", Color("e7bd67"))
-        hud.set_run_objective("ПОЛНАЯ ЭКСПЕДИЦИЯ · ВЫБРАННОЕ ОРУЖИЕ")
+        hud.show_banner("ЗАБЫТАЯ ЧАЩА · НОВЫЙ ОБЛИК", Color("e7bd67"))
+        hud.set_run_objective("ВИЗУАЛЬНЫЙ ТЕСТ · ПОЛНАЯ ЭКСПЕДИЦИЯ")
     elif run_mode == "endless":
         hud.show_banner("ПОСЛЕДНИЙ РУБЕЖ · " + str(biome["name"]).to_upper(), Color("e3b56a"))
         hud.set_run_objective("БЕСКОНЕЧНЫЙ РЕЖИМ · рекорд %d" % int((GameState.data.get("endless_stats",{}) as Dictionary).get("best_wave",0)))
