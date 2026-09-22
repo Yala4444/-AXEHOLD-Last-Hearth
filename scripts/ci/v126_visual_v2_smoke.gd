@@ -40,6 +40,10 @@ func _run() -> void:
         _fail("Preview must load the four available weapon-family assets")
     elif world.player.visual_v2_frames.size() != 6:
         _fail("Production hero must load all six coherent animation frames")
+    elif world.player.visual_v2_side_walk.size() != 6:
+        _fail("VG-2 side walk must use six coherent stride frames")
+    elif world.player.visual_v2_frame_layouts.size() < 15:
+        _fail("VG-2 did not build normalized frame layouts")
     elif world.player.weapon_style != "axes":
         _fail("Preview changed the equipped weapon profile")
     elif int(world.player.call("_visual_v2_orbit_count")) != world.player.axes:
@@ -48,6 +52,14 @@ func _run() -> void:
         _fail("Production hero texture failed to load")
     if world.visual_gate_fx == null or not is_instance_valid(world.visual_gate_fx):
         _fail("Visual Gate FX layer was not created for preview run")
+    for layout_key: String in world.player.visual_v2_frame_layouts:
+        var layout: Dictionary = world.player.visual_v2_frame_layouts[layout_key]
+        if absf(float(layout.get("target_height", 0.0)) - AxPlayer.VISUAL_V2_TARGET_HEIGHT) > 0.01:
+            _fail("VG-2 frame escaped the canonical body height: " + layout_key)
+            break
+        if absf(float(layout.get("foot_y", 0.0)) - AxPlayer.VISUAL_V2_FOOT_Y) > 0.01:
+            _fail("VG-2 frame escaped the canonical foot baseline: " + layout_key)
+            break
 
     world.queue_free()
     await _wait_frames(3)
