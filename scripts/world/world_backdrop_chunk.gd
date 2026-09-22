@@ -8,6 +8,7 @@ var biome: Dictionary = {}
 var biome_index: int = 0
 var night: bool = false
 var night_mix: float = 0.0
+var visual_gate_enabled: bool = false
 
 func setup(rect: Rect2, size: Vector2, hearth: Vector2, biome_data: Dictionary, index: int, is_night: bool) -> void:
     chunk_rect = rect
@@ -20,6 +21,10 @@ func setup(rect: Rect2, size: Vector2, hearth: Vector2, biome_data: Dictionary, 
     position = rect.position
     z_index = -20
     set_process(false)
+    queue_redraw()
+
+func set_visual_gate(value: bool) -> void:
+    visual_gate_enabled = value
     queue_redraw()
 
 func set_night(value: bool) -> void:
@@ -94,13 +99,19 @@ func _local_detail_point(index: int) -> Vector2:
     )
 
 func _draw_forest_detail(p: Vector2, index: int) -> void:
-    var tuft: Color = Color(0.18, 0.32, 0.18, 0.17) if not night else Color(0.05, 0.10, 0.10, 0.17)
-    var patch: Color = Color(0.12, 0.24, 0.14, 0.09) if not night else Color(0.04, 0.08, 0.09, 0.10)
+    var tuft: Color
+    var patch: Color
+    if visual_gate_enabled:
+        tuft = Color(0.20, 0.34, 0.19, 0.13) if not night else Color(0.08, 0.15, 0.15, 0.12)
+        patch = Color(0.18, 0.26, 0.14, 0.055) if not night else Color(0.06, 0.11, 0.11, 0.07)
+    else:
+        tuft = Color(0.18, 0.32, 0.18, 0.17) if not night else Color(0.05, 0.10, 0.10, 0.17)
+        patch = Color(0.12, 0.24, 0.14, 0.09) if not night else Color(0.04, 0.08, 0.09, 0.10)
     if index % 4 == 0:
         draw_rect(Rect2(p.x, p.y, 14, 4), patch)
     else:
-        draw_rect(Rect2(p.x, p.y, 3, 7), tuft)
-        draw_rect(Rect2(p.x + 4, p.y + 2, 2, 5), Color(tuft, tuft.a * 0.72))
+        draw_line(p + Vector2(0, 6), p + Vector2(1, 0), tuft, 1.4)
+        draw_line(p + Vector2(4, 6), p + Vector2(5, 1), Color(tuft, tuft.a * 0.78), 1.2)
 
 func _draw_forest_atmosphere() -> void:
     var sx: int = int(floor(chunk_rect.position.x))
@@ -178,10 +189,36 @@ func _draw_path_segment() -> void:
         Vector2(center_x + half1, local_y1),
         Vector2(center_x - half1, local_y1)
     ])
-    var day_path: Color = Color(0.54, 0.48, 0.31, 0.21) if biome_index != 1 else Color(0.57, 0.69, 0.68, 0.16)
-    var night_path: Color = Color(day_path.r * 0.62, day_path.g * 0.62, day_path.b * 0.70, day_path.a * 0.82)
-    var path_color: Color = day_path.lerp(night_path, night_mix)
-    draw_colored_polygon(points, path_color)
+    if visual_gate_enabled and biome_index == 0:
+        # Release-look path: warmer red-brown soil with a darker soft edge.
+        # World-space sine keeps the edge continuous across chunk boundaries.
+        var wobble0: float = sin(y0 * 0.013) * 4.2 + sin(y0 * 0.0047 + 1.4) * 3.0
+        var wobble1: float = sin(y1 * 0.013) * 4.2 + sin(y1 * 0.0047 + 1.4) * 3.0
+        var center0: float = center_x + wobble0
+        var center1: float = center_x + wobble1
+        var outer := PackedVector2Array([
+            Vector2(center0 - half0 - 5.0, local_y0),
+            Vector2(center0 + half0 + 5.0, local_y0),
+            Vector2(center1 + half1 + 5.0, local_y1),
+            Vector2(center1 - half1 - 5.0, local_y1)
+        ])
+        var inner := PackedVector2Array([
+            Vector2(center0 - half0 + 1.5, local_y0),
+            Vector2(center0 + half0 - 1.5, local_y0),
+            Vector2(center1 + half1 - 1.5, local_y1),
+            Vector2(center1 - half1 + 1.5, local_y1)
+        ])
+        var edge_day := Color(0.28, 0.14, 0.11, 0.25)
+        var fill_day := Color(0.48, 0.27, 0.20, 0.25)
+        var edge_night := Color(0.16, 0.10, 0.10, 0.24)
+        var fill_night := Color(0.29, 0.18, 0.17, 0.23)
+        draw_colored_polygon(outer, edge_day.lerp(edge_night, night_mix))
+        draw_colored_polygon(inner, fill_day.lerp(fill_night, night_mix))
+    else:
+        var day_path: Color = Color(0.54, 0.48, 0.31, 0.21) if biome_index != 1 else Color(0.57, 0.69, 0.68, 0.16)
+        var night_path: Color = Color(day_path.r * 0.62, day_path.g * 0.62, day_path.b * 0.70, day_path.a * 0.82)
+        var path_color: Color = day_path.lerp(night_path, night_mix)
+        draw_colored_polygon(points, path_color)
 
 func _draw_clearing_segment() -> void:
     if not chunk_rect.grow(130.0).has_point(base_position):
