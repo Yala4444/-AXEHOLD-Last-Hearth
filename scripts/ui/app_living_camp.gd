@@ -168,9 +168,9 @@ func _show_home() -> void:
     play.custom_minimum_size = Vector2(0, 48)
     play.pressed.connect(_start_expedition)
 
-    var visual_slice := _button(departure_box, "ПОПРОБОВАТЬ НОВЫЙ ДИЗАЙН · ЖИВОЙ ГЕРОЙ", false)
+    var visual_slice := _button(departure_box, "VISUAL GATE · НОВЫЙ ОБЛИК AXEHOLD", false)
     visual_slice.custom_minimum_size = Vector2(0, 40)
-    visual_slice.tooltip_text = "Полная экспедиция с цельным героем в спокойной анимации и выбранным оружием"
+    visual_slice.tooltip_text = "Та же полная экспедиция без изменения баланса — тест света, атмосферы, героя и VFX"
     visual_slice.pressed.connect(_start_visual_slice)
 
     if GameState.endless_unlocked():
