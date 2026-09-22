@@ -11,6 +11,7 @@ var biome_index: int = 0
 var night: bool = false
 var chunks: Array[WorldBackdropChunk] = []
 var visual_identity_version: int = 2
+var visual_gate_enabled: bool = false
 
 func setup(size: Vector2, hearth: Vector2, biome_data: Dictionary, index: int) -> void:
     world_size = size
@@ -19,6 +20,14 @@ func setup(size: Vector2, hearth: Vector2, biome_data: Dictionary, index: int) -
     biome_index = index
     z_index = -20
     _rebuild_chunks()
+
+func set_visual_gate(value: bool) -> void:
+    if visual_gate_enabled == value:
+        return
+    visual_gate_enabled = value
+    for chunk: WorldBackdropChunk in chunks:
+        if is_instance_valid(chunk):
+            chunk.set_visual_gate(value)
 
 func set_night(value: bool) -> void:
     if night == value:
@@ -68,5 +77,6 @@ func _rebuild_chunks() -> void:
             add_child(chunk)
             chunks.append(chunk)
             chunk.setup(rect, world_size, base_position, biome, biome_index, night)
+            chunk.set_visual_gate(visual_gate_enabled)
             x += CHUNK_SIZE.x
         y += CHUNK_SIZE.y
