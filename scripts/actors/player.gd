@@ -22,6 +22,18 @@ const VISUAL_V2_SIDE_WALK_PATHS: Array[String] = [
     "res://assets/art/visual_v2/hero_walk_simple/side_2.webp",
     "res://assets/art/visual_v2/hero_walk_simple/side_1.webp"
 ]
+const VISUAL_V2_FRONT_WALK_PATHS: Array[String] = [
+    "res://assets/art/visual_v2/hero_walk_simple/front_0.webp",
+    "res://assets/art/visual_v2/hero_walk_simple/front_1.webp",
+    "res://assets/art/visual_v2/hero_walk_simple/front_2.webp",
+    "res://assets/art/visual_v2/hero_walk_simple/front_1.webp"
+]
+const VISUAL_V2_BACK_WALK_PATHS: Array[String] = [
+    "res://assets/art/visual_v2/hero_walk_simple/back_0.webp",
+    "res://assets/art/visual_v2/hero_walk_simple/back_1.webp",
+    "res://assets/art/visual_v2/hero_walk_simple/back_2.webp",
+    "res://assets/art/visual_v2/hero_walk_simple/back_1.webp"
+]
 const VISUAL_V2_FRAME_PATHS: Dictionary = {
     "front_a":"res://assets/art/visual_v2/hero_frames/front_a.webp",
     "front_b":"res://assets/art/visual_v2/hero_frames/front_b.webp",
@@ -69,6 +81,8 @@ var weapon_action_time: float = 0.0
 var weapon_action_duration: float = 0.24
 var weapon_action_direction: Vector2 = Vector2.RIGHT
 var weapon_combo_visual: int = 0
+var movement_acceleration: float = 920.0
+var movement_deceleration: float = 1180.0
 
 # Weapon-exclusive perk state. These are reset at the beginning of each run.
 var axes_dps_bonus: float = 1.0
@@ -110,6 +124,8 @@ var visual_v2_tools: Array[Texture2D] = []
 var visual_v2_spear: Texture2D
 var visual_v2_frames: Dictionary = {}
 var visual_v2_side_walk: Array[Texture2D] = []
+var visual_v2_front_walk: Array[Texture2D] = []
+var visual_v2_back_walk: Array[Texture2D] = []
 var visual_facing_direction: Vector2 = Vector2(0.35, 0.94)
 
 func setup(meta_upgrades: Dictionary, skin: Dictionary) -> void:
@@ -153,6 +169,12 @@ func enable_visual_v2() -> void:
     visual_v2_side_walk.clear()
     for path: String in VISUAL_V2_SIDE_WALK_PATHS:
         visual_v2_side_walk.append(ResourceLoader.load(path) as Texture2D)
+    visual_v2_front_walk.clear()
+    for path: String in VISUAL_V2_FRONT_WALK_PATHS:
+        visual_v2_front_walk.append(ResourceLoader.load(path) as Texture2D)
+    visual_v2_back_walk.clear()
+    for path: String in VISUAL_V2_BACK_WALK_PATHS:
+        visual_v2_back_walk.append(ResourceLoader.load(path) as Texture2D)
     visual_v2_frames.clear()
     for frame_id: String in VISUAL_V2_FRAME_PATHS:
         visual_v2_frames[frame_id] = ResourceLoader.load(str(VISUAL_V2_FRAME_PATHS[frame_id])) as Texture2D
@@ -252,10 +274,13 @@ func _physics_process(delta: float) -> void:
 
     if movement.length_squared() > 0.0025:
         var direction: Vector2 = movement.normalized()
-        visual_facing_direction = visual_facing_direction.lerp(direction, clampf(delta * 11.0, 0.0, 1.0)).normalized()
-        if absf(direction.x) > 0.08:
-            facing_x = signf(direction.x)
-        velocity = direction * move_speed * environment_speed_mult * analog_strength
+        var target_velocity: Vector2 = direction * move_speed * environment_speed_mult * analog_strength
+        velocity = velocity.move_toward(target_velocity, movement_acceleration * delta)
+        if velocity.length_squared() > 9.0:
+            var travel_direction: Vector2 = velocity.normalized()
+            visual_facing_direction = visual_facing_direction.lerp(travel_direction, clampf(delta * 14.0, 0.0, 1.0)).normalized()
+            if absf(travel_direction.x) > 0.08:
+                facing_x = signf(travel_direction.x)
         move_and_slide()
         if has_movement_bounds:
             global_position = Vector2(
@@ -265,7 +290,12 @@ func _physics_process(delta: float) -> void:
         if direct_control:
             target_position = global_position
     else:
-        velocity = Vector2.ZERO
+        velocity = velocity.move_toward(Vector2.ZERO, movement_deceleration * delta)
+        if velocity.length_squared() > 0.01:
+            visual_facing_direction = visual_facing_direction.lerp(velocity.normalized(), clampf(delta * 12.0, 0.0, 1.0)).normalized()
+            move_and_slide()
+        else:
+            velocity = Vector2.ZERO
 
     var visual_speed_ratio: float = clampf(velocity.length() / maxf(1.0, move_speed), 0.0, 1.0)
     if visual_speed_ratio > 0.04:
@@ -794,7 +824,9 @@ func _draw_visual_v2() -> void:
     var speed_ratio: float = clampf(velocity.length() / maxf(1.0, move_speed), 0.0, 1.0)
     var view_id: String = "front"
     var mirror: bool = false
-    if absf(visual_facing_direction.x) > absf(visual_facing_direction.y) * 0.78:
+    # Keep diagonal travel on the readable side walk cycle. Only directions
+    # that are genuinely vertical switch to front/back, avoiding snap-turns.
+    if absf(visual_facing_direction.x) > absf(visual_facing_direction.y) * 0.55:
         view_id = "side"
         mirror = visual_facing_direction.x < 0.0
     elif visual_facing_direction.y < 0.0:
@@ -812,8 +844,18 @@ func _draw_visual_v2() -> void:
     var frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, phase_id]) as Texture2D
     var next_frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, next_phase_id]) as Texture2D
     if moving and view_id == "side" and not visual_v2_side_walk.is_empty():
-        var walk_frame_index: int = int(floor(walk_clock * 4.0)) % visual_v2_side_walk.size()
+        var walk_frame_index: int = int(floor(walk_clock * 2.0)) % visual_v2_side_walk.size()
         frame = visual_v2_side_walk[walk_frame_index]
+        next_frame = frame
+        transition = 0.0
+    elif moving and view_id == "front" and not visual_v2_front_walk.is_empty():
+        var front_frame_index: int = int(floor(walk_clock * 2.0)) % visual_v2_front_walk.size()
+        frame = visual_v2_front_walk[front_frame_index]
+        next_frame = frame
+        transition = 0.0
+    elif moving and view_id == "back" and not visual_v2_back_walk.is_empty():
+        var back_frame_index: int = int(floor(walk_clock * 2.0)) % visual_v2_back_walk.size()
+        frame = visual_v2_back_walk[back_frame_index]
         next_frame = frame
         transition = 0.0
     if frame == null:
