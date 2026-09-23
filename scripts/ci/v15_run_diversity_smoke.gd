@@ -41,19 +41,26 @@ func _run() -> void:
     if int(tower_cost.get("wood", 0)) < 22 or int(tower_cost.get("ore", 0)) < 5:
         _fail("Tower cost no longer enforces an early-run tradeoff")
 
-    # v1.18 staggers the Old Hearth to the final preparation day so the
-    # first two days are not overloaded with simultaneous systems.
+    # MASTER REBUILD: old_hearth / altar / signal_fire were intentionally
+    # retired from the normal Forgotten Forest. They looked like major
+    # objectives while providing little or no meaningful choice. The diversity
+    # contract now protects a smaller pool of consequential activities.
     world.wave = 2
     world.phase = "day"
     world.phase_time = 40.0
     await _wait_frames(3)
-    var found_old_hearth: bool = false
+    var active_meaningful: int = 0
     for activity: WorldActivity in world.activity_director.activities:
-        if is_instance_valid(activity) and activity.activity_type == "old_hearth":
-            found_old_hearth = true
-            break
-    if not found_old_hearth:
-        _fail("Extinguished Hearth activity did not enter the final preparation world pool")
+        if not is_instance_valid(activity) or activity.finished:
+            continue
+        if activity.activity_type in ["old_hearth", "altar", "signal_fire"]:
+            _fail("Retired fake-objective activity returned to production pool: " + activity.activity_type)
+        else:
+            active_meaningful += 1
+    if active_meaningful <= 0:
+        _fail("Production world lost all meaningful exploration activities")
+    if active_meaningful > 4:
+        _fail("Production world activity pool became cluttered again")
 
     var swarm: Dictionary = {}
     for spec_variant: Variant in GameRules.NIGHT_MODIFIERS:
