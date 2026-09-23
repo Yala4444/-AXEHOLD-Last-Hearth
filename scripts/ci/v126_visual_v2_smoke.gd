@@ -52,6 +52,12 @@ func _run() -> void:
         _fail("Production hero texture failed to load")
     if world.visual_gate_fx == null or not is_instance_valid(world.visual_gate_fx):
         _fail("Visual Gate FX layer was not created for preview run")
+    if not ResourceLoader.exists(GameWorld.VISUAL_GATE_HEARTH_ART_PATH):
+        _fail("Visual Gate hearth animation asset is missing")
+    else:
+        var hearth_texture := ResourceLoader.load(GameWorld.VISUAL_GATE_HEARTH_ART_PATH) as Texture2D
+        if hearth_texture == null or hearth_texture.get_width() < GameWorld.VISUAL_GATE_HEARTH_FRAMES:
+            _fail("Visual Gate hearth animation asset is invalid")
     for layout_key: String in world.player.visual_v2_frame_layouts:
         var layout: Dictionary = world.player.visual_v2_frame_layouts[layout_key]
         if absf(float(layout.get("target_height", 0.0)) - AxPlayer.VISUAL_V2_TARGET_HEIGHT) > 0.01:
