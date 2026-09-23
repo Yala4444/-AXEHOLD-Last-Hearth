@@ -785,6 +785,8 @@ func _spawn_enemy(is_boss: bool = false, forced_kind: String = "") -> void:
     if run_variation != null:
         kind = run_variation.pick_enemy_kind(kind, is_boss)
     enemy.configure(kind, float(biome["difficulty"]), wave, Color(str(biome["enemy"])), is_boss, biome_index)
+    if visual_v2_enabled:
+        enemy.set_visual_gate(true)
     if run_variation != null:
         run_variation.tune_enemy(enemy)
     _apply_threat_to_enemy(enemy, is_boss)
@@ -811,6 +813,8 @@ func spawn_event_enemy(kind: String, position: Vector2, elite_trait: String = ""
     position.y = clampf(position.y, safe_rect.position.y, safe_rect.end.y)
     enemy.global_position = position
     enemy.configure(kind, float(biome["difficulty"]) * (1.0 + float(wave) * 0.06), wave, Color(str(biome["enemy"])), false, biome_index)
+    if visual_v2_enabled:
+        enemy.set_visual_gate(true)
     _apply_threat_to_enemy(enemy, false)
     if not elite_trait.is_empty():
         enemy.configure_elite(elite_trait)
