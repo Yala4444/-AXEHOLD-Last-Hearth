@@ -453,4 +453,8 @@ func night_extra_enemies() -> int:
     return active_nests * 4
 
 func unresolved_nests() -> int:
-    return int(night_extra_enemies() / 2)
+    var active_nests: int = 0
+    for activity: WorldActivity in activities:
+        if is_instance_valid(activity) and activity.activity_type == "nest" and not activity.finished:
+            active_nests += 1
+    return active_nests
