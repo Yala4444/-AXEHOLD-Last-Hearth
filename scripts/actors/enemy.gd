@@ -12,6 +12,12 @@ const FOREST_ART_PATHS: Dictionary = {
     "boss":"res://assets/art/forgotten_forest/forest_guardian.png"
 }
 
+const VISUAL_GATE_WALK_PATHS: Dictionary = {
+    "normal":"res://assets/art/vertical_slice_i/husk_walk.webp",
+    "runner":"res://assets/art/vertical_slice_i/hound_run.webp"
+}
+const VISUAL_GATE_WALK_FRAMES: int = 6
+
 var enemy_type: String = "normal"
 var biome_index: int = 0
 var hp: float = 40.0
@@ -50,6 +56,7 @@ var surge_direction: Vector2 = Vector2.ZERO
 var visual_identity_version: int = 3
 var visual_gate_enabled: bool = false
 var forest_art_cache: Dictionary = {}
+var visual_gate_walk_cache: Dictionary = {}
 
 func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss: bool = false, region_index: int = 0) -> void:
     enemy_type = kind
@@ -252,7 +259,12 @@ func _physics_process(delta: float) -> void:
     elif enemy_type == "guardian":
         bob_speed = 3.8
     var bob: float = sin(animation_time * bob_speed) * bob_strength if moving else 0.0
-    scale = Vector2(base_scale * (1.0 - bob), base_scale * (1.0 + bob))
+    if visual_gate_enabled and biome_index == 0:
+        # Production art must not inflate/shrink every step. Motion comes from
+        # real frames (where available) or a tiny local weight shift in draw().
+        scale = Vector2.ONE * base_scale
+    else:
+        scale = Vector2(base_scale * (1.0 - bob), base_scale * (1.0 + bob))
     queue_redraw()
 
 func _update_stalker_surge(delta: float) -> bool:
@@ -506,6 +518,10 @@ func _draw_illustrated_forest_identity() -> void:
     if elite and not boss:
         art_tint = art_tint.lerp(elite_glow.lightened(0.30), 0.14)
 
+    if visual_gate_enabled and moving and VISUAL_GATE_WALK_PATHS.has(art_role):
+        _draw_visual_gate_walk(art_role, art_tint)
+        return
+
     if visual_gate_enabled:
         # The old global squash made high-quality enemy art breathe like a
         # rubber sprite. Keep scale stable and use only a tiny vertical weight
@@ -518,6 +534,44 @@ func _draw_illustrated_forest_identity() -> void:
     else:
         draw_set_transform(Vector2(0, y_offset), tilt, Vector2(1.0 - squash, 1.0 + squash))
     draw_texture_rect(texture, Rect2(-size * 0.5, size), false, art_tint)
+    draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+func _draw_visual_gate_walk(art_role: String, art_tint: Color) -> void:
+    var path: String = str(VISUAL_GATE_WALK_PATHS.get(art_role, ""))
+    if path.is_empty():
+        return
+
+    var texture: Texture2D = visual_gate_walk_cache.get(art_role) as Texture2D
+    if texture == null:
+        texture = ResourceLoader.load(path) as Texture2D
+        visual_gate_walk_cache[art_role] = texture
+    if texture == null:
+        return
+
+    var frame_width: float = float(texture.get_width()) / float(VISUAL_GATE_WALK_FRAMES)
+    var frame_height: float = float(texture.get_height())
+    if frame_width <= 1.0 or frame_height <= 1.0:
+        return
+
+    var fps: float = 10.5 if art_role == "runner" else 7.0
+    var frame: int = int(floor(animation_time * fps)) % VISUAL_GATE_WALK_FRAMES
+    var source := Rect2(Vector2(frame_width * float(frame), 0.0), Vector2(frame_width, frame_height))
+
+    var target_height: float = 64.0 if art_role == "runner" else 68.0
+    var target_width: float = target_height * frame_width / frame_height
+    var foot_y: float = 18.0
+    var destination := Rect2(
+        Vector2(-target_width * 0.5, foot_y - target_height),
+        Vector2(target_width, target_height)
+    )
+
+    # Both production strips are authored facing left. Mirror only when the
+    # enemy truly travels right; vertical motion keeps the last horizontal
+    # facing so there is no nervous left/right flicker.
+    var facing_x: float = velocity.x
+    var mirror: float = -1.0 if facing_x > 1.5 else 1.0
+    draw_set_transform(Vector2.ZERO, 0.0, Vector2(mirror, 1.0))
+    draw_texture_rect_region(texture, destination, source, art_tint)
     draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_pixel_ghoul(body: Color, dark: Color, light: Color) -> void:
