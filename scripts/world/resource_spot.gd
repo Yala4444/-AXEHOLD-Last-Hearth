@@ -17,6 +17,7 @@ var hit_gate: float = 0.0
 var wobble_phase: float = 0.0
 var biome_index: int = 0
 var visual_identity_version: int = 3
+var visual_gate_enabled: bool = false
 var forest_art_cache: Dictionary = {}
 
 func configure(kind: String, v: int = 0, biome: int = 0) -> void:
@@ -34,6 +35,10 @@ func configure(kind: String, v: int = 0, biome: int = 0) -> void:
             max_hp = 98.0
             radius = 13.0
     hp = max_hp
+    queue_redraw()
+
+func set_visual_gate(value: bool) -> void:
+    visual_gate_enabled = value
     queue_redraw()
 
 func visual_identity_profile() -> Dictionary:
@@ -92,17 +97,31 @@ func _draw_illustrated_resource(flash: float) -> void:
     if texture == null:
         texture = ResourceLoader.load(str(FOREST_ART_PATHS.get(resource_type, FOREST_ART_PATHS["tree"]))) as Texture2D
         forest_art_cache[resource_type] = texture
+
     var size := Vector2(76, 81)
     var y_offset: float = -23.0
+    var shadow_radius := Vector2(23.0, 6.0)
     match resource_type:
         "rock":
             size = Vector2(54, 57)
             y_offset = -9.0
+            shadow_radius = Vector2(18.0, 5.0)
         "ore":
             size = Vector2(59, 66)
             y_offset = -14.0
+            shadow_radius = Vector2(19.0, 5.2)
     if texture == null:
         return
+
+    # VG-3: interactive resources must visibly sit in the world instead of
+    # looking pasted over the floor. The soft contact shadow is deliberately
+    # stronger than decorative backdrop marks.
+    var shadow_alpha: float = 0.30 if visual_gate_enabled else 0.21
+    var shadow_y: float = 19.0 if resource_type == "tree" else 15.0
+    _draw_shadow_ellipse(Vector2(0, shadow_y), shadow_radius, Color(0.018, 0.024, 0.018, shadow_alpha))
+    if visual_gate_enabled:
+        draw_arc(Vector2(0, shadow_y - 1.0), shadow_radius.x * 0.72, 0.18, PI - 0.18, 16, Color(0.70, 0.77, 0.55, 0.055), 1.0)
+
     var mirror: float = -1.0 if variant % 2 == 1 else 1.0
     var tint_color := Color.WHITE.lerp(Color(1.0, 0.72, 0.58), flash * 0.62)
     draw_set_transform(Vector2(0, y_offset), 0.0, Vector2(mirror, 1.0))

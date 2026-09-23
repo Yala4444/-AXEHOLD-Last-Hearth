@@ -234,13 +234,33 @@ func _draw_clearing_segment() -> void:
     else:
         day_clearing = Color(0.68, 0.77, 0.48, 0.27)
         night_clearing = Color(0.39, 0.46, 0.32, 0.22)
-    draw_circle(base_position - chunk_rect.position, 116.0, day_clearing.lerp(night_clearing, night_mix))
+
+    var local_base := base_position - chunk_rect.position
+    if visual_gate_enabled and biome_index == 0:
+        # VG-3 quality island: the camp clearing has a soft layered edge rather
+        # than one flat procedural disk. It remains deliberately uncluttered.
+        draw_circle(local_base, 124.0, Color(0.16, 0.24, 0.12, lerpf(0.11, 0.10, night_mix)))
+        draw_circle(local_base, 116.0, day_clearing.lerp(night_clearing, night_mix))
+        draw_circle(local_base, 92.0, Color(0.54, 0.61, 0.35, lerpf(0.055, 0.035, night_mix)))
+        for i: int in range(7):
+            var angle: float = float(i) * TAU / 7.0 + 0.34
+            var radius: float = 103.0 + float((i * 13) % 11)
+            var p := local_base + Vector2(cos(angle), sin(angle)) * radius
+            var flower_alpha: float = lerpf(0.24, 0.12, night_mix)
+            draw_line(p + Vector2(0, 3), p, Color(0.30, 0.44, 0.24, flower_alpha * 0.7), 1.0)
+            if i % 2 == 0:
+                draw_circle(p + Vector2(0, -1), 1.4, Color(0.88, 0.80, 0.56, flower_alpha))
+    else:
+        draw_circle(local_base, 116.0, day_clearing.lerp(night_clearing, night_mix))
 
 func _draw_landmarks() -> void:
     var sx: int = int(floor(chunk_rect.position.x))
     var sy: int = int(floor(chunk_rect.position.y))
     var selector: int = abs(sx * 7 + sy * 11)
-    if selector % 2 != 0:
+    # Visual Gate keeps background landmarks sparse so players never confuse
+    # decorative silhouettes with harvestable objects.
+    var landmark_mod: int = 4 if visual_gate_enabled and biome_index == 0 else 2
+    if selector % landmark_mod != 0:
         return
 
     var p := Vector2(

@@ -378,6 +378,8 @@ func _spawn_resource(kind: String) -> void:
     add_child(spot)
     spot.global_position = _resource_spawn_position(kind)
     spot.configure(kind, randi() % 3, biome_index)
+    if visual_v2_enabled:
+        spot.set_visual_gate(true)
     resources.append(spot)
 
 func _resource_spawn_position(kind: String) -> Vector2:
