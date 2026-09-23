@@ -10,6 +10,8 @@ const EnemyScene: PackedScene = preload("res://scenes/enemy.tscn")
 const ResourceScene: PackedScene = preload("res://scenes/resource_spot.tscn")
 const BuildPadScene: PackedScene = preload("res://scenes/build_pad.tscn")
 const LAST_HEARTH_ART_PATH: String = "res://assets/art/forgotten_forest/last_hearth.png"
+const VISUAL_GATE_HEARTH_ART_PATH: String = "res://assets/art/vertical_slice_i/hearth_fire.webp"
+const VISUAL_GATE_HEARTH_FRAMES: int = 4
 
 var biome_index: int = 0
 var biome: Dictionary = {}
@@ -49,6 +51,7 @@ var revived: bool = false
 var paused_local: bool = false
 var finishing: bool = false
 var last_hearth_art: Texture2D
+var visual_gate_hearth_art: Texture2D
 var turret_timer: float = 0.0
 var turret_shot_time: float = 0.0
 var turret_shot_from: Vector2 = Vector2.ZERO
@@ -1622,10 +1625,16 @@ func _draw() -> void:
         var radius: float = 66.0 + (1.0 - deposit_pulse) * 30.0
         draw_arc(base_position, radius, 0.0, TAU, 40, Color(0.94, 0.76, 0.36, deposit_pulse * 0.54), 2.5)
 
-    var ratio: float = clampf(base_hp / maxf(1.0, base_max_hp), 0.0, 1.0)
-    var hearth_bar_y: float = -91.0 if biome_index == 0 else -76.0
-    draw_rect(Rect2(base_position + Vector2(-45, hearth_bar_y), Vector2(90, 5)), Color(0.07, 0.08, 0.07, 0.34))
-    draw_rect(Rect2(base_position + Vector2(-45, hearth_bar_y), Vector2(90 * ratio, 5)), Color("83b06e"))
+    # In Visual Gate the Hearth HP is contextual instead of permanent UI.
+    # The centre should read as a warm home first and as a health object only
+    # when the night attack makes that information relevant.
+    if not visual_v2_enabled or night or base_hp < base_max_hp - 0.5:
+        var ratio: float = clampf(base_hp / maxf(1.0, base_max_hp), 0.0, 1.0)
+        var hearth_bar_y: float = -91.0 if biome_index == 0 else -76.0
+        if visual_v2_enabled and biome_index == 0:
+            hearth_bar_y = -88.0
+        draw_rect(Rect2(base_position + Vector2(-45, hearth_bar_y), Vector2(90, 5)), Color(0.07, 0.08, 0.07, 0.34))
+        draw_rect(Rect2(base_position + Vector2(-45, hearth_bar_y), Vector2(90 * ratio, 5)), Color("83b06e"))
 
     if turret_shot_time > 0.0:
         draw_line(turret_shot_from, turret_shot_to, Color(1.0, 0.83, 0.38, 0.58 + turret_shot_time * 0.32), 2.5)
@@ -1677,6 +1686,10 @@ func _draw_clearing(night: bool) -> void:
         draw_rect(Rect2(base_position.x - 11 + float((i % 2) * 4), y, 20, 3), Color(0.36, 0.31, 0.21, 0.12))
 
 func _draw_hearth(night: bool) -> void:
+    if visual_v2_enabled and biome_index == 0:
+        _draw_visual_gate_hearth(night)
+        return
+
     var glow_strength: float = 0.11 if not night else 0.24
     draw_circle(base_position, 148.0, Color(1.0, 0.55, 0.18, glow_strength * 0.16))
     draw_circle(base_position, 104.0, Color(1.0, 0.52, 0.16, glow_strength * 0.22))
@@ -1728,6 +1741,50 @@ func _draw_hearth(night: bool) -> void:
     draw_rect(Rect2(crate_pos - Vector2(11, 7), Vector2(22, 14)), Color("865a31"))
     draw_rect(Rect2(crate_pos + Vector2(-11, -1), Vector2(22, 3)), Color("b27c42"))
     draw_rect(Rect2(crate_pos + Vector2(-2, -7), Vector2(4, 14)), Color("5d3d24"))
+
+func _draw_visual_gate_hearth(night: bool) -> void:
+    # The Visual Gate hearth is a real campfire and the warmest point in the
+    # frame. It stays visually lighter than the old monumental root shrine so
+    # the player reads "home" rather than "boss object".
+    if visual_gate_hearth_art == null:
+        visual_gate_hearth_art = ResourceLoader.load(VISUAL_GATE_HEARTH_ART_PATH) as Texture2D
+
+    var pulse: float = (sin(Time.get_ticks_msec() * 0.005) + 1.0) * 0.5
+    var night_boost: float = 1.0 if night else 0.0
+
+    # Grounded warmth: broad, low-alpha pools keep the centre inviting without
+    # washing out nearby resources or the hero.
+    draw_circle(base_position + Vector2(0, 9), 118.0, Color(0.95, 0.50, 0.17, 0.028 + night_boost * 0.040))
+    draw_circle(base_position + Vector2(0, 8), 78.0, Color(1.0, 0.55, 0.18, 0.050 + night_boost * 0.072))
+    draw_circle(base_position + Vector2(0, 8), 43.0, Color(1.0, 0.48, 0.12, 0.100 + night_boost * 0.090))
+    draw_set_transform(base_position + Vector2(0, 30), 0.0, Vector2(1.0, 0.30))
+    draw_circle(Vector2.ZERO, 45.0, Color(0.02, 0.025, 0.02, 0.30))
+    draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+    if visual_gate_hearth_art != null:
+        var frame_width: float = float(visual_gate_hearth_art.get_width()) / float(VISUAL_GATE_HEARTH_FRAMES)
+        var frame_height: float = float(visual_gate_hearth_art.get_height())
+        var frame: int = int(Time.get_ticks_msec() / 170) % VISUAL_GATE_HEARTH_FRAMES
+        var source := Rect2(frame_width * float(frame), 0.0, frame_width, frame_height)
+
+        # Keep the stones and flame substantial, but do not let the hearth
+        # dwarf the hero or block the readability of the clearing.
+        var art_height: float = 132.0 + pulse * 2.5
+        var art_width: float = art_height * frame_width / maxf(1.0, frame_height)
+        var destination := Rect2(
+            base_position + Vector2(-art_width * 0.5, -art_height * 0.66),
+            Vector2(art_width, art_height)
+        )
+        draw_texture_rect_region(visual_gate_hearth_art, destination, source, Color.WHITE)
+
+    # Sparse embers make the hearth feel alive even when the sprite animation
+    # pauses between frames.
+    for i: int in range(4):
+        var phase_offset: float = float(i) * 1.71
+        var ember_y: float = -20.0 - fmod(float(Time.get_ticks_msec()) * (0.011 + float(i) * 0.0016) + float(i) * 13.0, 38.0)
+        var ember_x: float = sin(float(Time.get_ticks_msec()) * 0.004 + phase_offset) * (8.0 + float(i) * 2.5)
+        var alpha: float = 0.38 + float(i % 2) * 0.14
+        draw_circle(base_position + Vector2(ember_x, ember_y), 1.2 + float(i % 2) * 0.5, Color(1.0, 0.67, 0.23, alpha))
 
 func _draw_palisade() -> void:
     var radius_x: float = 112.0 if biome_index == 0 else 78.0
