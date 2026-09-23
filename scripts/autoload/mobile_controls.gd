@@ -213,6 +213,9 @@ func _release_control() -> void:
     _layout_stick()
     _hide_stick()
 
+func cancel_active_input() -> void:
+    _release_control()
+
 func bind_world(value: GameWorld) -> void:
     if value == null or not is_instance_valid(value):
         return
