@@ -56,6 +56,16 @@ func _run() -> void:
         _fail("Production hero texture failed to load")
     if world.visual_gate_fx == null or not is_instance_valid(world.visual_gate_fx):
         _fail("Visual Gate FX layer was not created for preview run")
+    else:
+        world.phase = "day"
+        world.phase_time = 4.0
+        world.visual_gate_fx._process(1.0)
+        if world.visual_gate_fx.dusk_mix <= 0.05:
+            _fail("Visual Gate dusk transition did not engage before night")
+        world.phase = "night"
+        world.visual_gate_fx._process(1.0)
+        if world.visual_gate_fx.night_mix <= 0.05:
+            _fail("Visual Gate night grade did not engage")
     if world.core_fx == null or not world.core_fx.visual_gate_enabled:
         _fail("Visual Gate combat FX was not enabled")
     else:
