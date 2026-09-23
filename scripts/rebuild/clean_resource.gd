@@ -49,8 +49,9 @@ func _draw() -> void:
         draw_rect(Rect2(-17, y, 34.0 * ratio, 4), Color("7fb875"))
 
 func _draw_ground_socket() -> void:
-    var rx: float = 36.0 if resource_type == "tree" else 27.0
-    var ry: float = 9.0 if resource_type == "tree" else 7.0
+    var variant_scale: float = 0.92 + float(variant % 3) * 0.08
+    var rx: float = (36.0 if resource_type == "tree" else 27.0) * variant_scale
+    var ry: float = (9.0 if resource_type == "tree" else 7.0) * variant_scale
     draw_set_transform(Vector2(0, 18), 0.0, Vector2(1.0, ry / rx))
     draw_circle(Vector2.ZERO, rx, Color(0.03,0.04,0.025,0.25))
     draw_circle(Vector2.ZERO, rx * 0.82, Color(0.23,0.17,0.09,0.15))
@@ -80,16 +81,21 @@ func _draw_tree_resource(flash: float) -> void:
     elif ratio <= 0.77:
         frame = 1
     var source := Rect2(frame_w * frame, 0.0, frame_w, frame_h)
-    var size := Vector2(112,148)
+    var scale_variant: float = 0.90 + float(variant % 3) * 0.08
+    var size := Vector2(112,148) * scale_variant
     var mirror: float = -1.0 if variant % 2 == 1 else 1.0
     var tint := Color.WHITE.lerp(Color(1.0,0.72,0.58), flash)
-    draw_set_transform(Vector2(0,-47),0.0,Vector2(mirror,1.0))
+    var y_offset: float = 27.0 - size.y * 0.5
+    draw_set_transform(Vector2(0,y_offset),0.0,Vector2(mirror,1.0))
     draw_texture_rect_region(clean_tree_strip,Rect2(-size*0.5,size),source,tint)
     draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)
 
 func _draw_static_resource(texture: Texture2D, size: Vector2, y_offset: float, flash: float) -> void:
     if texture == null:
         return
+    var scale_variant: float = 0.94 + float(variant % 3) * 0.05
+    size *= scale_variant
+    y_offset = 22.0 - size.y * 0.5
     var mirror: float = -1.0 if variant % 2 == 1 else 1.0
     var tint := Color.WHITE.lerp(Color(1.0,0.72,0.58), flash)
     draw_set_transform(Vector2(0,y_offset),0.0,Vector2(mirror,1.0))
