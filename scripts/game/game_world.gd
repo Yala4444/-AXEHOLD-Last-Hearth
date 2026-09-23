@@ -1832,6 +1832,8 @@ func _draw_visual_gate_hearth(night: bool) -> void:
     draw_circle(Vector2.ZERO, 45.0, Color(0.02, 0.025, 0.02, 0.30))
     draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
+    _draw_production_camp_progression(night)
+
     if visual_gate_hearth_art != null:
         var frame_width: float = float(visual_gate_hearth_art.get_width()) / float(VISUAL_GATE_HEARTH_FRAMES)
         var frame_height: float = float(visual_gate_hearth_art.get_height())
@@ -1856,6 +1858,102 @@ func _draw_visual_gate_hearth(night: bool) -> void:
         var ember_x: float = sin(float(Time.get_ticks_msec()) * 0.004 + phase_offset) * (8.0 + float(i) * 2.5)
         var alpha: float = 0.38 + float(i % 2) * 0.14
         draw_circle(base_position + Vector2(ember_x, ember_y), 1.2 + float(i % 2) * 0.5, Color(1.0, 0.67, 0.23, alpha))
+
+func production_camp_stage() -> int:
+    var count: int = 0
+    for key: String in ["wall","forge","turret","shrine"]:
+        if bool(built.get(key,false)):
+            count += 1
+    if count >= 4:
+        return 4
+    if count >= 3:
+        return 3
+    if count >= 2:
+        return 2
+    if count >= 1:
+        return 1
+    return 0
+
+func _draw_production_camp_progression(night: bool) -> void:
+    # MASTER P4: the Hearth is not just a fire sprite. The camp gains readable
+    # layers as the run develops so "home" visibly grows around the player.
+    var stage: int = production_camp_stage()
+    var wood_dark := Color("4c301d")
+    var wood := Color("80552e")
+    var wood_light := Color("a97841")
+    var cloth := Color("8c5a3e")
+    var banner := Color("a83f32")
+    var metal := Color("76766d")
+    var glow_alpha: float = 0.76 if night else 0.54
+
+    # Stage 0: even the first Hearth has a believable little survival camp.
+    var log_origin := base_position + Vector2(-58, 36)
+    draw_line(log_origin + Vector2(-15,4), log_origin + Vector2(14,-3), wood_dark, 8.0)
+    draw_line(log_origin + Vector2(-14,2), log_origin + Vector2(13,-5), wood, 4.0)
+    draw_circle(log_origin + Vector2(14,-3), 4.1, wood_light)
+    var crate := base_position + Vector2(60, 34)
+    draw_rect(Rect2(crate - Vector2(13,9), Vector2(26,18)), Color(0.03,0.04,0.03,0.20))
+    draw_rect(Rect2(crate - Vector2(11,8), Vector2(22,16)), wood_dark)
+    draw_rect(Rect2(crate - Vector2(9,6), Vector2(18,12)), wood)
+    draw_line(crate + Vector2(-9,0), crate + Vector2(9,0), wood_light, 2.0)
+    draw_line(crate + Vector2(0,-6), crate + Vector2(0,6), wood_dark, 2.0)
+
+    if stage >= 1:
+        # Banner + lantern: first clear sign that this is the player's camp.
+        var pole_x: float = base_position.x + 71.0
+        draw_line(Vector2(pole_x,base_position.y+22), Vector2(pole_x,base_position.y-58), wood_dark, 6.0)
+        draw_line(Vector2(pole_x,base_position.y+20), Vector2(pole_x,base_position.y-58), wood_light, 2.0)
+        draw_colored_polygon(PackedVector2Array([
+            Vector2(pole_x+3,base_position.y-52),
+            Vector2(pole_x+38,base_position.y-44),
+            Vector2(pole_x+33,base_position.y-9),
+            Vector2(pole_x+3,base_position.y-15)
+        ]), banner)
+        draw_colored_polygon(PackedVector2Array([
+            Vector2(pole_x+18,base_position.y-41),
+            Vector2(pole_x+27,base_position.y-30),
+            Vector2(pole_x+18,base_position.y-20),
+            Vector2(pole_x+10,base_position.y-30)
+        ]), Color("e6c47b"))
+        draw_circle(Vector2(pole_x-8,base_position.y-43), 8.0, Color(1.0,0.52,0.18,0.06+glow_alpha*0.12))
+        draw_rect(Rect2(pole_x-12,base_position.y-48,8,11), Color("4d3927"))
+        draw_rect(Rect2(pole_x-10,base_position.y-46,4,7), Color(1.0,0.66,0.28,glow_alpha))
+
+    if stage >= 2:
+        # Small canvas shelter and barrel give the centre domestic weight.
+        var tent_center := base_position + Vector2(-73,-37)
+        draw_colored_polygon(PackedVector2Array([
+            tent_center + Vector2(-35,18),
+            tent_center + Vector2(-4,-17),
+            tent_center + Vector2(31,16),
+            tent_center + Vector2(24,26),
+            tent_center + Vector2(-29,27)
+        ]), Color(cloth,0.92))
+        draw_line(tent_center+Vector2(-29,25),tent_center+Vector2(-4,-19),wood_dark,3.0)
+        draw_line(tent_center+Vector2(24,24),tent_center+Vector2(-4,-19),wood_dark,3.0)
+        var barrel := base_position + Vector2(-83,29)
+        draw_circle(barrel,11.0,wood_dark)
+        draw_rect(Rect2(barrel+Vector2(-9,-10),Vector2(18,20)),wood)
+        draw_line(barrel+Vector2(-9,-4),barrel+Vector2(9,-4),metal,2.0)
+        draw_line(barrel+Vector2(-9,5),barrel+Vector2(9,5),metal,2.0)
+
+    if stage >= 3:
+        # Short fence segments frame the safe clearing without becoming a wall.
+        for side_sign: float in [-1.0,1.0]:
+            var origin := base_position + Vector2(92.0*side_sign,58)
+            draw_line(origin+Vector2(-22*side_sign,0),origin+Vector2(20*side_sign,-9),wood_dark,5.0)
+            draw_line(origin+Vector2(-22*side_sign,-12),origin+Vector2(20*side_sign,-21),wood,4.0)
+            for j: int in range(3):
+                var px: float = lerpf(-18.0,18.0,float(j)/2.0)*side_sign
+                draw_line(origin+Vector2(px,5),origin+Vector2(px,-27),wood_light,4.0)
+
+    if stage >= 4:
+        # Fully established camp: extra stores and a second warm point.
+        var store := base_position + Vector2(84,-6)
+        draw_rect(Rect2(store-Vector2(18,10),Vector2(36,20)),Color(0.03,0.04,0.03,0.20))
+        draw_rect(Rect2(store-Vector2(16,9),Vector2(32,18)),wood_dark)
+        draw_line(store+Vector2(-14,-2),store+Vector2(14,-2),wood_light,3.0)
+        draw_circle(base_position+Vector2(-97,-18),14.0,Color(1.0,0.52,0.18,0.045+glow_alpha*0.06))
 
 func _draw_palisade() -> void:
     var radius_x: float = 112.0 if biome_index == 0 else 78.0
