@@ -52,6 +52,10 @@ func _run() -> void:
         _fail("Production hero texture failed to load")
     if world.visual_gate_fx == null or not is_instance_valid(world.visual_gate_fx):
         _fail("Visual Gate FX layer was not created for preview run")
+    world.queue_redraw()
+    await _wait_frames(2)
+    if world.visual_gate_hearth_art == null:
+        _fail("Visual Gate hearth art was not loaded")
     if not ResourceLoader.exists(GameWorld.VISUAL_GATE_HEARTH_ART_PATH):
         _fail("Visual Gate hearth animation asset is missing")
     else:
