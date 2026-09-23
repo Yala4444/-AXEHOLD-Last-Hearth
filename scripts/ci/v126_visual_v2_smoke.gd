@@ -53,9 +53,9 @@ func _run() -> void:
         _fail("Production hero must load all six coherent animation frames")
     elif world.player.visual_v2_side_walk.size() != 6:
         _fail("VG-2 side walk must use six coherent stride frames")
-    elif world.player.visual_v2_idle_frames.size() != 3:
-        _fail("Master P0 must load front/side/back neutral idle art")
-    elif world.player.visual_v2_frame_layouts.size() < 18:
+    elif world.player.visual_v2_idle_frames.size() != 2:
+        _fail("Master P0 must load dedicated front/side neutral idle art")
+    elif world.player.visual_v2_frame_layouts.size() < 17:
         _fail("Master P0 did not normalize walk + idle frame layouts")
     elif world.player.movement_acceleration < 1400.0 or world.player.movement_deceleration < 1700.0:
         _fail("Master P0 movement responsiveness regressed to the sluggish tuning")
