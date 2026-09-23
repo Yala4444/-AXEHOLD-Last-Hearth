@@ -31,20 +31,25 @@ func _spawn_initial_activities() -> void:
 
     var positive: Array[String] = ["rare_ore", "wind_shrine"]
     var risk: Array[String] = ["chest", "wanderer_grave", "infected_cache"]
-    var progression: Array[String] = ["memory_rift"]
-
     var residents: Dictionary = GameState.data.get("residents", {})
     var mira: Dictionary = residents.get("mira", {})
     var thorn: Dictionary = residents.get("thorn", {})
+
+    # MASTER P6: story-critical discovery is deterministic. Randomness belongs
+    # in reward/risk opportunities, not in whether a locked resident can ever
+    # appear. Mira is the first guaranteed rescue; after she is unlocked the
+    # tower guarantees Thorn; only then does the slot become a memory event.
+    var progression_pick: String = "memory_rift"
     if not bool(mira.get("unlocked", false)):
-        progression.push_front("wounded_scout")
-    if not bool(thorn.get("unlocked", false)):
-        progression.push_front("broken_tower")
+        progression_pick = "wounded_scout"
+    elif not bool(thorn.get("unlocked", false)):
+        progression_pick = "broken_tower"
+    selected[progression_pick] = true
 
     var picks: Array[String] = [
         _pick_unique(positive, selected),
         _pick_unique(risk, selected),
-        _pick_unique(progression, selected)
+        progression_pick
     ]
     for kind: String in picks:
         if not kind.is_empty():
