@@ -1078,12 +1078,16 @@ func _draw_visual_v2_orbit(front_pass: bool, ring_radius: float) -> void:
             trail_color = Color(0.52, 0.78, 0.34, 0.20)
         elif weapon_style == "twin_blades":
             trail_color = Color(0.96, 0.46, 0.28, 0.21)
-        draw_arc(Vector2.ZERO, weapon_distance, weapon_angle - 0.32, weapon_angle - 0.06, 8, trail_color, 3.5)
-        var weapon_size := Vector2(38, 38)
+        draw_arc(Vector2.ZERO, weapon_distance, weapon_angle - 0.34, weapon_angle - 0.05, 8, trail_color, 4.2)
+        # The production hero is ~98 px tall. Weapons below ~40 px read like
+        # UI trinkets on a phone, so Visual Gate uses a clearer silhouette.
+        var weapon_size := Vector2(47, 47)
         if weapon_style == "spear":
-            weapon_size = Vector2(23, 55)
+            weapon_size = Vector2(29, 68)
         elif weapon_style == "hammer":
-            weapon_size = Vector2(43, 43)
+            weapon_size = Vector2(53, 53)
+        elif weapon_style == "twin_blades":
+            weapon_size = Vector2(44, 44)
         draw_set_transform(weapon_pos, weapon_angle + PI * 0.30, Vector2.ONE)
         draw_texture_rect(texture, Rect2(-weapon_size * 0.5, weapon_size), false, Color.WHITE)
         draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

@@ -503,6 +503,16 @@ func _draw_illustrated_forest_identity() -> void:
     if boss:
         size = Vector2(164, 173)
         y_offset = -35.0
+    if visual_gate_enabled and not boss:
+        # Phone-scale readability pass. Small enemies should feel like threats,
+        # not insects next to the 98 px hero.
+        var readability_scale: float = 1.16
+        if enemy_type == "brute" or enemy_type == "guardian":
+            readability_scale = 1.10
+        elif enemy_type == "stalker":
+            readability_scale = 1.14
+        size *= readability_scale
+        y_offset *= readability_scale
     if texture == null:
         return
     var moving: bool = velocity.length_squared() > 16.0
@@ -530,7 +540,13 @@ func _draw_illustrated_forest_identity() -> void:
         if moving:
             grounded_bob = sin(animation_time * pace * 0.55) * (0.9 if enemy_type == "runner" else 0.55)
         var grounded_tilt: float = tilt * 0.42
-        draw_set_transform(Vector2(0, y_offset + grounded_bob), grounded_tilt, Vector2.ONE)
+        var travel_sign: float = 0.0
+        if absf(velocity.x) > 1.5:
+            travel_sign = signf(velocity.x)
+        var travel_lean: float = travel_sign * 0.022 if moving else 0.0
+        var lateral_weight: float = sin(animation_time * pace * 0.55) * 0.7 * travel_sign if moving else 0.0
+        var mirror_x: float = -1.0 if travel_sign > 0.0 else 1.0
+        draw_set_transform(Vector2(lateral_weight, y_offset + grounded_bob), grounded_tilt + travel_lean, Vector2(mirror_x, 1.0))
     else:
         draw_set_transform(Vector2(0, y_offset), tilt, Vector2(1.0 - squash, 1.0 + squash))
     draw_texture_rect(texture, Rect2(-size * 0.5, size), false, art_tint)
@@ -557,7 +573,7 @@ func _draw_visual_gate_walk(art_role: String, art_tint: Color) -> void:
     var frame: int = int(floor(animation_time * fps)) % VISUAL_GATE_WALK_FRAMES
     var source := Rect2(Vector2(frame_width * float(frame), 0.0), Vector2(frame_width, frame_height))
 
-    var target_height: float = 64.0 if art_role == "runner" else 68.0
+    var target_height: float = 76.0 if art_role == "runner" else 82.0
     var target_width: float = target_height * frame_width / frame_height
     var foot_y: float = 18.0
     var destination := Rect2(
