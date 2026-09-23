@@ -383,6 +383,7 @@ func _create_pads() -> void:
             false,
             str(spec.get("effect", ""))
         )
+        pad.set_visual_gate(visual_v2_enabled and biome_index == 0)
         pads.append(pad)
 
 func _spawn_resource(kind: String) -> void:
