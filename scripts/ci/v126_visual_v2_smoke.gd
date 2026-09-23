@@ -118,6 +118,25 @@ func _run() -> void:
     if world.player.velocity.length_squared() > 0.0001:
         _fail("Visual Gate idle test unexpectedly moved the hero")
 
+    var damage_preview := ResourceSpot.new()
+    world.add_child(damage_preview)
+    damage_preview.configure("tree", 0, 0)
+    damage_preview.set_visual_gate(true)
+    if damage_preview.damage_stage() != 0:
+        _fail("Fresh production resource starts damaged")
+    damage_preview.hp = damage_preview.max_hp * 0.60
+    if damage_preview.damage_stage() != 1:
+        _fail("Production resource did not enter damaged stage")
+    damage_preview.hp = damage_preview.max_hp * 0.25
+    if damage_preview.damage_stage() != 2:
+        _fail("Production resource did not enter severe damage stage")
+    var harvest_streaks_before: int = world.core_fx.streaks.size() if world.core_fx != null else 0
+    if world.core_fx != null:
+        world.core_fx.resource_hit("wood", world.player.global_position + Vector2(18, 0), Vector2.RIGHT)
+        if world.core_fx.streaks.size() <= harvest_streaks_before:
+            _fail("Production harvest impact did not create readable contact feedback")
+    damage_preview.queue_free()
+
     var rare_preview := WorldActivity.new()
     world.add_child(rare_preview)
     rare_preview.configure("rare_ore", 0)
