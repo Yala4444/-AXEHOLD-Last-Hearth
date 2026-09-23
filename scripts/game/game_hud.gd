@@ -60,6 +60,8 @@ func set_visual_gate(value: bool) -> void:
     var pause := root.get_node_or_null("PauseButton") as Button
 
     if visual_gate_enabled:
+        modal.color = Color(0.006,0.012,0.014,0.86)
+        modal_panel.add_theme_stylebox_override("panel", VisualSystem.panel(Color(0.025,0.035,0.034,0.96), Color(0.56,0.46,0.27,0.55), 9, 16, 1))
         # Release-look HUD: keep the same information and controls, but let the
         # world breathe. The three critical panels stay readable while their
         # surfaces become lighter and less "debug-dashboard" like.
@@ -584,8 +586,8 @@ func _style_buildcraft_choice(button: Button, spec: Dictionary) -> void:
     if evolution_ready or evolution_active:
         accent = Color("f1c96a")
 
-    var fill_alpha: float = 0.095
-    var border_alpha: float = 0.58
+    var fill_alpha: float = 0.105
+    var border_alpha: float = 0.62
     var border_width: int = 1
     if rarity == "epic":
         fill_alpha = 0.13
@@ -599,8 +601,8 @@ func _style_buildcraft_choice(button: Button, spec: Dictionary) -> void:
         border_alpha = 0.98
         border_width = 2
 
-    button.custom_minimum_size = Vector2(0, 62 if evolution_ready else 58)
-    button.add_theme_font_size_override("font_size", 9 if evolution_ready else 10)
+    button.custom_minimum_size = Vector2(0, 74 if evolution_ready else (68 if rarity == "legendary" else 64))
+    button.add_theme_font_size_override("font_size", 10 if evolution_ready else 10)
     button.add_theme_stylebox_override(
         "normal",
         VisualSystem.panel(Color(accent, fill_alpha), Color(accent, border_alpha), 6, 9, border_width)
@@ -611,6 +613,26 @@ func _style_buildcraft_choice(button: Button, spec: Dictionary) -> void:
     )
     button.add_theme_color_override("font_color", accent.lightened(0.18) if rarity != "common" or evolution_ready else VisualSystem.TEXT)
     button.add_theme_color_override("font_hover_color", accent.lightened(0.28))
+
+    # MASTER P5: rarity must read before the player parses text. A persistent
+    # top strip and an evolution-ready glow turn the old text button into a
+    # proper mobile choice card without changing any perk mechanics.
+    var rarity_strip := ColorRect.new()
+    button.add_child(rarity_strip)
+    rarity_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    rarity_strip.color = Color(accent, 0.92 if rarity != "common" or evolution_ready else 0.58)
+    rarity_strip.anchor_right = 1.0
+    rarity_strip.offset_left = 5.0
+    rarity_strip.offset_right = -5.0
+    rarity_strip.offset_top = 4.0
+    rarity_strip.offset_bottom = 7.0
+    if evolution_ready:
+        var evolution_glow := ColorRect.new()
+        button.add_child(evolution_glow)
+        evolution_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        evolution_glow.color = Color(1.0,0.76,0.28,0.12)
+        evolution_glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        evolution_glow.show_behind_parent = true
 
 func hide_modal() -> void:
     modal.visible = false

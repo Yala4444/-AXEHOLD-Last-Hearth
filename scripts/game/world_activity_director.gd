@@ -31,21 +31,37 @@ func _spawn_initial_activities() -> void:
 
     var positive: Array[String] = ["rare_ore", "wind_shrine"]
     var risk: Array[String] = ["chest", "wanderer_grave", "infected_cache"]
-    var progression: Array[String] = ["memory_rift"]
-
     var residents: Dictionary = GameState.data.get("residents", {})
     var mira: Dictionary = residents.get("mira", {})
     var thorn: Dictionary = residents.get("thorn", {})
-    if not bool(mira.get("unlocked", false)):
-        progression.push_front("wounded_scout")
-    if not bool(thorn.get("unlocked", false)):
-        progression.push_front("broken_tower")
 
-    var picks: Array[String] = [
-        _pick_unique(positive, selected),
-        _pick_unique(risk, selected),
-        _pick_unique(progression, selected)
-    ]
+    # MASTER P6: story-critical discovery is deterministic. Randomness belongs
+    # in optional reward/risk opportunities, never in whether a locked resident
+    # can be discovered. When both residents are locked they consume two of the
+    # three non-nest world slots; the fourth total anchor remains one optional
+    # opportunity so the map still stays clean.
+    var story_picks: Array[String] = []
+    if not bool(mira.get("unlocked", false)):
+        story_picks.append("wounded_scout")
+    if not bool(thorn.get("unlocked", false)):
+        story_picks.append("broken_tower")
+    if story_picks.is_empty():
+        story_picks.append("memory_rift")
+
+    var picks: Array[String] = []
+    if story_picks.size() >= 2:
+        var optional_pool: Array[String] = []
+        optional_pool.append_array(positive)
+        optional_pool.append_array(risk)
+        picks.append(_pick_unique(optional_pool, selected))
+    else:
+        picks.append(_pick_unique(positive, selected))
+        picks.append(_pick_unique(risk, selected))
+
+    for story_kind: String in story_picks:
+        selected[story_kind] = true
+        picks.append(story_kind)
+
     for kind: String in picks:
         if not kind.is_empty():
             _spawn(kind, 470.0, 1320.0, occupied)

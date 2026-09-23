@@ -6,6 +6,8 @@ const FOREST_ART_PATHS: Dictionary = {
     "rock":"res://assets/art/forgotten_forest/stone_deposit.png",
     "ore":"res://assets/art/forgotten_forest/ore_deposit.png"
 }
+const PRODUCTION_TREE_STRIP_PATH: String = "res://assets/art/vertical_slice_i/tree_damage.webp"
+const PRODUCTION_TREE_FRAMES: int = 4
 
 var resource_type: String = "tree"
 var hp: float = 52.0
@@ -27,13 +29,13 @@ func configure(kind: String, v: int = 0, biome: int = 0) -> void:
     match kind:
         "tree":
             max_hp = 52.0
-            radius = 15.0
+            radius = 20.0
         "rock":
             max_hp = 72.0
-            radius = 14.0
+            radius = 18.0
         "ore":
             max_hp = 98.0
-            radius = 13.0
+            radius = 17.0
     hp = max_hp
     queue_redraw()
 
@@ -94,52 +96,100 @@ func _draw() -> void:
         var ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0)
         var bar_y: float = -24.0
         if biome_index == 0:
-            bar_y = -75.0 if resource_type == "tree" else (-42.0 if resource_type == "ore" else -35.0)
+            bar_y = -145.0 if resource_type == "tree" else (-57.0 if resource_type == "ore" else -43.0)
         draw_rect(Rect2(-14, bar_y, 28, 4), Color(0.08, 0.08, 0.08, 0.32))
         draw_rect(Rect2(-14, bar_y, 28 * ratio, 4), Color("72a66d"))
 
 func _draw_illustrated_resource(flash: float) -> void:
     if biome_index != 0:
         return
-    var texture: Texture2D = forest_art_cache.get(resource_type) as Texture2D
+    var cache_key: String = "tree_production" if resource_type == "tree" and visual_gate_enabled else resource_type
+    var texture: Texture2D = forest_art_cache.get(cache_key) as Texture2D
     if texture == null:
-        texture = ResourceLoader.load(str(FOREST_ART_PATHS.get(resource_type, FOREST_ART_PATHS["tree"]))) as Texture2D
-        forest_art_cache[resource_type] = texture
+        var path: String = PRODUCTION_TREE_STRIP_PATH if cache_key == "tree_production" else str(FOREST_ART_PATHS.get(resource_type, FOREST_ART_PATHS["tree"]))
+        texture = ResourceLoader.load(path) as Texture2D
+        forest_art_cache[cache_key] = texture
 
-    var size := Vector2(76, 81)
-    var y_offset: float = -23.0
-    var shadow_radius := Vector2(23.0, 6.0)
+    # MASTER P2: resources were far too close to hero scale, especially trees.
+    # Bring them toward the agreed reference ratios while keeping mobile
+    # readability and harvest reach comfortable.
+    var size := Vector2(132, 158)
+    var y_offset: float = -61.0
+    var shadow_radius := Vector2(37.0, 9.2)
     match resource_type:
         "rock":
-            size = Vector2(54, 57)
-            y_offset = -9.0
-            shadow_radius = Vector2(18.0, 5.0)
+            size = Vector2(70, 66)
+            y_offset = -13.0
+            shadow_radius = Vector2(24.0, 6.0)
         "ore":
-            size = Vector2(59, 66)
-            y_offset = -14.0
-            shadow_radius = Vector2(19.0, 5.2)
+            size = Vector2(76, 84)
+            y_offset = -21.0
+            shadow_radius = Vector2(25.0, 6.4)
     if texture == null:
         return
 
-    # VG-3: interactive resources must visibly sit in the world instead of
-    # looking pasted over the floor. The soft contact shadow is deliberately
-    # stronger than decorative backdrop marks.
-    var shadow_alpha: float = 0.30 if visual_gate_enabled else 0.21
-    var shadow_y: float = 19.0 if resource_type == "tree" else 15.0
+    # MASTER P2: resource roots/bases must merge into terrain, not merely cast a
+    # shadow. Draw a soil contact patch, then a darker contact shadow, then grass
+    # and debris around the silhouette before the painted resource itself.
+    var shadow_alpha: float = 0.34 if visual_gate_enabled else 0.21
+    var shadow_y: float = 20.0 if resource_type == "tree" else 16.0
+    if visual_gate_enabled:
+        _draw_grounding_skirt(shadow_y, shadow_radius)
     _draw_shadow_ellipse(Vector2(0, shadow_y), shadow_radius, Color(0.018, 0.024, 0.018, shadow_alpha))
     if visual_gate_enabled:
-        draw_arc(Vector2(0, shadow_y - 1.0), shadow_radius.x * 0.72, 0.18, PI - 0.18, 16, Color(0.70, 0.77, 0.55, 0.055), 1.0)
+        draw_arc(Vector2(0, shadow_y - 1.0), shadow_radius.x * 0.72, 0.18, PI - 0.18, 16, Color(0.70, 0.77, 0.55, 0.07), 1.0)
 
     var mirror: float = -1.0 if variant % 2 == 1 else 1.0
     var stage: int = damage_stage()
     var damage_dull: float = 0.07 * float(stage)
     var tint_color := Color.WHITE.darkened(damage_dull).lerp(Color(1.0, 0.72, 0.58), flash * 0.62)
     draw_set_transform(Vector2(0, y_offset), 0.0, Vector2(mirror, 1.0))
-    draw_texture_rect(texture, Rect2(-size * 0.5, size), false, tint_color)
+    if resource_type == "tree" and visual_gate_enabled:
+        # MASTER P2: use the already-approved painted pine damage strip instead
+        # of the old gnarled harvest tree. Damage now changes the actual tree art,
+        # not only a crack overlay.
+        var frame_width: float = float(texture.get_width()) / float(PRODUCTION_TREE_FRAMES)
+        var frame_height: float = float(texture.get_height())
+        var ratio: float = clampf(hp / maxf(1.0,max_hp),0.0,1.0)
+        var frame_index: int = 0
+        if ratio <= 0.12:
+            frame_index = 3
+        elif ratio <= 0.32:
+            frame_index = 2
+        elif ratio <= 0.66:
+            frame_index = 1
+        var source := Rect2(frame_width * float(frame_index), 0.0, frame_width, frame_height)
+        draw_texture_rect_region(texture, Rect2(-size * 0.5, size), source, tint_color)
+    else:
+        draw_texture_rect(texture, Rect2(-size * 0.5, size), false, tint_color)
     draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-    if visual_gate_enabled and stage > 0:
+    if visual_gate_enabled and stage > 0 and resource_type != "tree":
         _draw_damage_state(stage, mirror)
+
+func _draw_grounding_skirt(shadow_y: float, shadow_radius: Vector2) -> void:
+    var soil_radius := Vector2(shadow_radius.x * 1.10, shadow_radius.y * 1.55)
+    _draw_shadow_ellipse(Vector2(0, shadow_y + 0.8), soil_radius, Color(0.34,0.24,0.13,0.13))
+    _draw_shadow_ellipse(Vector2(0, shadow_y + 0.2), Vector2(soil_radius.x * 0.72, soil_radius.y * 0.72), Color(0.18,0.27,0.13,0.10))
+
+    var grass := Color(0.24,0.42,0.20,0.50)
+    var dry := Color(0.48,0.35,0.18,0.38)
+    var extent: float = shadow_radius.x * 0.82
+    for i: int in range(6):
+        var t: float = float(i) / 5.0
+        var x: float = lerpf(-extent, extent, t)
+        var y: float = shadow_y + 1.0 + float((i * 7) % 4)
+        var lean: float = -1.5 if i % 2 == 0 else 1.5
+        draw_line(Vector2(x,y+5), Vector2(x+lean,y-1), grass, 1.2)
+        if i % 2 == 0:
+            draw_line(Vector2(x+3,y+3), Vector2(x+7,y+1), dry, 1.0)
+    if resource_type != "tree":
+        draw_circle(Vector2(-extent * 0.72, shadow_y + 2.0), 1.8, Color(0.45,0.43,0.35,0.48))
+        draw_circle(Vector2(extent * 0.64, shadow_y + 1.0), 1.4, Color(0.51,0.48,0.38,0.42))
+    else:
+        # Root shoulders visually sink the large tree into the soil.
+        draw_line(Vector2(-10, shadow_y-1), Vector2(-24, shadow_y+6), Color(0.24,0.16,0.09,0.58), 3.0)
+        draw_line(Vector2(9, shadow_y-1), Vector2(23, shadow_y+5), Color(0.24,0.16,0.09,0.55), 3.0)
 
 func _draw_damage_state(stage: int, mirror: float) -> void:
     var severe: bool = stage >= 2

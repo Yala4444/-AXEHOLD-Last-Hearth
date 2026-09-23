@@ -8,6 +8,7 @@ var biome_index: int = 0
 var variant: int = 0
 var visual_identity_version: int = 3
 var ancient_tree_art: Texture2D
+var visual_gate_enabled: bool = false
 
 func configure(new_kind: String, index: int, new_variant: int = 0) -> void:
     kind = new_kind
@@ -16,10 +17,16 @@ func configure(new_kind: String, index: int, new_variant: int = 0) -> void:
     z_index = -2
     queue_redraw()
 
+func set_visual_gate(value: bool) -> void:
+    visual_gate_enabled = value
+    queue_redraw()
+
 func visual_identity_profile() -> Dictionary:
     return {"version":visual_identity_version, "kind":kind, "biome":biome_index}
 
 func _draw() -> void:
+    if visual_gate_enabled and biome_index == 0:
+        _draw_grounding_patch()
     match kind:
         "ruin":
             _draw_ruin()
@@ -41,6 +48,35 @@ func _draw() -> void:
             _draw_fallen_totem()
         _:
             _draw_stump()
+
+func _draw_grounding_patch() -> void:
+    # MASTER P1: landmarks belong to the terrain. A broad soft contact shadow,
+    # soil lip and sparse grass remove the old cut-out / floating-prop read.
+    var width: float = 18.0
+    match kind:
+        "root_arch":
+            width = 34.0
+        "fallen_totem":
+            width = 31.0
+        "ruin":
+            width = 24.0
+        "sign", "bones":
+            width = 15.0
+        _:
+            width = 20.0
+
+    draw_set_transform(Vector2(0, 12), 0.0, Vector2(1.0, 0.34))
+    draw_circle(Vector2.ZERO, width, Color(0.02,0.03,0.02,0.24))
+    draw_circle(Vector2.ZERO, width * 0.78, Color(0.30,0.22,0.12,0.10))
+    draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+    var grass := Color(0.22,0.38,0.18,0.38)
+    for i: int in range(4):
+        var x: float = -width * 0.65 + float(i) * width * 0.43
+        var y: float = 10.0 + float((i * 3) % 4)
+        draw_line(Vector2(x,y+4), Vector2(x+1.0,y-1), grass, 1.1)
+        if i % 2 == 0:
+            draw_circle(Vector2(x+3.5,y+1.0), 1.2, Color(0.57,0.50,0.27,0.24))
 
 func _draw_stump() -> void:
     draw_rect(Rect2(-9, 5, 18, 5), Color(0.05, 0.06, 0.04, 0.12))

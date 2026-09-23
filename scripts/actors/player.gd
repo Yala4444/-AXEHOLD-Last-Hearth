@@ -44,6 +44,10 @@ const VISUAL_V2_FRAME_PATHS: Dictionary = {
     "back_a":"res://assets/art/visual_v2/hero_frames/back_a.webp",
     "back_b":"res://assets/art/visual_v2/hero_frames/back_b.webp"
 }
+const VISUAL_V2_IDLE_PATHS: Dictionary = {
+    "front":"res://assets/art/visual_v2/hero_idle_front.webp",
+    "side":"res://assets/art/visual_v2/hero_idle_side.webp"
+}
 
 var target_position: Vector2 = Vector2.ZERO
 var move_input: Vector2 = Vector2.ZERO
@@ -83,8 +87,8 @@ var weapon_action_time: float = 0.0
 var weapon_action_duration: float = 0.24
 var weapon_action_direction: Vector2 = Vector2.RIGHT
 var weapon_combo_visual: int = 0
-var movement_acceleration: float = 920.0
-var movement_deceleration: float = 1180.0
+var movement_acceleration: float = 1480.0
+var movement_deceleration: float = 1780.0
 
 # Weapon-exclusive perk state. These are reset at the beginning of each run.
 var axes_dps_bonus: float = 1.0
@@ -128,6 +132,7 @@ var visual_v2_frames: Dictionary = {}
 var visual_v2_side_walk: Array[Texture2D] = []
 var visual_v2_front_walk: Array[Texture2D] = []
 var visual_v2_back_walk: Array[Texture2D] = []
+var visual_v2_idle_frames: Dictionary = {}
 var visual_v2_frame_layouts: Dictionary = {}
 var visual_facing_direction: Vector2 = Vector2(0.35, 0.94)
 
@@ -187,8 +192,12 @@ func enable_visual_v2() -> void:
     visual_v2_frames.clear()
     for frame_id: String in VISUAL_V2_FRAME_PATHS:
         visual_v2_frames[frame_id] = ResourceLoader.load(str(VISUAL_V2_FRAME_PATHS[frame_id])) as Texture2D
+    visual_v2_idle_frames.clear()
+    for idle_id: String in VISUAL_V2_IDLE_PATHS:
+        visual_v2_idle_frames[idle_id] = ResourceLoader.load(str(VISUAL_V2_IDLE_PATHS[idle_id])) as Texture2D
 
-    # VG-2: every generated frame has slightly different transparent padding.
+    # MASTER P0: neutral idle art is a separate production state. Never freeze
+    # a walk frame and call it idle again.
     # Build a per-texture layout from the actual visible pixels so all poses
     # share one foot baseline and one physical body height in-game.
     visual_v2_frame_layouts.clear()
@@ -200,6 +209,8 @@ func enable_visual_v2() -> void:
         _register_visual_v2_frame_layout(texture)
     for frame_id: String in visual_v2_frames:
         _register_visual_v2_frame_layout(visual_v2_frames[frame_id] as Texture2D)
+    for idle_id: String in visual_v2_idle_frames:
+        _register_visual_v2_frame_layout(visual_v2_idle_frames[idle_id] as Texture2D)
     _register_visual_v2_frame_layout(visual_v2_hero)
 
     # Keep the equipped weapon profile intact. Four weapon families are
@@ -323,9 +334,9 @@ func _physics_process(delta: float) -> void:
 
     var visual_speed_ratio: float = clampf(velocity.length() / maxf(1.0, move_speed), 0.0, 1.0)
     if visual_speed_ratio > 0.04:
-        # Keep a readable walking cadence. The six side-view frames then
-        # complete one grounded stride in roughly three quarters of a second.
-        walk_clock += delta * (1.25 + visual_speed_ratio * 1.35)
+        # MASTER P0: cadence follows travel speed without making the hero feel
+        # artificially slowed. At full speed the side loop is brisk and planted.
+        walk_clock += delta * (1.75 + visual_speed_ratio * 1.65)
 
     var rotation_speed: float = 3.65 + float(axes - 1) * 0.06
     if weapon_style == "hammer":
@@ -978,18 +989,22 @@ func _draw_visual_v2() -> void:
     var frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, phase_id]) as Texture2D
     var next_frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, next_phase_id]) as Texture2D
 
-    # Idle must read as a stop, not as a walk cycle frozen mid-stride. Until
-    # dedicated neutral artwork is produced, use the least-stride production
-    # frames and remove all walk-cycle transition/lean.
+    # MASTER P0: idle is its own neutral pose. The previous build froze a walk
+    # frame here, which is exactly why the hero still looked ready to step.
     if not moving:
-        if view_id == "side" and visual_v2_side_walk.size() >= 4:
-            frame = visual_v2_side_walk[3]
-        elif view_id == "front":
-            frame = visual_v2_frames.get("front_b") as Texture2D
-        elif view_id == "back":
+        frame = visual_v2_idle_frames.get(view_id) as Texture2D
+        if view_id == "back":
+            # The extracted neutral back concept frame was not clean enough for
+            # production. Blend the two coherent back poses into a centered stop
+            # instead of shipping an artifacted texture or freezing one stride.
             frame = visual_v2_frames.get("back_a") as Texture2D
-        next_frame = frame
-        transition = 0.0
+            next_frame = visual_v2_frames.get("back_b") as Texture2D
+            transition = 0.5
+        else:
+            if frame == null:
+                frame = visual_v2_frames.get("%s_a" % view_id) as Texture2D
+            next_frame = frame
+            transition = 0.0
     elif moving and view_id == "side" and not visual_v2_side_walk.is_empty():
         # Six coherent side poses complete one stride in roughly the same time
         # as the four-pose front/back loops.
@@ -1012,7 +1027,7 @@ func _draw_visual_v2() -> void:
     if next_frame == null:
         next_frame = frame
 
-    var breathe: float = sin(motion_time * 1.7) * (0.10 if not moving else 0.0)
+    var breathe: float = sin(motion_time * 1.55) * (0.24 if not moving else 0.0)
     var recoil := Vector2(-visual_facing_direction.x, -visual_facing_direction.y) * damage_flash * 3.0
     var body_offset := recoil + Vector2(0.0, breathe - weapon_action_ratio() * 0.8)
     var tint := Color.WHITE.lerp(Color(1.0, 0.62, 0.54), clampf(damage_flash, 0.0, 1.0) * 0.68)
@@ -1020,7 +1035,14 @@ func _draw_visual_v2() -> void:
     # character: that was one of the reasons the hero appeared to change size.
     var body_lean: float = sin(phase_unit * PI) * 0.006 * speed_ratio if moving else 0.0
 
-    _draw_shadow_ellipse(Vector2(0, VISUAL_V2_FOOT_Y), Vector2(20.5 - absf(sin(phase_unit * PI)) * 0.6, 5.2), Color(0.025, 0.035, 0.03, 0.24))
+    var foot_shadow := Vector2(22.5, 5.8) if not moving else Vector2(20.5 - absf(sin(phase_unit * PI)) * 0.6, 5.2)
+    var foot_shadow_alpha: float = 0.30 if not moving else 0.24
+    _draw_shadow_ellipse(Vector2(0, VISUAL_V2_FOOT_Y + 0.5), foot_shadow, Color(0.025, 0.035, 0.03, foot_shadow_alpha))
+    if not moving:
+        # Small dark contacts under the boots make the stop feel planted rather
+        # than like the illustration is hovering above the world.
+        _draw_shadow_ellipse(Vector2(-8.0, VISUAL_V2_FOOT_Y - 0.4), Vector2(7.0, 2.2), Color(0.02,0.025,0.02,0.20))
+        _draw_shadow_ellipse(Vector2(8.0, VISUAL_V2_FOOT_Y - 0.4), Vector2(7.0, 2.2), Color(0.02,0.025,0.02,0.20))
     _draw_relic_auras()
 
     var ring_radius: float = orbit_radius + sin(motion_time * 2.2) * 1.2

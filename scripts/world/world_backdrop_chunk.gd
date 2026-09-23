@@ -47,6 +47,8 @@ func _draw() -> void:
 
     # The base biome wash is screen-space in GameWorld. Avoiding large chunk
     # background rectangles prevents iOS/WebGL black-quadrant artifacts.
+    if visual_gate_enabled and biome_index == 0:
+        _draw_production_ground_language()
     _draw_ground_detail()
     if biome_index == 0:
         _draw_forest_atmosphere()
@@ -54,6 +56,44 @@ func _draw() -> void:
     _draw_clearing_segment()
     _draw_landmarks()
     _draw_world_edge_segment()
+
+func _draw_production_ground_language() -> void:
+    # MASTER P1: the old forest floor was mostly one flat color plus a few thin
+    # lines. These deterministic low-alpha patches create a readable surface
+    # language without turning the ground into noisy wallpaper.
+    var sx: int = int(floor(chunk_rect.position.x))
+    var sy: int = int(floor(chunk_rect.position.y))
+    var seed: int = abs(sx * 41 + sy * 67 + 911)
+    for i: int in range(9):
+        var px: float = 22.0 + float((seed + i * 83) % maxi(1, int(chunk_rect.size.x - 44.0)))
+        var py: float = 20.0 + float((seed * 3 + i * 61) % maxi(1, int(chunk_rect.size.y - 40.0)))
+        var p := Vector2(px, py)
+        var world_p := chunk_rect.position + p
+        if world_p.x < 0.0 or world_p.y < 0.0 or world_p.x > world_size.x or world_p.y > world_size.y:
+            continue
+        if world_p.distance_to(base_position) < 104.0:
+            continue
+
+        var radius_x: float = 18.0 + float((seed + i * 19) % 22)
+        var radius_y: float = 7.0 + float((seed + i * 11) % 10)
+        var patch_color: Color
+        if i % 3 == 0:
+            patch_color = Color(0.17, 0.25, 0.13, lerpf(0.075, 0.045, night_mix))
+        elif i % 3 == 1:
+            patch_color = Color(0.33, 0.25, 0.15, lerpf(0.055, 0.038, night_mix))
+        else:
+            patch_color = Color(0.12, 0.20, 0.12, lerpf(0.055, 0.040, night_mix))
+
+        draw_set_transform(p, 0.0, Vector2(radius_x / maxf(1.0, radius_y), 1.0))
+        draw_circle(Vector2.ZERO, radius_y, patch_color)
+        draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+        # Small leaf/soil accents make the patch read as terrain rather than a
+        # translucent circle.
+        var accent := Color(0.43, 0.27, 0.13, lerpf(0.12, 0.08, night_mix))
+        draw_line(p + Vector2(-6, 1), p + Vector2(-2, 3), accent, 1.1)
+        if i % 2 == 0:
+            draw_circle(p + Vector2(7, -2), 1.3, Color(0.76,0.67,0.37,lerpf(0.16,0.09,night_mix)))
 
 func _draw_gradient() -> void:
     var day_top: Color = Color(str(biome.get("sky", "80936c")))
@@ -216,12 +256,41 @@ func _draw_path_segment() -> void:
             Vector2(center1 + half1 - 1.5, local_y1),
             Vector2(center1 - half1 + 1.5, local_y1)
         ])
-        var edge_day := Color(0.28, 0.14, 0.11, 0.25)
-        var fill_day := Color(0.48, 0.27, 0.20, 0.25)
-        var edge_night := Color(0.16, 0.10, 0.10, 0.24)
-        var fill_night := Color(0.29, 0.18, 0.17, 0.23)
+        var edge_day := Color(0.28, 0.14, 0.11, 0.34)
+        var fill_day := Color(0.52, 0.30, 0.20, 0.38)
+        var edge_night := Color(0.16, 0.10, 0.10, 0.28)
+        var fill_night := Color(0.29, 0.18, 0.17, 0.27)
         draw_colored_polygon(outer, edge_day.lerp(edge_night, night_mix))
         draw_colored_polygon(inner, fill_day.lerp(fill_night, night_mix))
+
+        # A slightly lighter worn centre plus pebbles and edge grass makes this
+        # read as an actual travelled trail rather than a transparent stripe.
+        var centre_half0: float = half0 * 0.42
+        var centre_half1: float = half1 * 0.42
+        var centre := PackedVector2Array([
+            Vector2(center0 - centre_half0, local_y0),
+            Vector2(center0 + centre_half0, local_y0),
+            Vector2(center1 + centre_half1, local_y1),
+            Vector2(center1 - centre_half1, local_y1)
+        ])
+        draw_colored_polygon(centre, Color(0.64,0.39,0.24,lerpf(0.10,0.06,night_mix)))
+
+        var detail_y: float = y0 + 18.0
+        var detail_index: int = 0
+        while detail_y < y1 - 8.0:
+            var t: float = clampf((detail_y - start_y) / maxf(1.0, end_y - start_y), 0.0, 1.0)
+            var half: float = lerpf(22.0, 44.0, t)
+            var wobble: float = sin(detail_y * 0.013) * 4.2 + sin(detail_y * 0.0047 + 1.4) * 3.0
+            var cx: float = center_x + wobble
+            var ly: float = detail_y - chunk_rect.position.y
+            var pebble_x: float = cx + (-0.22 if detail_index % 2 == 0 else 0.24) * half
+            draw_circle(Vector2(pebble_x, ly), 1.3 + float(detail_index % 3) * 0.35, Color(0.40,0.32,0.25,lerpf(0.25,0.15,night_mix)))
+            var edge_x: float = cx + (-1.0 if detail_index % 2 == 0 else 1.0) * (half + 3.0)
+            var grass := Color(0.23,0.37,0.18,lerpf(0.27,0.15,night_mix))
+            draw_line(Vector2(edge_x, ly + 4), Vector2(edge_x + 1.5, ly - 1), grass, 1.1)
+            draw_line(Vector2(edge_x + 3, ly + 4), Vector2(edge_x + 4.0, ly), Color(grass, grass.a * 0.72), 1.0)
+            detail_y += 34.0
+            detail_index += 1
     else:
         var day_path: Color = Color(0.54, 0.48, 0.31, 0.21) if biome_index != 1 else Color(0.57, 0.69, 0.68, 0.16)
         var night_path: Color = Color(day_path.r * 0.62, day_path.g * 0.62, day_path.b * 0.70, day_path.a * 0.82)
@@ -247,10 +316,27 @@ func _draw_clearing_segment() -> void:
     if visual_gate_enabled and biome_index == 0:
         # VG-3 quality island: the camp clearing has a soft layered edge rather
         # than one flat procedural disk. It remains deliberately uncluttered.
-        draw_circle(local_base, 124.0, Color(0.16, 0.24, 0.12, lerpf(0.11, 0.10, night_mix)))
-        draw_circle(local_base, 116.0, day_clearing.lerp(night_clearing, night_mix))
-        draw_circle(local_base, 92.0, Color(0.54, 0.61, 0.35, lerpf(0.055, 0.035, night_mix)))
-        for i: int in range(7):
+        draw_circle(local_base, 132.0, Color(0.14, 0.21, 0.11, lerpf(0.13, 0.10, night_mix)))
+        draw_circle(local_base, 121.0, day_clearing.lerp(night_clearing, night_mix))
+        draw_circle(local_base, 97.0, Color(0.55, 0.53, 0.31, lerpf(0.095, 0.055, night_mix)))
+        draw_circle(local_base, 63.0, Color(0.57, 0.36, 0.22, lerpf(0.075, 0.045, night_mix)))
+
+        # Four short trampled spokes make the camp feel built into the world and
+        # visually connect the Hearth with its future build pads.
+        for spoke: int in range(4):
+            var angle: float = -0.25 + float(spoke) * PI * 0.5
+            var dir := Vector2(cos(angle), sin(angle))
+            var side := Vector2(-dir.y, dir.x)
+            var p0 := local_base + dir * 46.0
+            var p1 := local_base + dir * 115.0
+            var width0: float = 13.0
+            var width1: float = 18.0
+            draw_colored_polygon(PackedVector2Array([
+                p0 - side * width0, p0 + side * width0,
+                p1 + side * width1, p1 - side * width1
+            ]), Color(0.48,0.28,0.18,lerpf(0.11,0.065,night_mix)))
+
+        for i: int in range(9):
             var angle: float = float(i) * TAU / 7.0 + 0.34
             var radius: float = 103.0 + float((i * 13) % 11)
             var p := local_base + Vector2(cos(angle), sin(angle)) * radius

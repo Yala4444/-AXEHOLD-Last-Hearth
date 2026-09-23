@@ -149,6 +149,49 @@ func visual_role_signature() -> Dictionary:
         "production_art":biome_index == 0
     }
 
+func production_visual_profile() -> Dictionary:
+    var target_height: float = 118.0
+    var target_width: float = 104.0
+    var shadow_width: float = 30.0
+    var bar_y: float = -73.0
+    match enemy_type:
+        "runner":
+            target_height = 110.0
+            target_width = 136.0
+            shadow_width = 39.0
+            bar_y = -67.0
+        "brute":
+            target_height = 158.0
+            target_width = 150.0
+            shadow_width = 48.0
+            bar_y = -99.0
+        "stalker":
+            target_height = 154.0
+            target_width = 98.0
+            shadow_width = 34.0
+            bar_y = -103.0
+        "guardian":
+            target_height = 160.0
+            target_width = 152.0
+            shadow_width = 48.0
+            bar_y = -101.0
+        "boss":
+            target_height = 268.0
+            target_width = 254.0
+            shadow_width = 78.0
+            bar_y = -171.0
+    if boss:
+        target_height = 268.0
+        target_width = 254.0
+        shadow_width = 78.0
+        bar_y = -171.0
+    return {
+        "height":target_height,
+        "width":target_width,
+        "shadow_width":shadow_width,
+        "bar_y":bar_y
+    }
+
 func configure_elite(trait_id: String) -> void:
     if boss:
         return
@@ -291,7 +334,7 @@ func _update_stalker_surge(delta: float) -> bool:
     if surge_cooldown <= 0.0 and has_target and windup <= 0.0:
         surge_direction = global_position.direction_to(target_position)
         if surge_direction.length_squared() > 0.01 and global_position.distance_to(target_position) > 48.0:
-            surge_windup = 0.22
+            surge_windup = 0.38
             return true
         surge_cooldown = 0.8
     return false
@@ -299,7 +342,7 @@ func _update_stalker_surge(delta: float) -> bool:
 func _update_death(delta: float) -> void:
     death_time -= delta
     velocity = Vector2.ZERO
-    var progress: float = clampf(1.0 - death_time / 0.18, 0.0, 1.0)
+    var progress: float = clampf(1.0 - death_time / 0.28, 0.0, 1.0)
     scale = Vector2.ONE * base_scale * (1.0 + progress * 0.25) * (1.0 - progress * 0.92)
     var death_tilt: float = 0.20 if enemy_type == "guardian" or enemy_type == "brute" else 0.45
     rotation = sin(progress * PI) * death_tilt
@@ -361,7 +404,7 @@ func take_damage(amount: float) -> void:
     if hp <= 0.0:
         hp = 0.0
         dying = true
-        death_time = 0.18
+        death_time = 0.28
         contact_damage = 0.0
         has_target = false
         charge_windup = 0.0
@@ -376,11 +419,17 @@ func _draw() -> void:
     if enemy_type == "guardian" and not boss:
         shadow_w = 30.0
     if visual_gate_enabled and biome_index == 0:
-        # Illustrated enemies need the same grounded treatment as the hero and
-        # resources. A broad faint layer plus a tighter contact layer prevents
-        # the art from reading like a sticker.
-        _draw_shadow_ellipse(Vector2(0, 16), Vector2(shadow_w * 0.66, 5.7), Color(0.018, 0.024, 0.019, 0.15))
-        _draw_shadow_ellipse(Vector2(0, 15), Vector2(shadow_w * 0.50, 4.1), Color(0.015, 0.020, 0.016, 0.24))
+        var production_profile: Dictionary = production_visual_profile()
+        shadow_w = float(production_profile.get("shadow_width", shadow_w))
+        # MASTER P3: enemies are creatures occupying the terrain, not stickers.
+        # A soil-darkening skirt plus two contact layers gives large bodies real
+        # weight and keeps their feet/roots tied to the same ground language.
+        _draw_shadow_ellipse(Vector2(0, 18), Vector2(shadow_w * 0.74, 8.2), Color(0.25, 0.20, 0.11, 0.10))
+        _draw_shadow_ellipse(Vector2(0, 17), Vector2(shadow_w * 0.64, 6.3), Color(0.018, 0.024, 0.019, 0.18))
+        _draw_shadow_ellipse(Vector2(0, 16), Vector2(shadow_w * 0.48, 4.4), Color(0.015, 0.020, 0.016, 0.29))
+        var ground_grass := Color(0.22,0.36,0.18,0.29)
+        draw_line(Vector2(-shadow_w*0.43,19), Vector2(-shadow_w*0.40,13), ground_grass, 1.0)
+        draw_line(Vector2(shadow_w*0.38,20), Vector2(shadow_w*0.35,14), ground_grass, 1.0)
     else:
         _draw_shadow_ellipse(Vector2(0, 15), Vector2(shadow_w * 0.52, 4.8), Color(0.03, 0.035, 0.035, 0.28))
 
@@ -394,16 +443,29 @@ func _draw() -> void:
 
     if (boss or (elite and elite_trait == "warlord")) and charge_windup > 0.0:
         var charge_alpha: float = clampf(1.0 - charge_windup / 0.72, 0.0, 1.0)
-        draw_line(Vector2.ZERO, charge_direction * (54.0 + charge_alpha * 26.0), Color(1.0, 0.35, 0.28, 0.35 + charge_alpha * 0.55), 4.0)
-        draw_rect(Rect2(-22, -22, 44, 44), Color(1.0, 0.42, 0.25, 0.25 + charge_alpha * 0.28), false, 2.0)
+        var dir := charge_direction.normalized()
+        var side := Vector2(-dir.y, dir.x)
+        var lane_len: float = 92.0 + charge_alpha * 42.0
+        var lane_half: float = 13.0 if not boss else 20.0
+        draw_colored_polygon(PackedVector2Array([
+            side * lane_half,
+            -side * lane_half,
+            dir * lane_len - side * lane_half,
+            dir * lane_len + side * lane_half
+        ]), Color(0.95,0.22,0.18,0.10 + charge_alpha * 0.16))
+        draw_line(Vector2.ZERO, dir * lane_len, Color(1.0, 0.35, 0.28, 0.44 + charge_alpha * 0.50), 3.0)
+        draw_arc(Vector2.ZERO, 28.0 if boss else 22.0, 0.0, TAU, 26, Color(1.0,0.38,0.24,0.34+charge_alpha*0.38), 2.2)
     elif (boss or (elite and elite_trait == "warlord")) and charge_time > 0.0:
         for trail_index: int in range(3):
             var back: Vector2 = -charge_direction * float(18 + trail_index * 12)
             draw_rect(Rect2(back - Vector2(8, 8), Vector2(16, 16)), Color(0.92, 0.32, 0.25, 0.15 - trail_index * 0.035))
 
     if enemy_type == "stalker" and surge_windup > 0.0:
-        var s: float = clampf(1.0 - surge_windup / 0.22, 0.0, 1.0)
-        draw_rect(Rect2(-15 - s * 3, -17 - s * 3, 30 + s * 6, 34 + s * 6), Color(0.72, 0.52, 0.92, 0.34 + s * 0.40), false, 2.0)
+        var s: float = clampf(1.0 - surge_windup / 0.38, 0.0, 1.0)
+        draw_circle(Vector2(0,15), 20.0 + s * 8.0, Color(0.55,0.30,0.74,0.07+s*0.10))
+        draw_arc(Vector2(0,15), 19.0 + s * 8.0, 0.0, TAU, 24, Color(0.77,0.55,0.94,0.45+s*0.35), 2.0)
+        if surge_direction.length_squared() > 0.01:
+            draw_line(Vector2(0,12), surge_direction.normalized() * (54.0 + s * 22.0), Color(0.78,0.56,0.95,0.30+s*0.45), 2.5)
 
     var body_color: Color = tint
     if boss:
@@ -455,14 +517,17 @@ func _draw() -> void:
         var ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0)
         var width: float = 92.0 if boss and biome_index == 0 else (54.0 if boss else (38.0 if elite else (32.0 if enemy_type == "guardian" else 26.0)))
         var art_bar_y: float = -55.0
-        match enemy_type:
-            "runner":
-                art_bar_y = -42.0
-            "brute", "guardian":
-                art_bar_y = -54.0
-            "stalker":
-                art_bar_y = -59.0
-        var bar_y: float = (-102.0 if boss else art_bar_y) if biome_index == 0 else (-39.0 if boss else (-33.0 if elite else -27.0))
+        if visual_gate_enabled and biome_index == 0:
+            art_bar_y = float(production_visual_profile().get("bar_y", -73.0))
+        else:
+            match enemy_type:
+                "runner":
+                    art_bar_y = -42.0
+                "brute", "guardian":
+                    art_bar_y = -54.0
+                "stalker":
+                    art_bar_y = -59.0
+        var bar_y: float = art_bar_y if biome_index == 0 else (-39.0 if boss else (-33.0 if elite else -27.0))
         var bar_color: Color = Color("cf6165") if boss else (elite_glow if elite else (Color("c7b56e") if enemy_type == "guardian" else Color("8f7198")))
         draw_rect(Rect2(-width / 2.0, bar_y, width, 4.0), Color(0.08, 0.08, 0.08, 0.35))
         draw_rect(Rect2(-width / 2.0, bar_y, width * ratio, 4.0), bar_color)
@@ -484,35 +549,32 @@ func _draw_illustrated_forest_identity() -> void:
         forest_art_cache[art_role] = texture
     var size := Vector2(58, 64)
     var y_offset: float = -10.0
-    match enemy_type:
-        "runner":
-            size = Vector2(72, 62)
-            y_offset = -7.0
-        "brute":
-            size = Vector2(82, 86)
-            y_offset = -14.0
-        "stalker":
-            size = Vector2(58, 91)
-            y_offset = -17.0
-        "guardian":
-            size = Vector2(84, 88)
-            y_offset = -15.0
-        "boss":
+    if visual_gate_enabled:
+        var profile: Dictionary = production_visual_profile()
+        size = Vector2(float(profile.get("width", 104.0)), float(profile.get("height", 118.0)))
+        # All production enemies share the same visible foot baseline. Offset is
+        # derived from height rather than hand-tuned old sprite sizes.
+        y_offset = 18.0 - size.y * 0.5
+    else:
+        match enemy_type:
+            "runner":
+                size = Vector2(72, 62)
+                y_offset = -7.0
+            "brute":
+                size = Vector2(82, 86)
+                y_offset = -14.0
+            "stalker":
+                size = Vector2(58, 91)
+                y_offset = -17.0
+            "guardian":
+                size = Vector2(84, 88)
+                y_offset = -15.0
+            "boss":
+                size = Vector2(164, 173)
+                y_offset = -35.0
+        if boss:
             size = Vector2(164, 173)
             y_offset = -35.0
-    if boss:
-        size = Vector2(164, 173)
-        y_offset = -35.0
-    if visual_gate_enabled and not boss:
-        # Phone-scale readability pass. Small enemies should feel like threats,
-        # not insects next to the 98 px hero.
-        var readability_scale: float = 1.23
-        if enemy_type == "brute" or enemy_type == "guardian":
-            readability_scale = 1.15
-        elif enemy_type == "stalker":
-            readability_scale = 1.20
-        size *= readability_scale
-        y_offset *= readability_scale
     if texture == null:
         return
     var moving: bool = velocity.length_squared() > 16.0
@@ -573,7 +635,7 @@ func _draw_visual_gate_walk(art_role: String, art_tint: Color) -> void:
     var frame: int = int(floor(animation_time * fps)) % VISUAL_GATE_WALK_FRAMES
     var source := Rect2(Vector2(frame_width * float(frame), 0.0), Vector2(frame_width, frame_height))
 
-    var target_height: float = 82.0 if art_role == "runner" else 88.0
+    var target_height: float = 110.0 if art_role == "runner" else 118.0
     var target_width: float = target_height * frame_width / frame_height
     var foot_y: float = 18.0
     var destination := Rect2(

@@ -101,4 +101,5 @@ func _spawn_landmarks() -> void:
 
         var kind: String = kind_bag.pop_back()
         node.configure(kind, world.biome_index, randi() % 3)
+        node.set_visual_gate(world.visual_v2_enabled)
         landmark_nodes.append(node)
