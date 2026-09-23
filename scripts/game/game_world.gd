@@ -116,6 +116,8 @@ func _ready() -> void:
 func _start_run() -> void:
     biome_index = clampi(biome_index, 0, GameRules.BIOMES.size() - 1)
     biome = GameRules.biome(biome_index)
+    if core_fx != null:
+        core_fx.set_visual_gate(visual_v2_enabled)
     var viewport_size: Vector2 = get_viewport_rect().size
     world_size = Vector2(
         maxf(1380.0, viewport_size.x * 3.75),
@@ -997,7 +999,7 @@ func _weapon_axes(enemy_snapshot: Array[AxEnemy], delta: float) -> void:
         var critical: bool = _deal_weapon_damage(enemy, player.damage * delta * damage_factor)
         weapon_last_hit_count += 1
         if core_fx != null and randf() < delta * 5.5:
-            core_fx.enemy_hit(enemy.global_position, critical)
+            core_fx.enemy_hit(enemy.global_position, critical, player.global_position.direction_to(enemy.global_position), player.weapon_style)
 
 func _weapon_spear(enemy_snapshot: Array[AxEnemy]) -> void:
     if weapon_attack_timer > 0.0:
@@ -1052,7 +1054,7 @@ func _weapon_spear(enemy_snapshot: Array[AxEnemy]) -> void:
         var critical: bool = _deal_weapon_damage(enemy, player.damage * damage_factor)
         weapon_last_hit_count += 1
         if core_fx != null:
-            core_fx.enemy_hit(enemy.global_position, critical)
+            core_fx.enemy_hit(enemy.global_position, critical, player.global_position.direction_to(enemy.global_position), player.weapon_style)
 
     if core_fx != null:
         core_fx.spear_thrust(player.global_position + direction * 10.0, player.global_position + direction * attack_range)
@@ -1098,7 +1100,7 @@ func _weapon_hammer(enemy_snapshot: Array[AxEnemy]) -> void:
             enemy.global_position.x = clampf(enemy.global_position.x, world_rect.position.x + 24.0, world_rect.end.x - 24.0)
             enemy.global_position.y = clampf(enemy.global_position.y, world_rect.position.y + 24.0, world_rect.end.y - 24.0)
         if core_fx != null:
-            core_fx.enemy_hit(enemy.global_position, critical)
+            core_fx.enemy_hit(enemy.global_position, critical, player.global_position.direction_to(enemy.global_position), player.weapon_style)
 
     if core_fx != null:
         core_fx.hammer_slam(player.global_position, radius)
@@ -1143,7 +1145,7 @@ func _weapon_twin_blades(enemy_snapshot: Array[AxEnemy]) -> void:
         var critical: bool = _deal_weapon_damage(enemy, player.damage * damage_factor)
         weapon_last_hit_count += 1
         if core_fx != null:
-            core_fx.enemy_hit(enemy.global_position, critical)
+            core_fx.enemy_hit(enemy.global_position, critical, player.global_position.direction_to(enemy.global_position), player.weapon_style)
 
     weapon_combo = mini(combo_cap, weapon_combo + 1)
     weapon_combo_timeout = 0.86 + player.blades_combo_timeout_bonus

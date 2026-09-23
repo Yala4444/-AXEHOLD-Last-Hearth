@@ -56,6 +56,13 @@ func _run() -> void:
         _fail("Production hero texture failed to load")
     if world.visual_gate_fx == null or not is_instance_valid(world.visual_gate_fx):
         _fail("Visual Gate FX layer was not created for preview run")
+    if world.core_fx == null or not world.core_fx.visual_gate_enabled:
+        _fail("Visual Gate combat FX was not enabled")
+    else:
+        var streaks_before: int = world.core_fx.streaks.size()
+        world.core_fx.enemy_hit(world.player.global_position + Vector2(22, 0), false, Vector2.RIGHT, "axes")
+        if world.core_fx.streaks.size() <= streaks_before:
+            _fail("Visual Gate weapon impact did not create a streak")
     if not ResourceLoader.exists(GameWorld.VISUAL_GATE_HEARTH_ART_PATH):
         _fail("Visual Gate hearth animation asset is missing")
     else:
@@ -91,6 +98,8 @@ func _run() -> void:
         _fail("Stable expedition accidentally inherited Visual Gate mode")
     if baseline.visual_gate_fx != null and is_instance_valid(baseline.visual_gate_fx):
         _fail("Stable expedition created Visual Gate FX")
+    if baseline.core_fx != null and baseline.core_fx.visual_gate_enabled:
+        _fail("Stable expedition inherited Visual Gate combat FX")
     baseline.queue_free()
     await _wait_frames(3)
 

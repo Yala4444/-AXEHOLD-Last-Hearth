@@ -5,10 +5,15 @@ var particles: Array[Dictionary] = []
 var popups: Array[Dictionary] = []
 var pulses: Array[Dictionary] = []
 var pickups: Array[Dictionary] = []
+var streaks: Array[Dictionary] = []
+var visual_gate_enabled: bool = false
 
 func _ready() -> void:
     z_index = 70
     process_mode = Node.PROCESS_MODE_ALWAYS
+
+func set_visual_gate(value: bool) -> void:
+    visual_gate_enabled = value
 
 func _process(delta: float) -> void:
     for i: int in range(particles.size() - 1, -1, -1):
@@ -57,7 +62,15 @@ func _process(delta: float) -> void:
         pickup["pos"] = a.lerp(b, t)
         pickups[i] = pickup
 
-    if not particles.is_empty() or not popups.is_empty() or not pulses.is_empty() or not pickups.is_empty():
+    for i: int in range(streaks.size() - 1, -1, -1):
+        var streak: Dictionary = streaks[i]
+        streak["life"] = float(streak["life"]) - delta
+        if float(streak["life"]) <= 0.0:
+            streaks.remove_at(i)
+            continue
+        streaks[i] = streak
+
+    if not particles.is_empty() or not popups.is_empty() or not pulses.is_empty() or not pickups.is_empty() or not streaks.is_empty():
         queue_redraw()
 
 func harvest(kind: String, pos: Vector2, amount: int, target: Vector2) -> void:
@@ -147,11 +160,54 @@ func build_complete(pos: Vector2, title: String) -> void:
     _pulse(pos, 28.0, 92.0, Color(1.0, 0.80, 0.35, 0.72), 0.72)
     _popup(pos + Vector2(0, -42), title, Color("ffe4a3"), 1.0)
 
-func enemy_hit(pos: Vector2, crit: bool = false) -> void:
+func enemy_hit(pos: Vector2, crit: bool = false, direction: Vector2 = Vector2.ZERO, weapon_style: String = "") -> void:
     var color: Color = Color("fff1b0") if crit else Color("efc07d")
     var count: int = 8 if crit else 4
     for i: int in range(count):
         _particle(pos, Vector2(randf_range(-48.0, 48.0), randf_range(-56.0, 12.0)), color, 0.22 if not crit else 0.34, randf_range(1.5, 3.0), 84.0, 3.5)
+
+    if visual_gate_enabled and not weapon_style.is_empty():
+        _weapon_impact(pos, direction, weapon_style, crit)
+
+func _weapon_impact(pos: Vector2, direction: Vector2, weapon_style: String, crit: bool) -> void:
+    var dir: Vector2 = direction.normalized() if direction.length_squared() > 0.001 else Vector2.RIGHT
+    var side := Vector2(-dir.y, dir.x)
+    var color := Color("f2c678")
+    var width: float = 2.6
+    var reach: float = 28.0
+
+    match weapon_style:
+        "spear":
+            color = Color("b8dfa4")
+            width = 2.1
+            reach = 38.0
+            _streak(pos - dir * 18.0, pos + dir * 22.0, Color(color, 0.90), 0.15, width)
+            _streak(pos - dir * 10.0 + side * 3.0, pos + dir * 16.0 + side * 3.0, Color("eef7dc"), 0.10, 1.2)
+        "hammer":
+            color = Color("9ed9eb")
+            width = 3.2
+            reach = 24.0
+            _streak(pos - side * 16.0, pos + side * 16.0, Color(color, 0.76), 0.14, width)
+            _streak(pos - dir * 13.0, pos + dir * 13.0, Color("d8eef5"), 0.11, 1.8)
+            _pulse(pos, 8.0, 26.0, Color(0.52, 0.80, 0.94, 0.24), 0.18)
+        "twin_blades":
+            color = Color("f0a06f")
+            width = 2.2
+            reach = 25.0
+            _streak(pos - side * 13.0 - dir * 8.0, pos + side * 13.0 + dir * 8.0, Color(color, 0.88), 0.12, width)
+            _streak(pos + side * 13.0 - dir * 8.0, pos - side * 13.0 + dir * 8.0, Color("ffd0a8"), 0.10, 1.5)
+        _:
+            color = Color("f1c66e")
+            width = 2.8
+            reach = 30.0
+            var slash_dir := (dir + side * 0.66).normalized()
+            _streak(pos - slash_dir * reach * 0.46, pos + slash_dir * reach * 0.54, Color(color, 0.88), 0.13, width)
+            _streak(pos - slash_dir * 10.0 + side * 3.0, pos + slash_dir * 10.0 + side * 3.0, Color("fff0c2"), 0.09, 1.3)
+
+    if crit:
+        _pulse(pos, 7.0, 30.0, Color(1.0, 0.88, 0.46, 0.34), 0.20)
+        _particle(pos, -dir * 18.0 + side * 18.0, Color("fff5c8"), 0.20, 3.2, 0.0, 5.0)
+        _particle(pos, -dir * 18.0 - side * 18.0, Color("fff5c8"), 0.20, 3.2, 0.0, 5.0)
 
 func hearth_hit(pos: Vector2) -> void:
     for i: int in range(8):
@@ -341,7 +397,26 @@ func _pickup(start: Vector2, target: Vector2, control: Vector2, color: Color, du
         "size": size
     })
 
+func _streak(start: Vector2, finish: Vector2, color: Color, life: float, width: float) -> void:
+    streaks.append({
+        "start": start,
+        "finish": finish,
+        "color": color,
+        "life": life,
+        "max_life": life,
+        "width": width
+    })
+
 func _draw() -> void:
+    for streak: Dictionary in streaks:
+        var streak_life: float = float(streak["life"])
+        var streak_max: float = maxf(0.001, float(streak["max_life"]))
+        var streak_alpha: float = clampf(streak_life / streak_max, 0.0, 1.0)
+        var streak_color: Color = Color(streak["color"])
+        streak_color.a *= streak_alpha
+        var streak_width: float = float(streak["width"]) * (0.72 + streak_alpha * 0.28)
+        draw_line(streak["start"] as Vector2, streak["finish"] as Vector2, streak_color, streak_width, true)
+
     for p: Dictionary in pulses:
         var life: float = float(p["life"])
         var max_life: float = maxf(0.001, float(p["max_life"]))
