@@ -553,14 +553,64 @@ func show_modal(icon: String, title: String, body_text: String, buttons: Array) 
         button.focus_mode = Control.FOCUS_NONE
         button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         button.add_theme_font_size_override("font_size", 10)
-        button.add_theme_stylebox_override("normal", VisualSystem.button(modal_box.get_child_count() <= 3, false))
-        button.add_theme_stylebox_override("pressed", VisualSystem.button(modal_box.get_child_count() <= 3, true))
-        button.add_theme_color_override("font_color", VisualSystem.TEXT)
+        if spec.has("rarity"):
+            _style_buildcraft_choice(button, spec)
+        else:
+            button.add_theme_stylebox_override("normal", VisualSystem.button(modal_box.get_child_count() <= 3, false))
+            button.add_theme_stylebox_override("pressed", VisualSystem.button(modal_box.get_child_count() <= 3, true))
+            button.add_theme_color_override("font_color", VisualSystem.TEXT)
         var action: String = str(spec.get("action","close"))
         button.pressed.connect(func() -> void: action_requested.emit(action))
 
     var tween := create_tween()
     tween.tween_property(modal,"modulate:a",1.0,0.11)
+
+func buildcraft_rarity_color(rarity: String) -> Color:
+    match rarity:
+        "rare":
+            return Color("68b8d0")
+        "epic":
+            return Color("a978d1")
+        "legendary":
+            return Color("e4bd62")
+        _:
+            return Color("96a4a2")
+
+func _style_buildcraft_choice(button: Button, spec: Dictionary) -> void:
+    var rarity: String = str(spec.get("rarity","common"))
+    var accent: Color = buildcraft_rarity_color(rarity)
+    var evolution_ready: bool = bool(spec.get("evolution_ready",false))
+    var evolution_active: bool = bool(spec.get("evolution_active",false))
+    if evolution_ready or evolution_active:
+        accent = Color("f1c96a")
+
+    var fill_alpha: float = 0.095
+    var border_alpha: float = 0.58
+    var border_width: int = 1
+    if rarity == "epic":
+        fill_alpha = 0.13
+        border_alpha = 0.72
+    elif rarity == "legendary":
+        fill_alpha = 0.16
+        border_alpha = 0.90
+        border_width = 2
+    if evolution_ready:
+        fill_alpha = 0.19
+        border_alpha = 0.98
+        border_width = 2
+
+    button.custom_minimum_size = Vector2(0, 62 if evolution_ready else 58)
+    button.add_theme_font_size_override("font_size", 9 if evolution_ready else 10)
+    button.add_theme_stylebox_override(
+        "normal",
+        VisualSystem.panel(Color(accent, fill_alpha), Color(accent, border_alpha), 6, 9, border_width)
+    )
+    button.add_theme_stylebox_override(
+        "pressed",
+        VisualSystem.panel(Color(accent, minf(0.28, fill_alpha + 0.08)), Color(accent, 1.0), 6, 9, border_width)
+    )
+    button.add_theme_color_override("font_color", accent.lightened(0.18) if rarity != "common" or evolution_ready else VisualSystem.TEXT)
+    button.add_theme_color_override("font_hover_color", accent.lightened(0.28))
 
 func hide_modal() -> void:
     modal.visible = false
