@@ -460,8 +460,16 @@ func _harvest(delta: float) -> void:
             continue
 
         var harvest_damage: float = player.damage * delta * GameRules.harvest_multiplier(spot.resource_type) * WeaponRules.mechanic_value(player.weapon_id, "harvest_mult", 1.0)
-        if spot.damage(harvest_damage):
-            var kind: String = "wood" if spot.resource_type == "tree" else ("stone" if spot.resource_type == "rock" else "ore")
+        var show_hit_feedback: bool = spot.hit_gate <= 0.0
+        var resource_kind: String = "wood" if spot.resource_type == "tree" else ("stone" if spot.resource_type == "rock" else "ore")
+        var broke: bool = spot.damage(harvest_damage)
+        if show_hit_feedback and core_fx != null:
+            core_fx.resource_hit(resource_kind, spot.global_position, player.global_position.direction_to(spot.global_position))
+        if broke:
+            var kind: String = resource_kind
+            if visual_v2_enabled:
+                var break_strength: float = 1.15 if spot.resource_type == "tree" else (0.95 if spot.resource_type == "rock" else 0.82)
+                trigger_camera_shake(break_strength, 0.10)
             var amount: int = maxi(1, int(round(
                 float(GameRules.resource_yield(spot.resource_type, biome_index)) * resource_yield_multiplier
             )))
