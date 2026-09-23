@@ -25,6 +25,10 @@ func _run() -> void:
             _fail("Missing coherent hero frame: " + frame_id)
     if not ResourceLoader.exists(AxPlayer.VISUAL_V2_HERO_PATH):
         _fail("Missing production hero asset")
+    for enemy_role: String in AxEnemy.VISUAL_GATE_WALK_PATHS:
+        var enemy_walk_path: String = str(AxEnemy.VISUAL_GATE_WALK_PATHS[enemy_role])
+        if not ResourceLoader.exists(enemy_walk_path):
+            _fail("Missing Visual Gate enemy walk strip: " + enemy_role)
 
     var world: GameWorld = GameScene.instantiate() as GameWorld
     world.configure(0, 1, "expedition")
