@@ -119,6 +119,8 @@ func _draw() -> void:
         return
 
     var breathe: float = (sin(elapsed * 2.8) + 1.0) * 0.5
+    if visual_gate_enabled and biome_index == 0:
+        _draw_production_activity_ground()
     if focus:
         draw_circle(Vector2.ZERO, 34.0 + breathe * 2.0, Color(0.94, 0.75, 0.35, 0.07))
         draw_arc(Vector2.ZERO, 34.0 + breathe * 2.0, 0.0, TAU, 28, Color(0.94, 0.75, 0.35, 0.52), 1.5)
@@ -161,7 +163,64 @@ func _draw() -> void:
         draw_rect(Rect2(-23, 30, 46 * ratio, 4), Color("b55862"))
 
     var font: Font = ThemeDB.fallback_font
-    draw_string(font, Vector2(-31, 45), _title(), HORIZONTAL_ALIGNMENT_CENTER, 62, 7, Color("ece4cf"))
+    if visual_gate_enabled and biome_index == 0:
+        var accent: Color = _production_marker_color()
+        var label_rect := Rect2(-33, 34, 66, 15)
+        draw_rect(label_rect, Color(0.025,0.038,0.034,0.82))
+        draw_rect(Rect2(-33,34,66,2), Color(accent,0.88))
+        draw_rect(label_rect, Color(accent,0.30), false, 1.0)
+        draw_string(font, Vector2(-31, 45), _title(), HORIZONTAL_ALIGNMENT_CENTER, 62, 7, Color("f0e8d3"))
+    else:
+        draw_string(font, Vector2(-31, 45), _title(), HORIZONTAL_ALIGNMENT_CENTER, 62, 7, Color("ece4cf"))
+
+func _production_marker_color() -> Color:
+    match activity_type:
+        "nest", "infected_cache":
+            return Color("c76158")
+        "rare_ore":
+            return Color("8fc8e8")
+        "memory_rift", "wind_shrine":
+            return Color("9d87d0")
+        "wounded_scout":
+            return Color("d9b269")
+        "broken_tower":
+            return Color("c5a36b")
+        "wanderer_grave":
+            return Color("aaa99c")
+        _:
+            return Color("d7b35f")
+
+func _draw_production_activity_ground() -> void:
+    # MASTER P6: meaningful world activities should be readable markers that
+    # still belong to the terrain. The ground skirt removes the old floating
+    # icon feel while the small accent tag keeps mobile readability.
+    if activity_type == "memory_rift":
+        return
+    var rx: float = 25.0
+    var ry: float = 6.8
+    match activity_type:
+        "caravan":
+            rx = 34.0
+            ry = 8.0
+        "broken_tower":
+            rx = 27.0
+            ry = 7.0
+        "nest":
+            rx = 29.0
+            ry = 7.6
+        "rare_ore":
+            rx = 28.0
+            ry = 7.3
+    _draw_shadow_ellipse(Vector2(0,17),Vector2(rx,ry),Color(0.02,0.03,0.02,0.24))
+    _draw_shadow_ellipse(Vector2(0,18),Vector2(rx*1.12,ry*1.55),Color(0.32,0.23,0.13,0.09))
+    var grass := Color(0.24,0.41,0.20,0.35)
+    draw_line(Vector2(-rx*0.72,20),Vector2(-rx*0.68,14),grass,1.0)
+    draw_line(Vector2(rx*0.68,20),Vector2(rx*0.62,15),grass,1.0)
+
+func _draw_shadow_ellipse(center: Vector2, radius: Vector2, color: Color) -> void:
+    draw_set_transform(center, 0.0, Vector2(1.0, radius.y / maxf(1.0, radius.x)))
+    draw_circle(Vector2.ZERO, radius.x, color)
+    draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)
 
 func _title() -> String:
     match activity_type:
