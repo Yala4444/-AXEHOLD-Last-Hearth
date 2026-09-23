@@ -17,6 +17,8 @@ var elapsed: float = 0.0
 var cursed: bool = false
 var visual_gate_enabled: bool = false
 var rare_ore_art: Texture2D
+var finish_fade_time: float = 0.0
+const FINISH_FADE_DURATION: float = 1.25
 
 func configure(kind: String, index: int) -> void:
     activity_type = kind
@@ -94,12 +96,21 @@ func finish() -> void:
     finished = true
     focus = false
     progress = 1.0
+    finish_fade_time = FINISH_FADE_DURATION
     resolved.emit(self)
     queue_redraw()
 
 func _process(delta: float) -> void:
     elapsed += delta
-    if focus or not finished:
+    if finished:
+        finish_fade_time = maxf(0.0, finish_fade_time - delta)
+        modulate.a = clampf(finish_fade_time / FINISH_FADE_DURATION, 0.0, 1.0)
+        if finish_fade_time <= 0.0:
+            queue_free()
+            return
+        queue_redraw()
+        return
+    if focus:
         queue_redraw()
 
 func _draw() -> void:
