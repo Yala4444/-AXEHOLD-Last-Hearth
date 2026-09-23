@@ -46,8 +46,7 @@ const VISUAL_V2_FRAME_PATHS: Dictionary = {
 }
 const VISUAL_V2_IDLE_PATHS: Dictionary = {
     "front":"res://assets/art/visual_v2/hero_idle_front.webp",
-    "side":"res://assets/art/visual_v2/hero_idle_side.webp",
-    "back":"res://assets/art/visual_v2/hero_idle_back.webp"
+    "side":"res://assets/art/visual_v2/hero_idle_side.webp"
 }
 
 var target_position: Vector2 = Vector2.ZERO
@@ -994,10 +993,18 @@ func _draw_visual_v2() -> void:
     # frame here, which is exactly why the hero still looked ready to step.
     if not moving:
         frame = visual_v2_idle_frames.get(view_id) as Texture2D
-        if frame == null:
-            frame = visual_v2_frames.get("%s_a" % view_id) as Texture2D
-        next_frame = frame
-        transition = 0.0
+        if view_id == "back":
+            # The extracted neutral back concept frame was not clean enough for
+            # production. Blend the two coherent back poses into a centered stop
+            # instead of shipping an artifacted texture or freezing one stride.
+            frame = visual_v2_frames.get("back_a") as Texture2D
+            next_frame = visual_v2_frames.get("back_b") as Texture2D
+            transition = 0.5
+        else:
+            if frame == null:
+                frame = visual_v2_frames.get("%s_a" % view_id) as Texture2D
+            next_frame = frame
+            transition = 0.0
     elif moving and view_id == "side" and not visual_v2_side_walk.is_empty():
         # Six coherent side poses complete one stride in roughly the same time
         # as the four-pose front/back loops.
