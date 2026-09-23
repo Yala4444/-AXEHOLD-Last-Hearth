@@ -40,11 +40,43 @@ var status_generation: int = 0
 var banner_queue: Array[Dictionary] = []
 var banner_running: bool = false
 var banner_current_text: String = ""
+var visual_gate_enabled: bool = false
 
 func _ready() -> void:
     layer = 60
     _build()
     get_viewport().size_changed.connect(_layout)
+    _layout()
+
+func set_visual_gate(value: bool) -> void:
+    visual_gate_enabled = value
+    if root == null:
+        return
+
+    var hp_panel := root.get_node_or_null("HeroPanel") as PanelContainer
+    var phase_panel := root.get_node_or_null("PhasePanel") as PanelContainer
+    var base_panel := root.get_node_or_null("BasePanel") as PanelContainer
+    var storage_panel := root.get_node_or_null("StoragePanel") as PanelContainer
+    var pause := root.get_node_or_null("PauseButton") as Button
+
+    if visual_gate_enabled:
+        # Release-look HUD: keep the same information and controls, but let the
+        # world breathe. The three critical panels stay readable while their
+        # surfaces become lighter and less "debug-dashboard" like.
+        if hp_panel != null:
+            hp_panel.add_theme_stylebox_override("panel", VisualSystem.panel(Color(0.025,0.038,0.040,0.72), Color(0.47,0.25,0.23,0.34), 6, 0, 1))
+        if phase_panel != null:
+            phase_panel.add_theme_stylebox_override("panel", VisualSystem.panel(Color(0.025,0.038,0.040,0.70), Color(0.31,0.36,0.34,0.30), 6, 0, 1))
+        if base_panel != null:
+            base_panel.add_theme_stylebox_override("panel", VisualSystem.panel(Color(0.030,0.040,0.034,0.72), Color(0.48,0.38,0.22,0.34), 6, 0, 1))
+        if storage_panel != null:
+            storage_panel.add_theme_stylebox_override("panel", VisualSystem.panel(Color(0.030,0.040,0.034,0.58), Color(0.38,0.33,0.23,0.24), 6, 0, 1))
+        if pause != null:
+            pause.add_theme_stylebox_override("normal", VisualSystem.panel(Color(0.025,0.038,0.040,0.66), Color(0.31,0.36,0.34,0.28), 6, 0, 1))
+        objective_label.add_theme_color_override("font_color", Color("decfa4"))
+        objective_label.add_theme_font_size_override("font_size", 7)
+        status_panel.add_theme_stylebox_override("panel", VisualSystem.panel(Color(0.025,0.040,0.037,0.76), Color(0.38,0.46,0.39,0.28), 7, 0, 1))
+        build_panel.add_theme_stylebox_override("panel", VisualSystem.panel(Color(0.025,0.040,0.037,0.82), Color(0.45,0.48,0.38,0.34), 7, 0, 1))
     _layout()
 
 func _process(delta: float) -> void:
@@ -243,6 +275,16 @@ func _layout() -> void:
     var pause_w: float = 30.0
     var hp_w: float = 66.0
     var base_w: float = 72.0
+    var top_y: float = 6.0
+    if visual_gate_enabled:
+        # A little more breathing room from the browser/device edge and a
+        # slightly narrower information strip on phones.
+        margin = 9.0
+        gap = 3.0
+        pause_w = 31.0
+        hp_w = 64.0
+        base_w = 68.0
+        top_y = 9.0
     var phase_w: float = width - margin * 2.0 - gap * 3.0 - pause_w - hp_w - base_w
     if modal_panel != null:
         modal_panel.custom_minimum_size = Vector2(clampf(width - 30.0, 250.0, 330.0), 0.0)
@@ -253,13 +295,13 @@ func _layout() -> void:
     var pause := root.get_node("PauseButton") as Button
     var storage_panel := root.get_node("StoragePanel") as PanelContainer
 
-    hp_panel.position = Vector2(margin, 6)
+    hp_panel.position = Vector2(margin, top_y)
     hp_panel.size = Vector2(hp_w, 33)
-    phase_panel.position = Vector2(margin + hp_w + gap, 6)
+    phase_panel.position = Vector2(margin + hp_w + gap, top_y)
     phase_panel.size = Vector2(phase_w, 33)
-    base_panel.position = Vector2(margin + hp_w + gap + phase_w + gap, 6)
+    base_panel.position = Vector2(margin + hp_w + gap + phase_w + gap, top_y)
     base_panel.size = Vector2(base_w, 33)
-    pause.position = Vector2(width - margin - pause_w, 6)
+    pause.position = Vector2(width - margin - pause_w, top_y)
     pause.size = Vector2(pause_w, 33)
 
     hp_label.position = Vector2(27, 3)
@@ -283,12 +325,20 @@ func _layout() -> void:
     base_bar.position = Vector2(7, 23)
     base_bar.size = Vector2(base_w - 14, 4)
 
-    storage_panel.position = Vector2(margin, 43)
-    storage_panel.size = Vector2(width - margin * 2.0, 24)
-    objective_label.position = Vector2(margin + 8, 70)
-    objective_label.size = Vector2(width - margin * 2.0 - 16, 12)
+    if visual_gate_enabled:
+        var storage_w: float = minf(246.0, width - margin * 2.0)
+        storage_panel.position = Vector2((width - storage_w) * 0.5, top_y + 37.0)
+        storage_panel.size = Vector2(storage_w, 22)
+        objective_label.position = Vector2(margin + 14, top_y + 62.0)
+        objective_label.size = Vector2(width - margin * 2.0 - 28, 12)
+    else:
+        storage_panel.position = Vector2(margin, 43)
+        storage_panel.size = Vector2(width - margin * 2.0, 24)
+        objective_label.position = Vector2(margin + 8, 70)
+        objective_label.size = Vector2(width - margin * 2.0 - 16, 12)
 
-    build_panel.position = Vector2((width - 204.0) * 0.5, 87)
+    var context_y: float = 87.0 if not visual_gate_enabled else top_y + 78.0
+    build_panel.position = Vector2((width - 204.0) * 0.5, context_y)
     build_panel.size = Vector2(204, 54)
     build_title.position = Vector2(9, 4)
     build_title.size = Vector2(186, 13)
@@ -297,19 +347,21 @@ func _layout() -> void:
     build_cost.position = Vector2(9, 40)
     build_cost.size = Vector2(186, 11)
 
-    status_panel.position = Vector2((width - 236.0) * 0.5, 88)
+    status_panel.position = Vector2((width - 236.0) * 0.5, context_y + 1.0)
     status_panel.size = Vector2(236, 26)
     status_label.position = Vector2(7, 2)
     status_label.size = Vector2(222, 22)
 
-    boss_panel.position = Vector2(38, 118)
+    var boss_y: float = 118.0 if not visual_gate_enabled else context_y + 31.0
+    boss_panel.position = Vector2(38, boss_y)
     boss_panel.size = Vector2(width - 76, 38)
     boss_label.position = Vector2(32, 2)
     boss_label.size = Vector2(width - 140, 14)
     boss_bar.position = Vector2(11, 25)
     boss_bar.size = Vector2(width - 98, 5)
 
-    banner.position = Vector2(18, 163)
+    var banner_y: float = 163.0 if not visual_gate_enabled else boss_y + 45.0
+    banner.position = Vector2(18, banner_y)
     banner.size = Vector2(width - 36, 34)
 
 func update_stats(hero_hp: float, base_hp: float, bag: int, capacity: int, wave: int, phase: String, phase_value: float, xp: int, next_xp: int, level: int, storage: Dictionary, enemies_left: int, inventory: Dictionary = {}) -> void:
