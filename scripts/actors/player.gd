@@ -977,7 +977,20 @@ func _draw_visual_v2() -> void:
     var next_phase_id: String = "a" if phase_number == 1 else "b"
     var frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, phase_id]) as Texture2D
     var next_frame: Texture2D = visual_v2_frames.get("%s_%s" % [view_id, next_phase_id]) as Texture2D
-    if moving and view_id == "side" and not visual_v2_side_walk.is_empty():
+
+    # Idle must read as a stop, not as a walk cycle frozen mid-stride. Until
+    # dedicated neutral artwork is produced, use the least-stride production
+    # frames and remove all walk-cycle transition/lean.
+    if not moving:
+        if view_id == "side" and visual_v2_side_walk.size() >= 4:
+            frame = visual_v2_side_walk[3]
+        elif view_id == "front":
+            frame = visual_v2_frames.get("front_b") as Texture2D
+        elif view_id == "back":
+            frame = visual_v2_frames.get("back_a") as Texture2D
+        next_frame = frame
+        transition = 0.0
+    elif moving and view_id == "side" and not visual_v2_side_walk.is_empty():
         # Six coherent side poses complete one stride in roughly the same time
         # as the four-pose front/back loops.
         var walk_frame_index: int = int(floor(walk_clock * 3.0)) % visual_v2_side_walk.size()
@@ -999,13 +1012,13 @@ func _draw_visual_v2() -> void:
     if next_frame == null:
         next_frame = frame
 
-    var breathe: float = sin(motion_time * 2.2) * (0.28 if not moving else 0.0)
+    var breathe: float = sin(motion_time * 1.7) * (0.10 if not moving else 0.0)
     var recoil := Vector2(-visual_facing_direction.x, -visual_facing_direction.y) * damage_flash * 3.0
     var body_offset := recoil + Vector2(0.0, breathe - weapon_action_ratio() * 0.8)
     var tint := Color.WHITE.lerp(Color(1.0, 0.62, 0.54), clampf(damage_flash, 0.0, 1.0) * 0.68)
     # The image itself carries the stride. Do not squash/stretch the whole
     # character: that was one of the reasons the hero appeared to change size.
-    var body_lean: float = sin(phase_unit * PI) * 0.006 * speed_ratio
+    var body_lean: float = sin(phase_unit * PI) * 0.006 * speed_ratio if moving else 0.0
 
     _draw_shadow_ellipse(Vector2(0, VISUAL_V2_FOOT_Y), Vector2(20.5 - absf(sin(phase_unit * PI)) * 0.6, 5.2), Color(0.025, 0.035, 0.03, 0.24))
     _draw_relic_auras()
@@ -1037,7 +1050,7 @@ func _visual_v2_orbit_count() -> int:
         "axes":
             return maxi(1, axes)
         "twin_blades":
-            return 2
+            return maxi(2, axes)
         _:
             return 1
 
