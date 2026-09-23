@@ -15,6 +15,7 @@ var clean_hearth: AnimatedSprite2D
 var clean_canvas_modulate: CanvasModulate
 var clean_rng := RandomNumberGenerator.new()
 var clean_ground_marks: Array[Dictionary] = []
+var clean_ground_patches: Array[Dictionary] = []
 var clean_respawns: Array[Dictionary] = []
 var clean_deposit_cooldown: float = 0.0
 var clean_spawn_cooldown: float = 0.0
@@ -42,7 +43,7 @@ func _ready() -> void:
     world_rect = Rect2(Vector2.ZERO, world_size)
     base_position = Vector2(world_size.x * 0.5, 405.0)
     biome = GameRules.biome(biome_index)
-    base_max_hp = 300.0
+    base_max_hp = 270.0
     base_hp = base_max_hp
     storage = {"wood":0,"stone":0,"ore":0,"parts":0}
     built = {"wall":false,"forge":false,"turret":false,"shrine":false}
@@ -115,6 +116,11 @@ func _create_clean_player() -> void:
     player.add_child(camera)
     camera.position_smoothing_enabled = true
     camera.position_smoothing_speed = 7.5
+    camera.limit_left = 0
+    camera.limit_top = 0
+    camera.limit_right = int(world_size.x)
+    camera.limit_bottom = int(world_size.y)
+    camera.limit_smoothed = true
     camera.make_current()
 
 func _create_clean_hearth() -> void:
@@ -135,7 +141,7 @@ func _create_clean_hearth() -> void:
     clean_hearth.sprite_frames = frames
     clean_hearth.animation = "burn"
     clean_hearth.position = base_position
-    clean_hearth.scale = Vector2.ONE * 0.72
+    clean_hearth.scale = Vector2.ONE * 0.56
     add_child(clean_hearth)
     clean_hearth.play()
 
@@ -158,11 +164,11 @@ func _create_clean_build_pads() -> void:
 
 func _spawn_initial_resources() -> void:
     resources.clear()
-    for _i: int in range(28):
+    for _i: int in range(22):
         _spawn_clean_resource("tree")
-    for _i: int in range(10):
+    for _i: int in range(8):
         _spawn_clean_resource("rock")
-    for _i: int in range(7):
+    for _i: int in range(5):
         _spawn_clean_resource("ore")
 
 func _spawn_clean_resource(kind: String) -> void:
@@ -174,8 +180,8 @@ func _spawn_clean_resource(kind: String) -> void:
     resources.append(spot)
 
 func _clean_resource_position(kind: String) -> Vector2:
-    var min_base_distance: float = 250.0
-    var min_other: float = 78.0 if kind == "tree" else 58.0
+    var min_base_distance: float = 270.0
+    var min_other: float = 102.0 if kind == "tree" else 72.0
     for _attempt: int in range(80):
         var pos := Vector2(
             clean_rng.randf_range(72.0,world_size.x-72.0),
@@ -194,7 +200,14 @@ func _clean_resource_position(kind: String) -> Vector2:
 
 func _seed_ground_details() -> void:
     clean_ground_marks.clear()
-    for _i: int in range(190):
+    clean_ground_patches.clear()
+    for _i: int in range(58):
+        clean_ground_patches.append({
+            "pos":Vector2(clean_rng.randf_range(35,world_size.x-35),clean_rng.randf_range(40,world_size.y-40)),
+            "radius":clean_rng.randf_range(48.0,128.0),
+            "tone":clean_rng.randi_range(0,2)
+        })
+    for _i: int in range(220):
         var pos := Vector2(clean_rng.randf_range(20,world_size.x-20),clean_rng.randf_range(20,world_size.y-20))
         var roll: float = clean_rng.randf()
         clean_ground_marks.append({
@@ -615,7 +628,6 @@ func _nearest_clean_enemy(origin: Vector2, max_distance: float) -> AxEnemy:
 func _update_clean_hud() -> void:
     if hud == null or player == null:
         return
-    var phase_ratio: float = phase_time / maxf(1.0,phase_max)
     hud.update_stats(
         player.hp,
         base_hp,
@@ -623,7 +635,7 @@ func _update_clean_hud() -> void:
         player.capacity,
         wave,
         phase,
-        phase_ratio,
+        phase_time,
         player.xp,
         player.next_xp,
         player.level,
@@ -642,15 +654,35 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _draw() -> void:
     _draw_clean_ground()
+    _draw_ground_variation()
     _draw_clean_paths()
     _draw_clean_details()
     _draw_clean_hearth_socket()
 
 func _draw_clean_ground() -> void:
-    draw_rect(Rect2(Vector2.ZERO,world_size),Color("617c5c"))
+    # One calm terrain surface. The concept illustration is used once around
+    # the hearth instead of being tiled across the whole map.
+    draw_rect(Rect2(Vector2.ZERO,world_size),Color("6b845f"))
+    draw_rect(Rect2(Vector2.ZERO,world_size),Color(0.10,0.17,0.09,0.08))
     if clean_background != null:
-        draw_texture_rect(clean_background,Rect2(Vector2.ZERO,world_size),true,Color(0.78,0.84,0.74,0.48))
-    draw_rect(Rect2(Vector2.ZERO,world_size),Color(0.19,0.28,0.18,0.12))
+        var scenic_rect := Rect2(Vector2(0,0),Vector2(world_size.x,900))
+        draw_texture_rect(clean_background,scenic_rect,false,Color(0.82,0.88,0.78,0.66))
+        # Gentle fade into the playable forest floor removes the old square seam.
+        draw_rect(Rect2(0,700,world_size.x,70),Color(0.40,0.52,0.34,0.10))
+        draw_rect(Rect2(0,770,world_size.x,70),Color(0.40,0.52,0.34,0.18))
+        draw_rect(Rect2(0,840,world_size.x,80),Color(0.40,0.52,0.34,0.30))
+
+func _draw_ground_variation() -> void:
+    for patch: Dictionary in clean_ground_patches:
+        var pos: Vector2 = patch.get("pos",Vector2.ZERO)
+        var radius: float = float(patch.get("radius",70.0))
+        var tone: int = int(patch.get("tone",0))
+        var color := Color(0.18,0.29,0.14,0.035)
+        if tone == 1:
+            color = Color(0.46,0.41,0.24,0.030)
+        elif tone == 2:
+            color = Color(0.12,0.24,0.16,0.030)
+        draw_circle(pos,radius,color)
 
 func _draw_clean_paths() -> void:
     var main_path := PackedVector2Array([
@@ -662,15 +694,15 @@ func _draw_clean_paths() -> void:
         Vector2(base_position.x-35,1880),
         Vector2(base_position.x+30,2260)
     ])
-    draw_polyline(main_path,Color(0.33,0.22,0.13,0.34),112.0,true)
-    draw_polyline(main_path,Color(0.55,0.38,0.22,0.42),82.0,true)
+    draw_polyline(main_path,Color(0.31,0.22,0.14,0.18),62.0,true)
+    draw_polyline(main_path,Color(0.57,0.45,0.29,0.24),42.0,true)
 
     for pad: BuildPad in pads:
         if not is_instance_valid(pad):
             continue
         var branch := PackedVector2Array([base_position,pad.global_position])
-        draw_polyline(branch,Color(0.36,0.25,0.15,0.30),54.0,true)
-        draw_polyline(branch,Color(0.56,0.40,0.24,0.34),36.0,true)
+        draw_polyline(branch,Color(0.34,0.24,0.15,0.16),30.0,true)
+        draw_polyline(branch,Color(0.56,0.43,0.27,0.20),18.0,true)
 
 func _draw_clean_details() -> void:
     for item: Dictionary in clean_ground_marks:
@@ -686,8 +718,8 @@ func _draw_clean_details() -> void:
             draw_circle(pos,size*0.72,Color(0.70,0.69,0.47,0.10))
 
 func _draw_clean_hearth_socket() -> void:
-    draw_circle(base_position,158.0,Color(0.96,0.69,0.29,0.055))
-    draw_arc(base_position,158.0,0,TAU,64,Color(0.96,0.72,0.30,0.18),2.0)
-    draw_set_transform(base_position+Vector2(0,37),0.0,Vector2(1.0,0.27))
-    draw_circle(Vector2.ZERO,74.0,Color(0.03,0.035,0.025,0.24))
+    draw_circle(base_position,128.0,Color(0.96,0.69,0.29,0.042))
+    draw_arc(base_position,128.0,0,TAU,64,Color(0.96,0.72,0.30,0.14),1.6)
+    draw_set_transform(base_position+Vector2(0,30),0.0,Vector2(1.0,0.27))
+    draw_circle(Vector2.ZERO,62.0,Color(0.03,0.035,0.025,0.22))
     draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)
