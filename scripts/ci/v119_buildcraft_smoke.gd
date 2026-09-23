@@ -74,10 +74,34 @@ func _test_live_buildcraft() -> void:
     if ids.size() != choices.size():
         _fail("Buildcraft level-up choices contain duplicates")
 
+    # Orbit-count regression: the generic +1 rotating weapon card must be
+    # visible and functional on Twin Blades, not just mutate an unused integer.
+    world.player.apply_weapon_profile("twin_blades")
+    var twin_before: int = world.player.axes
+    world.player.apply_perk("axe")
+    if world.player.axes != twin_before + 1:
+        _fail("Vortex Steel did not add a rotating Twin Blade")
+    if int(world.player.call("_visual_v2_orbit_count")) != world.player.axes:
+        _fail("Visible Twin Blade count did not follow Vortex Steel")
+    world.player.apply_weapon_profile("axes")
+
     world.player.apply_perk("damage")
     world.player.apply_perk("damage")
     if world.player.has_evolution("flame"):
         _fail("Family evolved before reaching 3/3")
+
+    var closing_spec: Dictionary = GameRules.perk_spec("fire_orb")
+    closing_spec["rarity"] = "rare"
+    var closing_meta: Dictionary = world.buildcraft.choice_card_meta(closing_spec)
+    if not bool(closing_meta.get("evolution_ready",false)):
+        _fail("A 3/3 Buildcraft choice was not marked as evolution-ready")
+    if world.hud.buildcraft_rarity_color("common") == world.hud.buildcraft_rarity_color("rare"):
+        _fail("Buildcraft common and rare cards have the same visual color")
+    if world.hud.buildcraft_rarity_color("rare") == world.hud.buildcraft_rarity_color("epic"):
+        _fail("Buildcraft rare and epic cards have the same visual color")
+    if world.hud.buildcraft_rarity_color("epic") == world.hud.buildcraft_rarity_color("legendary"):
+        _fail("Buildcraft epic and legendary cards have the same visual color")
+
     world.player.apply_perk("fire_orb")
     if not world.player.has_evolution("flame"):
         _fail("Flame family did not evolve at 3/3")
