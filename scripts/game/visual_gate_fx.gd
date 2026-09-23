@@ -8,6 +8,7 @@ var grade_material: ShaderMaterial
 var hearth_light: PointLight2D
 var hero_fill_light: PointLight2D
 var night_mix: float = 0.0
+var dusk_mix: float = 0.0
 var elapsed: float = 0.0
 
 func setup(owner_world: GameWorld) -> void:
@@ -72,6 +73,7 @@ render_mode unshaded;
 
 uniform sampler2D screen_texture : hint_screen_texture, filter_linear;
 uniform float night_mix = 0.0;
+uniform float dusk_mix = 0.0;
 uniform float time_s = 0.0;
 uniform vec2 hearth_uv = vec2(0.5, 0.5);
 uniform vec2 hero_uv = vec2(0.5, 0.55);
@@ -89,12 +91,21 @@ void fragment() {
 
     // Slightly richer midtones without crushing the hand-painted palette.
     col = (col - 0.5) * 1.045 + 0.5;
-    col *= mix(vec3(1.025, 1.0, 0.965), vec3(0.82, 0.91, 1.035), night_mix * 0.62);
+
+    // Dusk gets a brief amber/russet lift before the colder night grade takes
+    // over. This makes the day->night transition feel like a real passage of
+    // time instead of a binary screen tint.
+    vec3 day_grade = vec3(1.025, 1.0, 0.965);
+    vec3 dusk_grade = vec3(1.075, 0.985, 0.900);
+    vec3 night_grade = vec3(0.82, 0.91, 1.035);
+    vec3 phase_grade = mix(day_grade, dusk_grade, dusk_mix * 0.48);
+    phase_grade = mix(phase_grade, night_grade, night_mix * 0.62);
+    col *= phase_grade;
 
     // Warm visual anchor around the hearth. This follows the world position.
     float hearth_dist = distance(uv, hearth_uv);
     float hearth_glow = exp(-hearth_dist * 8.4);
-    col += vec3(0.115, 0.052, 0.012) * hearth_glow * (0.48 + night_mix * 0.72);
+    col += vec3(0.115, 0.052, 0.012) * hearth_glow * (0.48 + dusk_mix * 0.20 + night_mix * 0.72);
 
     // Tiny local lift around the hero so the silhouette never disappears at night.
     float hero_dist = distance(uv, hero_uv);
@@ -104,7 +115,7 @@ void fragment() {
     // Soft cinematic vignette. Corners darken more at night.
     vec2 centered = uv - vec2(0.5);
     float vignette = smoothstep(0.34, 0.73, length(centered));
-    col *= 1.0 - vignette * (0.10 + night_mix * 0.10);
+    col *= 1.0 - vignette * (0.10 + dusk_mix * 0.025 + night_mix * 0.10);
 
     // Very low amplitude grain avoids a flat digital wash.
     vec2 grain_cell = floor(uv * vec2(195.0, 422.0));
@@ -123,19 +134,31 @@ func _process(delta: float) -> void:
         return
 
     elapsed += delta
-    var target_night := 1.0 if world.phase == "night" else 0.0
-    night_mix = move_toward(night_mix, target_night, delta * 0.72)
+
+    var target_night: float = 1.0 if world.phase == "night" else 0.0
+    var target_dusk: float = 0.0
+    if world.phase == "day":
+        # The final 12 seconds of the day become a readable twilight window.
+        # Gameplay timing is unchanged; only the presentation eases toward
+        # night so players feel the threat arriving before the banner appears.
+        var dusk_window: float = 12.0
+        target_dusk = clampf((dusk_window - world.phase_time) / dusk_window, 0.0, 1.0)
+
+    night_mix = move_toward(night_mix, target_night, delta * 0.62)
+    dusk_mix = move_toward(dusk_mix, target_dusk, delta * 0.82)
 
     _sync_positions()
 
     if hearth_light != null:
-        hearth_light.energy = lerpf(0.66, 1.28, night_mix) * (0.97 + sin(elapsed * 5.2) * 0.035)
-        hearth_light.texture_scale = lerpf(2.15, 2.70, night_mix)
+        var warmth_mix: float = clampf(dusk_mix * 0.34 + night_mix, 0.0, 1.0)
+        hearth_light.energy = lerpf(0.66, 1.28, warmth_mix) * (0.97 + sin(elapsed * 5.2) * 0.035)
+        hearth_light.texture_scale = lerpf(2.15, 2.70, warmth_mix)
     if hero_fill_light != null:
-        hero_fill_light.energy = lerpf(0.10, 0.24, night_mix)
+        hero_fill_light.energy = lerpf(0.10, 0.24, clampf(dusk_mix * 0.25 + night_mix, 0.0, 1.0))
 
     if grade_material != null:
         grade_material.set_shader_parameter("night_mix", night_mix)
+        grade_material.set_shader_parameter("dusk_mix", dusk_mix)
         grade_material.set_shader_parameter("time_s", elapsed)
         var viewport_size := get_viewport().get_visible_rect().size
         if viewport_size.x > 1.0 and viewport_size.y > 1.0:
