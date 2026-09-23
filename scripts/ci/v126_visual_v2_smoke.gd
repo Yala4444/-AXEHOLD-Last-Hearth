@@ -70,6 +70,31 @@ func _run() -> void:
         world.visual_gate_fx._process(1.0)
         if world.visual_gate_fx.night_mix <= 0.05:
             _fail("Visual Gate night grade did not engage")
+    if world.world_generator != null:
+        for landmark: WorldLandmark in world.world_generator.landmark_nodes:
+            if is_instance_valid(landmark) and landmark.kind == "ancient_tree":
+                _fail("Visual Gate spawned the boss-like ancient sentinel as scenery")
+                break
+
+    # A buildcraft/evolution choice is a true pause. Held joystick input must
+    # be cancelled and actor physics must stop until the player makes a choice.
+    world.player.set_move_input(Vector2.RIGHT)
+    world.player.velocity = Vector2(64.0, 0.0)
+    world._show_perks(world.player.level + 1)
+    await _wait_frames(2)
+    if not world.modal_gameplay_paused:
+        _fail("Buildcraft modal did not pause gameplay")
+    if world.player.is_physics_processing():
+        _fail("Hero physics continued during buildcraft choice")
+    if world.player.move_input.length_squared() > 0.0001 or world.player.velocity.length_squared() > 0.0001:
+        _fail("Held joystick movement survived buildcraft modal")
+    if not world.hud.modal_open():
+        _fail("Buildcraft modal failed to open during pause test")
+    world.hud.hide_modal()
+    world._resume_gameplay_after_modal()
+    if not world.player.is_physics_processing():
+        _fail("Hero physics did not resume after modal choice")
+
     if world.core_fx == null or not world.core_fx.visual_gate_enabled:
         _fail("Visual Gate combat FX was not enabled")
     else:
