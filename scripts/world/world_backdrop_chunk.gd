@@ -117,34 +117,42 @@ func _draw_forest_atmosphere() -> void:
     var sx: int = int(floor(chunk_rect.position.x))
     var sy: int = int(floor(chunk_rect.position.y))
     var seed: int = abs(sx * 19 + sy * 43)
-    for i: int in range(4):
+
+    # Visual Gate follows the readability rule: atmosphere is visible, but
+    # never dense enough to compete with interactive resources.
+    var mote_count: int = 2 if visual_gate_enabled else 4
+    for i: int in range(mote_count):
         var px: float = 28.0 + float((seed + i * 97) % maxi(1, int(chunk_rect.size.x - 56.0)))
         var py: float = 24.0 + float((seed * 3 + i * 71) % maxi(1, int(chunk_rect.size.y - 48.0)))
         var p := Vector2(px, py)
         var world_p := chunk_rect.position + p
         if world_p.distance_to(base_position) < 125.0:
             continue
-        var glow_alpha: float = lerpf(0.10, 0.28, night_mix)
+        var glow_alpha: float = lerpf(0.08, 0.24, night_mix) if visual_gate_enabled else lerpf(0.10, 0.28, night_mix)
         draw_circle(p, 6.0, Color(0.86,0.67,0.25,glow_alpha * 0.18))
         draw_circle(p, 1.4, Color(0.95,0.79,0.36,glow_alpha))
-    # Broad root veins break the tiled ground pattern and lead the eye.
-    if seed % 3 == 0:
+
+    # Broad root veins are useful in the stable procedural pass, but the
+    # release-look gate intentionally removes them to keep the ground quiet.
+    if not visual_gate_enabled and seed % 3 == 0:
         var origin := Vector2(chunk_rect.size.x * 0.18, chunk_rect.size.y * 0.76)
         var root_color := Color(0.17,0.13,0.08,0.16 if not night else 0.12)
         draw_line(origin,origin + Vector2(82,-28),root_color,3.0)
         draw_line(origin + Vector2(49,-17),origin + Vector2(67,-42),root_color,2.0)
-    # Layered low mist and leaf litter soften the procedural grid while keeping
-    # the play space readable. The deterministic seed avoids visual popping.
-    for i: int in range(3):
+
+    var mist_count: int = 1 if visual_gate_enabled else 3
+    for i: int in range(mist_count):
         var mist_x: float = float((seed * 5 + i * 113) % maxi(1, int(chunk_rect.size.x)))
         var mist_y: float = float((seed * 7 + i * 59) % maxi(1, int(chunk_rect.size.y)))
-        var mist_alpha: float = lerpf(0.018, 0.045, night_mix)
-        draw_circle(Vector2(mist_x, mist_y), 34.0 + float(i) * 8.0, Color(0.55,0.63,0.55,mist_alpha))
-    for i: int in range(7):
+        var mist_alpha: float = lerpf(0.012, 0.032, night_mix) if visual_gate_enabled else lerpf(0.018, 0.045, night_mix)
+        draw_circle(Vector2(mist_x, mist_y), 38.0 + float(i) * 8.0, Color(0.55,0.63,0.55,mist_alpha))
+
+    var leaf_count: int = 3 if visual_gate_enabled else 7
+    for i: int in range(leaf_count):
         var leaf_x: float = float((seed * 11 + i * 47) % maxi(1, int(chunk_rect.size.x)))
         var leaf_y: float = float((seed * 13 + i * 79) % maxi(1, int(chunk_rect.size.y)))
-        var leaf_color := Color(0.34,0.15,0.10,0.16 if not night else 0.10)
-        draw_line(Vector2(leaf_x,leaf_y),Vector2(leaf_x + 4.0,leaf_y + 2.0),leaf_color,1.6)
+        var leaf_color := Color(0.34,0.15,0.10,0.11 if visual_gate_enabled else (0.16 if not night else 0.10))
+        draw_line(Vector2(leaf_x,leaf_y),Vector2(leaf_x + 4.0,leaf_y + 2.0),leaf_color,1.4 if visual_gate_enabled else 1.6)
 
 func _draw_frost_detail(p: Vector2, index: int) -> void:
     var snow: Color = Color(0.86, 0.94, 0.95, 0.075 if not night else 0.055)
