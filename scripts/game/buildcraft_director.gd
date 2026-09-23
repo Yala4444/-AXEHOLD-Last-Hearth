@@ -70,6 +70,10 @@ func _eligible(spec: Dictionary) -> bool:
         return true
     var perk_id: String = str(spec.get("id",""))
     var count: int = world.player.perk_count(perk_id)
+    # "Вихрь стали" literally adds a rotating weapon. Do not offer it to
+    # non-orbit weapon identities where the reward would be invisible.
+    if perk_id == "axe" and world.player.weapon_style not in ["axes","twin_blades"]:
+        return false
     if perk_id in ["fire_orb","frost_aura","thorn_ring","guardian_spirit"] and count >= 3:
         return false
     if count >= 4:
@@ -106,28 +110,52 @@ func _rarity_for_slot(level: int, slot: int) -> String:
         return "rare"
     return "common"
 
+func choice_card_meta(spec: Dictionary) -> Dictionary:
+    var perk_id: String = str(spec.get("id",""))
+    var rarity: String = str(spec.get("rarity","common"))
+    var family: String = GameRules.perk_family(perk_id)
+    var progress_before: int = 0
+    var evolved: bool = false
+    if world != null and world.player != null and not family.is_empty():
+        progress_before = world.player.family_count(family)
+        evolved = world.player.has_evolution(family)
+    var progress_after: int = mini(3, progress_before + (0 if rarity == "legendary" else 1))
+    return {
+        "rarity":rarity,
+        "family":family,
+        "progress_before":progress_before,
+        "progress_after":progress_after,
+        "evolution_ready":not family.is_empty() and not evolved and rarity != "legendary" and progress_after >= 3,
+        "evolution_active":evolved
+    }
+
 func choice_text(spec: Dictionary) -> String:
     var perk_id: String = str(spec.get("id",""))
     var rarity: String = str(spec.get("rarity","common"))
     var family: String = GameRules.perk_family(perk_id)
-    var progress: int = 0
-    if world != null and world.player != null and not family.is_empty():
-        progress = world.player.family_count(family)
+    var meta: Dictionary = choice_card_meta(spec)
 
     var rarity_label: String = rarity_name(rarity)
     var header: String = "%s · %s" % [rarity_label, str(spec.get("name","УСИЛЕНИЕ"))]
     var body: String = "ЭФФЕКТ: " + str(spec.get("desc",""))
     if rarity != "legendary" and not family.is_empty():
-        var next_progress: int = mini(3, progress + 1)
-        if next_progress >= 3:
-            var evolution: Dictionary = GameRules.evolution_for_family(family)
-            body += "\n%s 3/3 → %s: %s" % [
+        var before: int = int(meta.get("progress_before",0))
+        var after: int = int(meta.get("progress_after",0))
+        if bool(meta.get("evolution_active",false)):
+            var active_evolution: Dictionary = GameRules.evolution_for_family(family)
+            body += "\n%s · ЭВОЛЮЦИЯ АКТИВНА · %s" % [
                 GameRules.family_name(family),
-                str(evolution.get("name", "ЭВОЛЮЦИЯ")),
-                str(evolution.get("desc", "правило школы изменится"))
+                str(active_evolution.get("name","ЭВОЛЮЦИЯ"))
             ]
+        elif bool(meta.get("evolution_ready",false)):
+            var evolution: Dictionary = GameRules.evolution_for_family(family)
+            body += "\n%s · 3/3 · ЭВОЛЮЦИЯ: %s" % [
+                GameRules.family_name(family),
+                str(evolution.get("name", "ЭВОЛЮЦИЯ"))
+            ]
+            body += "\n%s" % str(evolution.get("desc", "правило школы изменится"))
         else:
-            body += "\n%s %d/3 → эволюция на 3/3" % [GameRules.family_name(family), next_progress]
+            body += "\n%s · %d/3 → %d/3" % [GameRules.family_name(family), before, after]
     return header + "\n" + body
 
 func apply_choice(perk_id: String, rarity: String = "common", source: String = "level") -> Dictionary:
