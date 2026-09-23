@@ -49,6 +49,14 @@ func visual_identity_profile() -> Dictionary:
         "production_art":biome_index == 0
     }
 
+func damage_stage() -> int:
+    var ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0)
+    if ratio <= 0.32:
+        return 2
+    if ratio <= 0.66:
+        return 1
+    return 0
+
 func _process(delta: float) -> void:
     hit_gate = maxf(0.0, hit_gate - delta)
     if hit_pulse > 0.0:
@@ -123,10 +131,51 @@ func _draw_illustrated_resource(flash: float) -> void:
         draw_arc(Vector2(0, shadow_y - 1.0), shadow_radius.x * 0.72, 0.18, PI - 0.18, 16, Color(0.70, 0.77, 0.55, 0.055), 1.0)
 
     var mirror: float = -1.0 if variant % 2 == 1 else 1.0
-    var tint_color := Color.WHITE.lerp(Color(1.0, 0.72, 0.58), flash * 0.62)
+    var stage: int = damage_stage()
+    var damage_dull: float = 0.07 * float(stage)
+    var tint_color := Color.WHITE.darkened(damage_dull).lerp(Color(1.0, 0.72, 0.58), flash * 0.62)
     draw_set_transform(Vector2(0, y_offset), 0.0, Vector2(mirror, 1.0))
     draw_texture_rect(texture, Rect2(-size * 0.5, size), false, tint_color)
     draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+    if visual_gate_enabled and stage > 0:
+        _draw_damage_state(stage, mirror)
+
+func _draw_damage_state(stage: int, mirror: float) -> void:
+    var severe: bool = stage >= 2
+    match resource_type:
+        "tree":
+            # The trunk is the gameplay-readable damage surface; the crown stays
+            # recognizable so a wounded tree never looks like a different prop.
+            var crack := Color(0.22, 0.12, 0.07, 0.78)
+            var x: float = 4.0 * mirror
+            draw_line(Vector2(x, -8), Vector2(-2.0 * mirror, 2), crack, 2.0)
+            draw_line(Vector2(-2.0 * mirror, 2), Vector2(5.0 * mirror, 12), crack, 1.7)
+            if severe:
+                draw_line(Vector2(-2.0 * mirror, 2), Vector2(-7.0 * mirror, 8), crack, 1.5)
+                draw_line(Vector2(5.0 * mirror, 12), Vector2(1.0 * mirror, 20), crack, 1.5)
+                draw_circle(Vector2(-19.0 * mirror, -34), 2.3, Color(0.47, 0.31, 0.16, 0.72))
+                draw_circle(Vector2(17.0 * mirror, -24), 1.8, Color(0.51, 0.34, 0.18, 0.64))
+        "rock":
+            var crack := Color(0.18, 0.20, 0.20, 0.82)
+            draw_line(Vector2(-8, -14), Vector2(-2, -5), crack, 1.7)
+            draw_line(Vector2(-2, -5), Vector2(6, 0), crack, 1.5)
+            draw_line(Vector2(6, 0), Vector2(11, 8), crack, 1.4)
+            if severe:
+                draw_line(Vector2(-2, -5), Vector2(-10, 5), crack, 1.5)
+                draw_line(Vector2(6, 0), Vector2(1, 13), crack, 1.4)
+                draw_rect(Rect2(18, 7, 4, 3), Color(0.54, 0.58, 0.57, 0.74))
+                draw_rect(Rect2(-22, 10, 3, 3), Color(0.47, 0.51, 0.50, 0.68))
+        "ore":
+            var crack := Color(0.31, 0.20, 0.39, 0.86)
+            var glow := Color(0.79, 0.56, 0.92, 0.30 if stage == 1 else 0.44)
+            draw_line(Vector2(-7, -21), Vector2(-2, -10), crack, 1.6)
+            draw_line(Vector2(-2, -10), Vector2(4, -3), crack, 1.5)
+            draw_circle(Vector2(3, -8), 13.0 if severe else 9.0, glow)
+            if severe:
+                draw_line(Vector2(4, -3), Vector2(9, 8), crack, 1.4)
+                draw_rect(Rect2(19, -1, 4, 5), Color(0.70, 0.47, 0.83, 0.80))
+                draw_rect(Rect2(-20, 8, 3, 4), Color(0.61, 0.40, 0.75, 0.72))
 
 func _draw_tree(flash: float) -> void:
     _draw_shadow_ellipse(Vector2(0, 17), Vector2(16, 4.5), Color(0.03, 0.04, 0.03, 0.20))
