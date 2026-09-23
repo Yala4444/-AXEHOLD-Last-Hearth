@@ -35,7 +35,6 @@ jobs:
           set -euo pipefail
           mkdir -p "$HOME/.local/share/godot/export_templates"
           cp -a "/root/.local/share/godot/export_templates/${GODOT_VERSION}.stable" "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
-          ls -lah "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
 
       - name: Godot version
         run: godot --version
@@ -50,323 +49,43 @@ jobs:
             exit 1
           fi
 
-      - name: Smoke-test scenes
+      - name: Smoke-test project scenes
         shell: bash
         run: |
           set -o pipefail
-          godot --headless --path . --script res://scripts/ci/smoke_test.gd 2>&1 | tee /tmp/godot-smoke.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-smoke.log; then
-            echo "GDScript parse errors detected during smoke test"
+          godot --headless --path . --script res://scripts/ci/smoke_test.gd 2>&1 | tee /tmp/godot-scenes.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-scenes.log; then
+            echo "Scene validation found script errors"
             exit 1
           fi
 
-      - name: Gameplay mechanics smoke-test
+      - name: AXEHOLD clean rebuild regression
         shell: bash
         run: |
           set -o pipefail
-          godot --headless --path . res://scenes/ci_gameplay_smoke.tscn 2>&1 | tee /tmp/godot-gameplay.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-gameplay.log; then
-            echo "GDScript parse errors detected during gameplay smoke test"
+          godot --headless --path . res://scenes/ci_clean_rebuild_smoke.tscn 2>&1 | tee /tmp/godot-clean-rebuild.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-clean-rebuild.log; then
+            echo "Clean rebuild runtime produced script errors"
             exit 1
           fi
 
-      - name: Living camp progression smoke-test
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_camp_smoke.tscn 2>&1 | tee /tmp/godot-camp.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-camp.log; then
-            echo "GDScript parse errors detected during living camp smoke test"
-            exit 1
-          fi
-
-      - name: Expedition wow regression smoke-test
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_expedition_smoke.tscn 2>&1 | tee /tmp/godot-expedition.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-expedition.log; then
-            echo "GDScript parse errors detected during expedition smoke test"
-            exit 1
-          fi
-
-      - name: Commercial polish regression smoke-test
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_polish_smoke.tscn 2>&1 | tee /tmp/godot-polish.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-polish.log; then
-            echo "GDScript parse errors detected during polish smoke test"
-            exit 1
-          fi
-
-      - name: Mobile controls regression smoke-test
+      - name: Mobile controls regression
         shell: bash
         run: |
           set -o pipefail
           godot --headless --path . res://scenes/ci_mobile_smoke.tscn 2>&1 | tee /tmp/godot-mobile.log
           if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-mobile.log; then
-            echo "GDScript parse errors detected during mobile smoke test"
+            echo "Mobile controls produced script errors"
             exit 1
           fi
 
-      - name: V1 resource loop regression smoke-test
+      - name: Living camp shell regression
         shell: bash
         run: |
           set -o pipefail
-          godot --headless --path . res://scenes/ci_v1_loop_smoke.tscn 2>&1 | tee /tmp/godot-v1-loop.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v1-loop.log; then
-            echo "GDScript parse errors detected during v1 resource-loop test"
-            exit 1
-          fi
-
-      - name: Visual reboot regression smoke-test
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_visual_reboot_smoke.tscn 2>&1 | tee /tmp/godot-visual.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-visual.log; then
-            echo "GDScript parse errors detected during visual reboot test"
-            exit 1
-          fi
-
-      - name: Production core regression smoke-test
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_production_core_smoke.tscn 2>&1 | tee /tmp/godot-production.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-production.log; then
-            echo "GDScript parse errors detected during production-core test"
-            exit 1
-          fi
-
-      - name: V1.4 world + hub regression smoke-test
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_world_hub_smoke.tscn 2>&1 | tee /tmp/godot-v13.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v13.log; then
-            echo "GDScript parse errors detected during v1.3 world/hub test"
-            exit 1
-          fi
-
-      - name: V1.4 identity + game-feel regression smoke-test
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_identity_smoke.tscn 2>&1 | tee /tmp/godot-v14-identity.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v14-identity.log; then
-            echo "GDScript parse errors detected during v1.4 identity test"
-            exit 1
-          fi
-
-      - name: V1.5 expedition diversity regression smoke-test
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v15_run_diversity_smoke.tscn 2>&1 | tee /tmp/godot-v15-diversity.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v15-diversity.log; then
-            echo "GDScript parse errors detected during v1.5 diversity test"
-            exit 1
-          fi
-
-      - name: V1.5.1 stability gate regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v151_stability_gate_smoke.tscn 2>&1 | tee /tmp/godot-v151-stability.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v151-stability.log; then
-            echo "GDScript parse errors detected during v1.5.1 stability gate"
-            exit 1
-          fi
-
-      - name: V1.6 quest + encounter regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v16_quest_encounter_smoke.tscn 2>&1 | tee /tmp/godot-v16-quests.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v16-quests.log; then
-            echo "GDScript parse errors detected during v1.6 quest/encounter test"
-            exit 1
-          fi
-
-      - name: V1.7 buildings + economy regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v17_buildings_economy_smoke.tscn 2>&1 | tee /tmp/godot-v17-buildings.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v17-buildings.log; then
-            echo "GDScript parse errors detected during v1.7 building/economy test"
-            exit 1
-          fi
-
-      - name: V1.8 weapon identity regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v18_weapon_identity_smoke.tscn 2>&1 | tee /tmp/godot-v18-weapons.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v18-weapons.log; then
-            echo "GDScript parse errors detected during v1.8 weapon identity test"
-            exit 1
-          fi
-
-      - name: V1.9 story + residents regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v19_story_residents_smoke.tscn 2>&1 | tee /tmp/godot-v19-story.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v19-story.log; then
-            echo "GDScript parse errors detected during v1.9 story/resident test"
-            exit 1
-          fi
-
-      - name: V1.10 production feel regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v110_production_feel_smoke.tscn 2>&1 | tee /tmp/godot-v110-feel.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v110-feel.log; then
-            echo "GDScript parse errors detected during v1.10 production feel test"
-            exit 1
-          fi
-
-      - name: V1.11 living camp + contracts regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v111_living_camp_contracts_smoke.tscn 2>&1 | tee /tmp/godot-v111-camp.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v111-camp.log; then
-            echo "GDScript parse errors detected during v1.11 living camp/contracts test"
-            exit 1
-          fi
-
-      - name: V1.12 dynamic world + elites regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v112_dynamic_world_smoke.tscn 2>&1 | tee /tmp/godot-v112-world.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v112-world.log; then
-            echo "GDScript parse errors detected during v1.12 dynamic-world test"
-            exit 1
-          fi
-
-      - name: V1.13 visual reboot regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v113_visual_reboot_smoke.tscn 2>&1 | tee /tmp/godot-v113-visual.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v113-visual.log; then
-            echo "GDScript parse errors detected during v1.13 visual reboot test"
-            exit 1
-          fi
-
-      - name: V1.14 full upgrade regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v114_full_upgrade_smoke.tscn 2>&1 | tee /tmp/godot-v114-full.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v114-full.log; then
-            echo "GDScript parse errors detected during v1.14 full-upgrade test"
-            exit 1
-          fi
-
-      - name: V1.15 living expedition regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v115_living_expedition_smoke.tscn 2>&1 | tee /tmp/godot-v115-living.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v115-living.log; then
-            echo "GDScript parse errors detected during v1.15 living expedition test"
-            exit 1
-          fi
-
-      - name: V1.16 threat + endless regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v116_progression_smoke.tscn 2>&1 | tee /tmp/godot-v116-progression.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v116-progression.log; then
-            echo "GDScript parse errors detected during v1.16 progression test"
-            exit 1
-          fi
-
-      - name: V1.17 first-run + calibration regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v117_first_run_smoke.tscn 2>&1 | tee /tmp/godot-v117-first-run.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v117-first-run.log; then
-            echo "GDScript parse errors detected during v1.17 first-run test"
-            exit 1
-          fi
-
-      - name: V1.18 Events 2.0 + expedition memory regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v118_events_memory_smoke.tscn 2>&1 | tee /tmp/godot-v118-events.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v118-events.log; then
-            echo "GDScript parse errors detected during v1.18 Events 2.0 test"
-            exit 1
-          fi
-
-      - name: V1.19 Buildcraft + synergy regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v119_buildcraft_smoke.tscn 2>&1 | tee /tmp/godot-v119-buildcraft.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v119-buildcraft.log; then
-            echo "GDScript parse errors detected during v1.19 Buildcraft test"
-            exit 1
-          fi
-
-      - name: V1.20 coherence foundation regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v120_coherence_foundation_smoke.tscn 2>&1 | tee /tmp/godot-v120-coherence.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v120-coherence.log; then
-            echo "GDScript parse errors detected during v1.20 coherence test"
-            exit 1
-          fi
-
-      - name: V1.21 visual identity regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v121_visual_identity_smoke.tscn 2>&1 | tee /tmp/godot-v121-visual-identity.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v121-visual-identity.log; then
-            echo "GDScript parse errors detected during v1.21 visual identity test"
-            exit 1
-          fi
-
-      - name: V1.22 Forgotten Forest art overhaul regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . res://scenes/ci_v122_forest_art_overhaul_smoke.tscn 2>&1 | tee /tmp/godot-v122-forest-art.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v122-forest-art.log; then
-            echo "GDScript parse errors detected during v1.22 forest art test"
-            exit 1
-          fi
-
-      - name: V1.23 Concept I vertical slice regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . --quit-after 10 res://scenes/ci_v123_visual_slice_smoke.tscn 2>&1 | tee /tmp/godot-v123-visual-slice.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v123-visual-slice.log; then
-            echo "GDScript parse errors detected during v1.23 visual slice test"
-            exit 1
-          fi
-
-      - name: V1.26 production art full expedition regression
-        shell: bash
-        run: |
-          set -o pipefail
-          godot --headless --path . --quit-after 15 res://scenes/ci_v126_visual_v2_smoke.tscn 2>&1 | tee /tmp/godot-v126-visual-v2.log
-          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-v126-visual-v2.log; then
-            echo "GDScript parse errors detected during v1.26 production art test"
+          godot --headless --path . res://scenes/ci_camp_smoke.tscn 2>&1 | tee /tmp/godot-camp.log
+          if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-camp.log; then
+            echo "Camp shell produced script errors"
             exit 1
           fi
 
@@ -376,7 +95,7 @@ jobs:
           set -o pipefail
           godot --headless --path . --quit-after 10 2>&1 | tee /tmp/godot-boot.log
           if grep -E "SCRIPT ERROR: Parse Error|Failed to load script" /tmp/godot-boot.log; then
-            echo "GDScript parse errors detected during boot"
+            echo "GDScript errors detected during boot"
             exit 1
           fi
 
