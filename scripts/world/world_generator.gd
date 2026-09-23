@@ -65,35 +65,40 @@ func clamp_to_world(point: Vector2, margin: float) -> Vector2:
 
 func _spawn_landmarks() -> void:
     var occupied: Array = []
-    var count: int = 30 if world.biome_index == 0 else 24
+    var count: int = 22 if world.biome_index == 0 and world.visual_v2_enabled else (30 if world.biome_index == 0 else 24)
+    var forest_kinds: Array[String] = [
+        "root_arch", "stump", "ruin", "fallen_totem", "sign", "bones"
+    ]
+    var frost_kinds: Array[String] = ["ice", "ruin", "sign", "firepit", "ice"]
+    var ash_kinds: Array[String] = ["dead_tree", "bones", "ruin", "firepit", "dead_tree"]
+
+    # Do not replay the same landmark sequence every run. Shuffle a small bag
+    # once per world, then reshuffle whenever it is exhausted.
+    var kind_bag: Array[String] = []
     for i: int in range(count):
-        var point: Vector2 = activity_point(250.0, minf(world.world_size.x, world.world_size.y) * 0.46, occupied)
+        var point: Vector2 = activity_point(280.0, minf(world.world_size.x, world.world_size.y) * 0.46, occupied)
         occupied.append(point)
         var node := WorldLandmark.new()
         world.add_child(node)
         node.global_position = point
-        var kind: String
-        if world.biome_index == 1:
-            var frost_kinds: Array[String] = ["ice", "ruin", "sign", "firepit", "ice"]
-            kind = frost_kinds[i % frost_kinds.size()]
-        elif world.biome_index == 2:
-            var ash_kinds: Array[String] = ["dead_tree", "bones", "ruin", "firepit", "dead_tree"]
-            kind = ash_kinds[i % ash_kinds.size()]
-        else:
-            var forest_kinds: Array[String]
-            if world.visual_v2_enabled:
-                # The old ancient sentinel silhouette is too close to the
-                # actual Forest Guardian boss. Never place it as scenery in the
-                # production-look preview.
-                forest_kinds = [
-                    "root_arch", "stump", "ruin", "fallen_totem",
-                    "sign", "firepit", "bones"
-                ]
+
+        if kind_bag.is_empty():
+            if world.biome_index == 1:
+                kind_bag = frost_kinds.duplicate()
+            elif world.biome_index == 2:
+                kind_bag = ash_kinds.duplicate()
+            elif world.visual_v2_enabled:
+                # No dead firepits and no ancient-tree/boss-like silhouette in
+                # the production Forgotten Forest. Landmarks are atmosphere,
+                # never fake objectives.
+                kind_bag = forest_kinds.duplicate()
             else:
-                forest_kinds = [
+                kind_bag = [
                     "ancient_tree", "root_arch", "stump", "ruin", "fallen_totem",
                     "sign", "firepit", "bones"
                 ]
-            kind = forest_kinds[i % forest_kinds.size()]
-        node.configure(kind, world.biome_index, i % 3)
+            kind_bag.shuffle()
+
+        var kind: String = kind_bag.pop_back()
+        node.configure(kind, world.biome_index, randi() % 3)
         landmark_nodes.append(node)

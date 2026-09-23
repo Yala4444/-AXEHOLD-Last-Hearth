@@ -168,11 +168,6 @@ func _show_home() -> void:
     play.custom_minimum_size = Vector2(0, 48)
     play.pressed.connect(_start_expedition)
 
-    var visual_slice := _button(departure_box, "VISUAL GATE · НОВЫЙ ОБЛИК AXEHOLD", false)
-    visual_slice.custom_minimum_size = Vector2(0, 40)
-    visual_slice.tooltip_text = "Та же полная экспедиция без изменения баланса — тест света, атмосферы, героя и VFX"
-    visual_slice.pressed.connect(_start_visual_slice)
-
     if GameState.endless_unlocked():
         var endless_stats: Dictionary = GameState.data.get("endless_stats", {})
         var endless_panel := _panel(body)
@@ -467,25 +462,23 @@ func _select_threat_from_map(level: int) -> void:
     _show_map()
 
 func _start_expedition() -> void:
-    GameState.visual_preview_v2 = false
     GameState.data["run_mode"] = "expedition"
     if GameState.tutorial_should_run():
         selected_biome = 0
         GameState.data["selected_biome"] = 0
         GameState.data["selected_threat"] = 1
-    GameState.save()
-    _start_game()
 
-func _start_visual_slice() -> void:
-    GameState.visual_preview_v2 = true
-    GameState.data["run_mode"] = "expedition"
+    # VG-9 promotes the approved Forgotten Forest art pass into the real game.
+    # Other biomes keep their stable presentation until they receive the same
+    # production-art treatment, so we never mix unfinished art into a run.
+    GameState.visual_preview_v2 = selected_biome == 0
     GameState.save()
     _start_game()
 
 func _start_endless() -> void:
     if not GameState.endless_unlocked():
         return
-    GameState.visual_preview_v2 = false
+    GameState.visual_preview_v2 = selected_biome == 0
     GameState.data["run_mode"] = "endless"
     GameState.save()
     _start_game()

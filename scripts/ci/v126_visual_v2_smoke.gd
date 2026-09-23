@@ -74,8 +74,21 @@ func _run() -> void:
             _fail("Visual Gate night grade did not engage")
     if world.world_generator != null:
         for landmark: WorldLandmark in world.world_generator.landmark_nodes:
-            if is_instance_valid(landmark) and landmark.kind == "ancient_tree":
-                _fail("Visual Gate spawned the boss-like ancient sentinel as scenery")
+            if not is_instance_valid(landmark):
+                continue
+            if landmark.kind == "ancient_tree":
+                _fail("Production forest spawned the boss-like ancient sentinel as scenery")
+                break
+            if landmark.kind == "firepit":
+                _fail("Production forest spawned an inert dead firepit landmark")
+                break
+
+    if world.activity_director != null:
+        if world.activity_director.activities.size() > 4:
+            _fail("Production forest spawned too many map activities")
+        for activity: WorldActivity in world.activity_director.activities:
+            if is_instance_valid(activity) and activity.activity_type in ["altar", "old_hearth", "signal_fire"]:
+                _fail("Production forest spawned a retired fake-objective activity: " + activity.activity_type)
                 break
 
     # A buildcraft/evolution choice is a true pause. Held joystick input must
