@@ -91,6 +91,7 @@ var wall_spike_dps: float = 0.0
 var shrine_regen_multiplier: float = 1.0
 var shrine_ward_active: bool = false
 var pending_upgrade_pad: BuildPad = null
+var modal_gameplay_paused: bool = false
 
 # Weapon Identity runtime state.
 var weapon_attack_timer: float = 0.0
@@ -577,9 +578,34 @@ func add_mechanism_parts(amount: int, source: Vector2 = Vector2.ZERO) -> void:
         core_fx.enemy_hit(source, false)
     Feedback.play("level", 4)
 
+func _pause_gameplay_for_modal() -> void:
+    if modal_gameplay_paused:
+        return
+    modal_gameplay_paused = true
+    if player != null and is_instance_valid(player):
+        player.release_move_input()
+        player.set_physics_process(false)
+    if MobileControls != null:
+        MobileControls.cancel_active_input()
+    for enemy: AxEnemy in enemies:
+        if is_instance_valid(enemy):
+            enemy.set_physics_process(false)
+
+func _resume_gameplay_after_modal() -> void:
+    if not modal_gameplay_paused:
+        return
+    modal_gameplay_paused = false
+    if player != null and is_instance_valid(player):
+        player.release_move_input()
+        player.set_physics_process(true)
+    for enemy: AxEnemy in enemies:
+        if is_instance_valid(enemy):
+            enemy.set_physics_process(true)
+
 func _show_build_upgrade_choices(pad: BuildPad) -> void:
     if pad == null or not is_instance_valid(pad) or pad.level != 1:
         return
+    _pause_gameplay_for_modal()
     pending_upgrade_pad = pad
     var buttons: Array = []
     for branch: Dictionary in BuildingRules.branches(pad.build_type):
@@ -599,6 +625,7 @@ func _apply_build_upgrade(build_type: String, branch_id: String) -> void:
     if pending_upgrade_pad == null or not is_instance_valid(pending_upgrade_pad):
         hud.hide_modal()
         pending_upgrade_pad = null
+        _resume_gameplay_after_modal()
         return
     var pad: BuildPad = pending_upgrade_pad
     if pad.build_type != build_type or pad.level != 1:
@@ -610,6 +637,7 @@ func _apply_build_upgrade(build_type: String, branch_id: String) -> void:
     if not pad.can_upgrade(storage, int(storage.get("parts", 0))):
         hud.hide_modal()
         pending_upgrade_pad = null
+        _resume_gameplay_after_modal()
         hud.set_status("Ресурсов для улучшения уже не хватает.")
         return
 
@@ -624,6 +652,7 @@ func _apply_build_upgrade(build_type: String, branch_id: String) -> void:
     Analytics.event("building_upgraded", {"type":build_type, "branch":branch_id, "wave":wave, "biome":biome_index})
     hud.hide_modal()
     pending_upgrade_pad = null
+    _resume_gameplay_after_modal()
     hud.show_banner("%s II · %s" % [pad.label, BuildingRules.branch_title(build_type, branch_id)], Color("f3d58d"))
     hud.set_status(BuildingRules.branch_effect(build_type, branch_id))
     Feedback.play("level", 16)
@@ -1391,6 +1420,7 @@ func _endless_relic_choices(boosted: bool) -> Array[String]:
     return choices
 
 func _show_endless_checkpoint(boosted: bool = false) -> void:
+    _pause_gameplay_for_modal()
     endless_checkpoint_wave = wave
     endless_chest_boosted = boosted
     var buttons: Array = []
@@ -1426,6 +1456,7 @@ func _on_endless_chest_ad(_placement: String) -> void:
     _show_endless_checkpoint(true)
 
 func _show_perks(level: int) -> void:
+    _pause_gameplay_for_modal()
     var buttons: Array = []
     var choices: Array[Dictionary] = buildcraft.roll_choices(3, level) if buildcraft != null else []
     if choices.is_empty():
@@ -1453,6 +1484,7 @@ func _on_player_died() -> void:
     if finishing:
         return
     finishing = true
+    _pause_gameplay_for_modal()
     var buttons: Array = []
     if not revived:
         buttons.append({"text": "ВОСКРЕСНУТЬ С 50% HP", "action": "revive"})
@@ -1552,8 +1584,10 @@ func _refresh_hud() -> void:
 func _on_hud_action(action: String) -> void:
     if action == "close":
         hud.hide_modal()
+        _resume_gameplay_after_modal()
     elif action == "pause":
         paused_local = true
+        _pause_gameplay_for_modal()
         hud.show_modal("", "ПАУЗА", "Текущий забег не сохраняется после выхода.", [
             {"text": "ПРОДОЛЖИТЬ", "action": "resume"},
             {"text": "В ЛАГЕРЬ", "action": "quit"}
@@ -1561,6 +1595,7 @@ func _on_hud_action(action: String) -> void:
     elif action == "resume":
         paused_local = false
         hud.hide_modal()
+        _resume_gameplay_after_modal()
     elif action == "quit":
         paused_local = false
         hud.hide_modal()
@@ -1585,12 +1620,14 @@ func _on_hud_action(action: String) -> void:
             player.apply_perk(relic_id)
         hud.hide_modal()
         endless_chest_boosted = false
+        _resume_gameplay_after_modal()
         _start_day()
     elif action == "build_upgrade:cancel":
         if pending_upgrade_pad != null and is_instance_valid(pending_upgrade_pad):
             pending_upgrade_pad.reset_upgrade()
         pending_upgrade_pad = null
         hud.hide_modal()
+        _resume_gameplay_after_modal()
     elif action.begins_with("build_upgrade:"):
         var parts: PackedStringArray = action.split(":")
         if parts.size() >= 3:
@@ -1602,6 +1639,7 @@ func _on_hud_action(action: String) -> void:
             var rarity: String = parts[2]
             var outcome: Dictionary = buildcraft.apply_choice(perk_id, rarity, "level") if buildcraft != null else {}
             hud.hide_modal()
+            _resume_gameplay_after_modal()
             var spec: Dictionary = GameRules.perk_spec(perk_id)
             var family: String = GameRules.perk_family(perk_id)
             var progress: int = player.family_count(family) if not family.is_empty() else 0
@@ -1618,12 +1656,14 @@ func _on_hud_action(action: String) -> void:
     elif action.begins_with("perk:"):
         player.apply_perk(action.trim_prefix("perk:"))
         hud.hide_modal()
+        _resume_gameplay_after_modal()
 
 func _on_revive_ad(_placement: String) -> void:
     revived = true
     finishing = false
     player.hp = player.max_hp * 0.5
     hud.hide_modal()
+    _resume_gameplay_after_modal()
     hud.set_status("Воскрешение использовано.")
 
 func _draw() -> void:
