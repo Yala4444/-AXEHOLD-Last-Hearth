@@ -6,6 +6,8 @@ const FOREST_ART_PATHS: Dictionary = {
     "rock":"res://assets/art/forgotten_forest/stone_deposit.png",
     "ore":"res://assets/art/forgotten_forest/ore_deposit.png"
 }
+const PRODUCTION_TREE_STRIP_PATH: String = "res://assets/art/vertical_slice_i/tree_damage.webp"
+const PRODUCTION_TREE_FRAMES: int = 4
 
 var resource_type: String = "tree"
 var hp: float = 52.0
@@ -94,24 +96,26 @@ func _draw() -> void:
         var ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0)
         var bar_y: float = -24.0
         if biome_index == 0:
-            bar_y = -112.0 if resource_type == "tree" else (-57.0 if resource_type == "ore" else -43.0)
+            bar_y = -145.0 if resource_type == "tree" else (-57.0 if resource_type == "ore" else -43.0)
         draw_rect(Rect2(-14, bar_y, 28, 4), Color(0.08, 0.08, 0.08, 0.32))
         draw_rect(Rect2(-14, bar_y, 28 * ratio, 4), Color("72a66d"))
 
 func _draw_illustrated_resource(flash: float) -> void:
     if biome_index != 0:
         return
-    var texture: Texture2D = forest_art_cache.get(resource_type) as Texture2D
+    var cache_key: String = "tree_production" if resource_type == "tree" and visual_gate_enabled else resource_type
+    var texture: Texture2D = forest_art_cache.get(cache_key) as Texture2D
     if texture == null:
-        texture = ResourceLoader.load(str(FOREST_ART_PATHS.get(resource_type, FOREST_ART_PATHS["tree"]))) as Texture2D
-        forest_art_cache[resource_type] = texture
+        var path: String = PRODUCTION_TREE_STRIP_PATH if cache_key == "tree_production" else str(FOREST_ART_PATHS.get(resource_type, FOREST_ART_PATHS["tree"]))
+        texture = ResourceLoader.load(path) as Texture2D
+        forest_art_cache[cache_key] = texture
 
     # MASTER P2: resources were far too close to hero scale, especially trees.
     # Bring them toward the agreed reference ratios while keeping mobile
     # readability and harvest reach comfortable.
-    var size := Vector2(118, 126)
-    var y_offset: float = -45.0
-    var shadow_radius := Vector2(34.0, 8.5)
+    var size := Vector2(132, 158)
+    var y_offset: float = -61.0
+    var shadow_radius := Vector2(37.0, 9.2)
     match resource_type:
         "rock":
             size = Vector2(70, 66)
@@ -140,10 +144,27 @@ func _draw_illustrated_resource(flash: float) -> void:
     var damage_dull: float = 0.07 * float(stage)
     var tint_color := Color.WHITE.darkened(damage_dull).lerp(Color(1.0, 0.72, 0.58), flash * 0.62)
     draw_set_transform(Vector2(0, y_offset), 0.0, Vector2(mirror, 1.0))
-    draw_texture_rect(texture, Rect2(-size * 0.5, size), false, tint_color)
+    if resource_type == "tree" and visual_gate_enabled:
+        # MASTER P2: use the already-approved painted pine damage strip instead
+        # of the old gnarled harvest tree. Damage now changes the actual tree art,
+        # not only a crack overlay.
+        var frame_width: float = float(texture.get_width()) / float(PRODUCTION_TREE_FRAMES)
+        var frame_height: float = float(texture.get_height())
+        var ratio: float = clampf(hp / maxf(1.0,max_hp),0.0,1.0)
+        var frame_index: int = 0
+        if ratio <= 0.12:
+            frame_index = 3
+        elif ratio <= 0.32:
+            frame_index = 2
+        elif ratio <= 0.66:
+            frame_index = 1
+        var source := Rect2(frame_width * float(frame_index), 0.0, frame_width, frame_height)
+        draw_texture_rect_region(texture, Rect2(-size * 0.5, size), source, tint_color)
+    else:
+        draw_texture_rect(texture, Rect2(-size * 0.5, size), false, tint_color)
     draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-    if visual_gate_enabled and stage > 0:
+    if visual_gate_enabled and stage > 0 and resource_type != "tree":
         _draw_damage_state(stage, mirror)
 
 func _draw_grounding_skirt(shadow_y: float, shadow_radius: Vector2) -> void:
