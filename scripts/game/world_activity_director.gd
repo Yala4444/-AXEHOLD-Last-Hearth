@@ -4,8 +4,6 @@ extends Node
 var world: GameWorld
 var generator: WorldGenerator
 var activities: Array[WorldActivity] = []
-var altar_spawned: bool = false
-var old_hearth_spawned: bool = false
 var altar_pending: WorldActivity = null
 var nests_destroyed: int = 0
 var hearths_relit: int = 0
@@ -23,37 +21,34 @@ func _spawn_initial_activities() -> void:
     var occupied: Array = []
     var selected: Dictionary = {}
 
-    # v1.18 deliberately reduces map clutter. A run gets fewer points,
-    # but each one is allowed to matter to the build or the coming night.
-    _spawn("nest", 600.0, 1320.0, occupied)
+    # VG-9: fewer, stronger map decisions. The old forced altar / dead-hearth /
+    # signal-fire layer created repeated props that looked important but often
+    # became inert scenery. A run now starts with four meaningful anchors:
+    # one night consequence, one positive opportunity, one risk/reward choice
+    # and one progression/story beat.
+    _spawn("nest", 620.0, 1340.0, occupied)
     selected["nest"] = true
 
     var positive: Array[String] = ["rare_ore", "wind_shrine"]
     var risk: Array[String] = ["chest", "wanderer_grave", "infected_cache"]
-    var story: Array[String] = ["wounded_scout", "memory_rift", "signal_fire"]
-    var utility: Array[String] = ["broken_tower", "signal_fire", "rare_ore"]
+    var progression: Array[String] = ["memory_rift"]
 
     var residents: Dictionary = GameState.data.get("residents", {})
     var mira: Dictionary = residents.get("mira", {})
     var thorn: Dictionary = residents.get("thorn", {})
-
-    var story_pick: String = "wounded_scout" if not bool(mira.get("unlocked", false)) else _pick_unique(story, selected)
-    if not story_pick.is_empty():
-        selected[story_pick] = true
-
-    var utility_pick: String = "broken_tower" if not bool(thorn.get("unlocked", false)) else _pick_unique(utility, selected)
-    if not utility_pick.is_empty():
-        selected[utility_pick] = true
+    if not bool(mira.get("unlocked", false)):
+        progression.push_front("wounded_scout")
+    if not bool(thorn.get("unlocked", false)):
+        progression.push_front("broken_tower")
 
     var picks: Array[String] = [
         _pick_unique(positive, selected),
         _pick_unique(risk, selected),
-        story_pick,
-        utility_pick
+        _pick_unique(progression, selected)
     ]
     for kind: String in picks:
         if not kind.is_empty():
-            _spawn(kind, 430.0, 1280.0, occupied)
+            _spawn(kind, 470.0, 1320.0, occupied)
 
 func _pick_unique(pool: Array[String], selected: Dictionary) -> String:
     var candidates: Array[String] = []
@@ -83,22 +78,6 @@ func _process(delta: float) -> void:
         return
     if world.tutorial_run:
         return
-
-    if world.wave >= 1 and world.phase == "day" and not altar_spawned:
-        altar_spawned = true
-        var occupied: Array = []
-        for item: WorldActivity in activities:
-            if is_instance_valid(item):
-                occupied.append(item.global_position)
-        _spawn("altar", 620.0, 1250.0, occupied)
-
-    if world.wave >= 2 and world.phase == "day" and not old_hearth_spawned:
-        old_hearth_spawned = true
-        var occupied_hearth: Array = []
-        for item: WorldActivity in activities:
-            if is_instance_valid(item):
-                occupied_hearth.append(item.global_position)
-        _spawn("old_hearth", 720.0, 1320.0, occupied_hearth)
 
     var nearest: WorldActivity = null
     var nearest_distance: float = INF
