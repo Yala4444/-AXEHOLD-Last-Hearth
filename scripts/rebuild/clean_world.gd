@@ -41,6 +41,7 @@ func _ready() -> void:
     world_size = Vector2(1170, 2380)
     world_rect = Rect2(Vector2.ZERO, world_size)
     base_position = Vector2(world_size.x * 0.5, 405.0)
+    biome = GameRules.biome(biome_index)
     base_max_hp = 300.0
     base_hp = base_max_hp
     storage = {"wood":0,"stone":0,"ore":0,"parts":0}
@@ -65,6 +66,10 @@ func _ready() -> void:
     core_fx = CoreFX.new()
     add_child(core_fx)
     core_fx.set_visual_gate(true)
+
+    var clean_biome_fx := BiomeFX.new()
+    add_child(clean_biome_fx)
+    clean_biome_fx.setup(self,biome_index)
 
     _create_clean_hearth()
     _create_clean_player()
