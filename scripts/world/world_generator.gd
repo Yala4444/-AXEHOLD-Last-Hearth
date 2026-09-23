@@ -80,10 +80,20 @@ func _spawn_landmarks() -> void:
             var ash_kinds: Array[String] = ["dead_tree", "bones", "ruin", "firepit", "dead_tree"]
             kind = ash_kinds[i % ash_kinds.size()]
         else:
-            var forest_kinds: Array[String] = [
-                "ancient_tree", "root_arch", "stump", "ruin", "fallen_totem",
-                "sign", "firepit", "bones"
-            ]
+            var forest_kinds: Array[String]
+            if world.visual_v2_enabled:
+                # The old ancient sentinel silhouette is too close to the
+                # actual Forest Guardian boss. Never place it as scenery in the
+                # production-look preview.
+                forest_kinds = [
+                    "root_arch", "stump", "ruin", "fallen_totem",
+                    "sign", "firepit", "bones"
+                ]
+            else:
+                forest_kinds = [
+                    "ancient_tree", "root_arch", "stump", "ruin", "fallen_totem",
+                    "sign", "firepit", "bones"
+                ]
             kind = forest_kinds[i % forest_kinds.size()]
         node.configure(kind, world.biome_index, i % 3)
         landmark_nodes.append(node)
