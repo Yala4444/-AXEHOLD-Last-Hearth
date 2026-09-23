@@ -98,9 +98,17 @@ void fragment() {
     vec3 day_grade = vec3(1.025, 1.0, 0.965);
     vec3 dusk_grade = vec3(1.075, 0.985, 0.900);
     vec3 night_grade = vec3(0.82, 0.91, 1.035);
-    vec3 phase_grade = mix(day_grade, dusk_grade, dusk_mix * 0.48);
-    phase_grade = mix(phase_grade, night_grade, night_mix * 0.62);
+    vec3 phase_grade = mix(day_grade, dusk_grade, dusk_mix * 0.58);
+    phase_grade = mix(phase_grade, night_grade, night_mix * 0.70);
     col *= phase_grade;
+
+    // MASTER P7: a restrained moving forest haze adds depth between the
+    // hand-painted layers. It is deliberately low amplitude so silhouettes and
+    // attack telegraphs remain crisp.
+    float haze_wave = sin(uv.y * 27.0 + time_s * 0.16 + sin(uv.x * 13.0) * 1.8) * 0.5 + 0.5;
+    float haze_mask = smoothstep(0.10, 0.96, uv.y) * (0.010 + dusk_mix * 0.010 + night_mix * 0.016);
+    vec3 haze_color = mix(vec3(0.18,0.25,0.18), vec3(0.15,0.23,0.30), night_mix);
+    col = mix(col, haze_color, haze_wave * haze_mask);
 
     // Warm visual anchor around the hearth. This follows the world position.
     float hearth_dist = distance(uv, hearth_uv);
@@ -141,7 +149,7 @@ func _process(delta: float) -> void:
         # The final 12 seconds of the day become a readable twilight window.
         # Gameplay timing is unchanged; only the presentation eases toward
         # night so players feel the threat arriving before the banner appears.
-        var dusk_window: float = 12.0
+        var dusk_window: float = 16.0
         target_dusk = clampf((dusk_window - world.phase_time) / dusk_window, 0.0, 1.0)
 
     night_mix = move_toward(night_mix, target_night, delta * 0.62)
@@ -151,8 +159,10 @@ func _process(delta: float) -> void:
 
     if hearth_light != null:
         var warmth_mix: float = clampf(dusk_mix * 0.34 + night_mix, 0.0, 1.0)
-        hearth_light.energy = lerpf(0.66, 1.28, warmth_mix) * (0.97 + sin(elapsed * 5.2) * 0.035)
-        hearth_light.texture_scale = lerpf(2.15, 2.70, warmth_mix)
+        var camp_stage: int = world.production_camp_stage() if world.has_method("production_camp_stage") else 0
+        var stage_light: float = float(camp_stage) * 0.055
+        hearth_light.energy = (lerpf(0.66, 1.28, warmth_mix) + stage_light) * (0.97 + sin(elapsed * 5.2) * 0.035)
+        hearth_light.texture_scale = lerpf(2.15, 2.70, warmth_mix) + float(camp_stage) * 0.05
     if hero_fill_light != null:
         hero_fill_light.energy = lerpf(0.10, 0.24, clampf(dusk_mix * 0.25 + night_mix, 0.0, 1.0))
 
