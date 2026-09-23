@@ -3,6 +3,8 @@ extends Node2D
 
 signal resolved(activity: WorldActivity)
 
+const RARE_ORE_ART_PATH: String = "res://assets/art/forgotten_forest/ore_deposit.png"
+
 var activity_type: String = "chest"
 var biome_index: int = 0
 var finished: bool = false
@@ -13,6 +15,8 @@ var max_hp: float = 80.0
 var focus: bool = false
 var elapsed: float = 0.0
 var cursed: bool = false
+var visual_gate_enabled: bool = false
+var rare_ore_art: Texture2D
 
 func configure(kind: String, index: int) -> void:
     activity_type = kind
@@ -46,6 +50,10 @@ func configure(kind: String, index: int) -> void:
         "nest":
             max_hp = 110.0
             hp = max_hp
+    queue_redraw()
+
+func set_visual_gate(value: bool) -> void:
+    visual_gate_enabled = value
     queue_redraw()
 
 func set_focus(value: bool) -> void:
@@ -225,6 +233,22 @@ func _draw_old_hearth() -> void:
 
 func _draw_rare_ore() -> void:
     var pulse: float = (sin(elapsed * 4.2) + 1.0) * 0.5
+    if visual_gate_enabled and biome_index == 0:
+        if rare_ore_art == null:
+            rare_ore_art = ResourceLoader.load(RARE_ORE_ART_PATH) as Texture2D
+        draw_circle(Vector2(0, -2), 31.0 + pulse * 2.0, Color(0.54, 0.32, 0.72, 0.055 + pulse * 0.025))
+        draw_set_transform(Vector2(0, 17), 0.0, Vector2(25.0, 7.0))
+        draw_circle(Vector2.ZERO, 1.0, Color(0.02,0.025,0.02,0.26))
+        draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+        if rare_ore_art != null:
+            var size := Vector2(66,66)
+            draw_texture_rect(rare_ore_art, Rect2(-size * 0.5 + Vector2(0,-12), size), false, Color(0.98,0.94,1.0,1.0))
+        for i: int in range(3):
+            var a: float = elapsed * (0.45 + float(i) * 0.11) + float(i) * 2.1
+            var spark := Vector2(cos(a) * (22.0 + i * 3.0), -10.0 + sin(a * 1.4) * 12.0)
+            draw_circle(spark, 1.1 + pulse * 0.35, Color(0.80,0.66,0.94,0.42 + pulse * 0.20))
+        return
+
     draw_circle(Vector2.ZERO, 28.0 + pulse * 2.0, Color(0.58, 0.34, 0.72, 0.07))
     draw_colored_polygon(PackedVector2Array([
         Vector2(-18, 14), Vector2(-12, -8), Vector2(-3, -17),

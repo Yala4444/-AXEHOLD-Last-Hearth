@@ -73,6 +73,7 @@ func _spawn(kind: String, min_radius: float, max_radius: float, occupied: Array)
     world.add_child(activity)
     activity.global_position = point
     activity.configure(kind, world.biome_index)
+    activity.set_visual_gate(world.visual_v2_enabled)
     activity.resolved.connect(_on_activity_resolved)
     activities.append(activity)
     return activity

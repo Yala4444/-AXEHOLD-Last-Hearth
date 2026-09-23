@@ -29,6 +29,8 @@ func _run() -> void:
         var enemy_walk_path: String = str(AxEnemy.VISUAL_GATE_WALK_PATHS[enemy_role])
         if not ResourceLoader.exists(enemy_walk_path):
             _fail("Missing Visual Gate enemy walk strip: " + enemy_role)
+    if not ResourceLoader.exists(WorldActivity.RARE_ORE_ART_PATH):
+        _fail("Missing painted rare-ore asset")
 
     var world: GameWorld = GameScene.instantiate() as GameWorld
     world.configure(0, 1, "expedition")
@@ -94,6 +96,22 @@ func _run() -> void:
     world._resume_gameplay_after_modal()
     if not world.player.is_physics_processing():
         _fail("Hero physics did not resume after modal choice")
+
+    # Standing still must be a stable idle draw, not a live walk cycle.
+    world.player.velocity = Vector2.ZERO
+    world.player.walk_clock = 1.73
+    world.player.queue_redraw()
+    await _wait_frames(2)
+    if world.player.velocity.length_squared() > 0.0001:
+        _fail("Visual Gate idle test unexpectedly moved the hero")
+
+    var rare_preview := WorldActivity.new()
+    world.add_child(rare_preview)
+    rare_preview.configure("rare_ore", 0)
+    rare_preview.set_visual_gate(true)
+    if not rare_preview.visual_gate_enabled:
+        _fail("Rare ore did not inherit Visual Gate styling")
+    rare_preview.queue_free()
 
     if world.core_fx == null or not world.core_fx.visual_gate_enabled:
         _fail("Visual Gate combat FX was not enabled")

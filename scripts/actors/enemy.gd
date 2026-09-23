@@ -506,11 +506,11 @@ func _draw_illustrated_forest_identity() -> void:
     if visual_gate_enabled and not boss:
         # Phone-scale readability pass. Small enemies should feel like threats,
         # not insects next to the 98 px hero.
-        var readability_scale: float = 1.16
+        var readability_scale: float = 1.23
         if enemy_type == "brute" or enemy_type == "guardian":
-            readability_scale = 1.10
+            readability_scale = 1.15
         elif enemy_type == "stalker":
-            readability_scale = 1.14
+            readability_scale = 1.20
         size *= readability_scale
         y_offset *= readability_scale
     if texture == null:
@@ -573,7 +573,7 @@ func _draw_visual_gate_walk(art_role: String, art_tint: Color) -> void:
     var frame: int = int(floor(animation_time * fps)) % VISUAL_GATE_WALK_FRAMES
     var source := Rect2(Vector2(frame_width * float(frame), 0.0), Vector2(frame_width, frame_height))
 
-    var target_height: float = 76.0 if art_role == "runner" else 82.0
+    var target_height: float = 82.0 if art_role == "runner" else 88.0
     var target_width: float = target_height * frame_width / frame_height
     var foot_y: float = 18.0
     var destination := Rect2(

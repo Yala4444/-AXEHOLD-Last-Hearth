@@ -1147,7 +1147,9 @@ func _weapon_twin_blades(enemy_snapshot: Array[AxEnemy]) -> void:
         return
 
     var attack_range: float = WeaponRules.mechanic_value(player.weapon_id, "attack_range", 50.0)
-    var max_targets: int = WeaponRules.mechanic_int(player.weapon_id, "targets", 2)
+    # General "Вихрь стали" upgrades the visible orbit count. Twin blades
+    # must gain the same extra real strike slot, otherwise the card lies.
+    var max_targets: int = maxi(WeaponRules.mechanic_int(player.weapon_id, "targets", 2), player.axes)
     var chosen: Array[AxEnemy] = []
 
     for _slot: int in range(max_targets):
@@ -1467,16 +1469,23 @@ func _show_perks(level: int) -> void:
 
     for perk: Dictionary in choices:
         var rarity: String = str(perk.get("rarity","common"))
+        var card_meta: Dictionary = buildcraft.choice_card_meta(perk) if buildcraft != null else {}
         buttons.append({
             "text": buildcraft.choice_text(perk) if buildcraft != null else ("%s\n%s" % [str(perk.get("name","УСИЛЕНИЕ")),str(perk.get("desc",""))]),
-            "action": "buildcraft:%s:%s" % [str(perk.get("id","")),rarity]
+            "action": "buildcraft:%s:%s" % [str(perk.get("id","")),rarity],
+            "rarity":rarity,
+            "family":str(card_meta.get("family","")),
+            "progress_before":int(card_meta.get("progress_before",0)),
+            "progress_after":int(card_meta.get("progress_after",0)),
+            "evolution_ready":bool(card_meta.get("evolution_ready",false)),
+            "evolution_active":bool(card_meta.get("evolution_active",false))
         })
 
     var identity: String = buildcraft.short_identity() if buildcraft != null else "БИЛД ФОРМИРУЕТСЯ"
     hud.show_modal(
         "",
         "УРОВЕНЬ %d · BUILDCRAFT" % level,
-        "Текущий путь: %s\nСобери 3 усиления одной школы, чтобы открыть эволюцию." % identity,
+        "Текущий путь: %s\nРамка = редкость · золото 3/3 = готовая эволюция." % identity,
         buttons
     )
 
@@ -1643,10 +1652,11 @@ func _on_hud_action(action: String) -> void:
             var spec: Dictionary = GameRules.perk_spec(perk_id)
             var family: String = GameRules.perk_family(perk_id)
             var progress: int = player.family_count(family) if not family.is_empty() else 0
+            var rarity_color: Color = hud.buildcraft_rarity_color(rarity) if hud != null else Color("f0d094")
             hud.show_banner("%s · %s" % [
                 buildcraft.rarity_name(rarity) if buildcraft != null else "УСИЛЕНИЕ",
                 str(spec.get("name","УСИЛЕНИЕ"))
-            ], Color("f0d094"))
+            ], rarity_color)
             if rarity == "legendary":
                 hud.set_status("Легендарное правило забега активно: %s" % str(spec.get("desc","")))
             elif not family.is_empty():
