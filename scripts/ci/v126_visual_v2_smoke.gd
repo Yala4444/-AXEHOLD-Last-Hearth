@@ -56,6 +56,10 @@ func _run() -> void:
         _fail("Production hero texture failed to load")
     if world.visual_gate_fx == null or not is_instance_valid(world.visual_gate_fx):
         _fail("Visual Gate FX layer was not created for preview run")
+    if world.hud == null or not world.hud.visual_gate_enabled:
+        _fail("Visual Gate release HUD was not enabled")
+    if world.camera == null or world.camera.position_smoothing_speed < 7.0:
+        _fail("Visual Gate camera polish was not enabled")
     else:
         world.phase = "day"
         world.phase_time = 4.0
@@ -108,6 +112,10 @@ func _run() -> void:
         _fail("Stable expedition accidentally inherited Visual Gate mode")
     if baseline.visual_gate_fx != null and is_instance_valid(baseline.visual_gate_fx):
         _fail("Stable expedition created Visual Gate FX")
+    if baseline.hud != null and baseline.hud.visual_gate_enabled:
+        _fail("Stable expedition inherited Visual Gate HUD")
+    if baseline.camera != null and absf(baseline.camera.position_smoothing_speed - 6.2) > 0.01:
+        _fail("Stable expedition inherited Visual Gate camera tuning")
     if baseline.core_fx != null and baseline.core_fx.visual_gate_enabled:
         _fail("Stable expedition inherited Visual Gate combat FX")
     baseline.queue_free()
