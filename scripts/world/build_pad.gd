@@ -15,6 +15,7 @@ var upgrade_progress: float = 0.0
 var affordable: bool = false
 var focused: bool = false
 var idle_time: float = 0.0
+var visual_gate_enabled: bool = false
 
 func configure(kind: String, title: String, new_cost: Dictionary, is_built: bool = false, effect_text: String = "") -> void:
     build_type = kind
@@ -29,6 +30,10 @@ func configure(kind: String, title: String, new_cost: Dictionary, is_built: bool
     upgrade_progress = 0.0
     queue_redraw()
 
+func set_visual_gate(value: bool) -> void:
+    visual_gate_enabled = value
+    queue_redraw()
+
 func set_context_state(can_afford: bool, is_focused: bool) -> void:
     if affordable == can_afford and focused == is_focused:
         return
@@ -41,12 +46,13 @@ func _process(delta: float) -> void:
     if pulse > 0.0:
         pulse = maxf(0.0, pulse - delta * 2.8)
         queue_redraw()
+    var production_scale: float = 1.12 if visual_gate_enabled else 1.0
     if built and reveal < 1.0:
         reveal = minf(1.0, reveal + delta * 2.8)
-        scale = Vector2.ONE * (0.78 + 0.22 * _ease_out_back(reveal))
+        scale = Vector2.ONE * production_scale * (0.78 + 0.22 * _ease_out_back(reveal))
         queue_redraw()
     elif built:
-        scale = Vector2.ONE
+        scale = Vector2.ONE * production_scale
     elif affordable or focused or construction_progress > 0.0:
         queue_redraw()
 
@@ -117,6 +123,8 @@ func consume(storage: Dictionary) -> void:
     queue_redraw()
 
 func _draw() -> void:
+    if visual_gate_enabled:
+        _draw_ground_contact()
     if built:
         _draw_built_structure()
         if level == 1 and upgrade_progress > 0.0:
@@ -131,6 +139,19 @@ func _draw() -> void:
         return
 
     _draw_world_blueprint()
+
+func _draw_ground_contact() -> void:
+    var radius_x: float = 32.0 if built else 27.0
+    var radius_y: float = 8.5 if built else 6.8
+    draw_set_transform(Vector2(0, 20), 0.0, Vector2(1.0, radius_y / radius_x))
+    draw_circle(Vector2.ZERO, radius_x, Color(0.02,0.03,0.02,0.25 if built else 0.13))
+    draw_circle(Vector2.ZERO, radius_x * 0.82, Color(0.33,0.24,0.13,0.09))
+    draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)
+    if built:
+        var grass := Color(0.23,0.40,0.19,0.35)
+        draw_line(Vector2(-23,23),Vector2(-21,16),grass,1.0)
+        draw_line(Vector2(22,23),Vector2(19,17),grass,1.0)
+        draw_circle(Vector2(27,22),1.4,Color(0.50,0.42,0.24,0.32))
 
 func _draw_world_blueprint() -> void:
     var breathe: float = (sin(idle_time * 2.5) + 1.0) * 0.5
@@ -149,12 +170,13 @@ func _draw_world_blueprint() -> void:
 
     _draw_blueprint_preview(Color(0.86, 0.79, 0.61, 0.72) if active else Color(0.39, 0.43, 0.36, 0.55))
 
-    var font: Font = ThemeDB.fallback_font
-    var tag_width: float = maxf(48.0, float(label.length()) * 5.2)
-    var tag_rect := Rect2(-tag_width * 0.5, 31, tag_width, 15)
-    draw_rect(tag_rect, Color(0.05, 0.08, 0.07, 0.76))
-    draw_rect(tag_rect, Color(0.40, 0.47, 0.39, 0.45), false, 1.0)
-    draw_string(font, Vector2(-tag_width * 0.5 + 2.0, 42), label, HORIZONTAL_ALIGNMENT_CENTER, tag_width - 4.0, 7, Color("efe5ca"))
+    if not visual_gate_enabled or active:
+        var font: Font = ThemeDB.fallback_font
+        var tag_width: float = maxf(48.0, float(label.length()) * 5.2)
+        var tag_rect := Rect2(-tag_width * 0.5, 31, tag_width, 15)
+        draw_rect(tag_rect, Color(0.05, 0.08, 0.07, 0.76))
+        draw_rect(tag_rect, Color(0.40, 0.47, 0.39, 0.45), false, 1.0)
+        draw_string(font, Vector2(-tag_width * 0.5 + 2.0, 42), label, HORIZONTAL_ALIGNMENT_CENTER, tag_width - 4.0, 7, Color("efe5ca"))
 
     if construction_progress > 0.0:
         draw_rect(Rect2(-23, 49, 46, 4), Color(0.04, 0.06, 0.05, 0.30))
