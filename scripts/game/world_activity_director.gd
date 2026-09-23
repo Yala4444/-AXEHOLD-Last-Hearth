@@ -36,21 +36,32 @@ func _spawn_initial_activities() -> void:
     var thorn: Dictionary = residents.get("thorn", {})
 
     # MASTER P6: story-critical discovery is deterministic. Randomness belongs
-    # in reward/risk opportunities, not in whether a locked resident can ever
-    # appear. Mira is the first guaranteed rescue; after she is unlocked the
-    # tower guarantees Thorn; only then does the slot become a memory event.
-    var progression_pick: String = "memory_rift"
+    # in optional reward/risk opportunities, never in whether a locked resident
+    # can be discovered. When both residents are locked they consume two of the
+    # three non-nest world slots; the fourth total anchor remains one optional
+    # opportunity so the map still stays clean.
+    var story_picks: Array[String] = []
     if not bool(mira.get("unlocked", false)):
-        progression_pick = "wounded_scout"
-    elif not bool(thorn.get("unlocked", false)):
-        progression_pick = "broken_tower"
-    selected[progression_pick] = true
+        story_picks.append("wounded_scout")
+    if not bool(thorn.get("unlocked", false)):
+        story_picks.append("broken_tower")
+    if story_picks.is_empty():
+        story_picks.append("memory_rift")
 
-    var picks: Array[String] = [
-        _pick_unique(positive, selected),
-        _pick_unique(risk, selected),
-        progression_pick
-    ]
+    var picks: Array[String] = []
+    if story_picks.size() >= 2:
+        var optional_pool: Array[String] = []
+        optional_pool.append_array(positive)
+        optional_pool.append_array(risk)
+        picks.append(_pick_unique(optional_pool, selected))
+    else:
+        picks.append(_pick_unique(positive, selected))
+        picks.append(_pick_unique(risk, selected))
+
+    for story_kind: String in story_picks:
+        selected[story_kind] = true
+        picks.append(story_kind)
+
     for kind: String in picks:
         if not kind.is_empty():
             _spawn(kind, 470.0, 1320.0, occupied)
