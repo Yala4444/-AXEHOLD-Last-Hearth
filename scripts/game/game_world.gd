@@ -10,6 +10,7 @@ const EnemyScene: PackedScene = preload("res://scenes/enemy.tscn")
 const ResourceScene: PackedScene = preload("res://scenes/resource_spot.tscn")
 const BuildPadScene: PackedScene = preload("res://scenes/build_pad.tscn")
 const LAST_HEARTH_ART_PATH: String = "res://assets/art/forgotten_forest/last_hearth.png"
+const VISUAL_GATE_HEARTH_PATH: String = "res://assets/art/vertical_slice_i/hearth_fire.webp"
 const VISUAL_GATE_HEARTH_ART_PATH: String = "res://assets/art/vertical_slice_i/hearth_fire.webp"
 const VISUAL_GATE_HEARTH_FRAMES: int = 4
 
@@ -51,6 +52,7 @@ var revived: bool = false
 var paused_local: bool = false
 var finishing: bool = false
 var last_hearth_art: Texture2D
+var visual_gate_hearth_art: Texture2D
 var visual_gate_hearth_art: Texture2D
 var turret_timer: float = 0.0
 var turret_shot_time: float = 0.0
@@ -1743,48 +1745,77 @@ func _draw_hearth(night: bool) -> void:
     draw_rect(Rect2(crate_pos + Vector2(-2, -7), Vector2(4, 14)), Color("5d3d24"))
 
 func _draw_visual_gate_hearth(night: bool) -> void:
-    # The Visual Gate hearth is a real campfire and the warmest point in the
-    # frame. It stays visually lighter than the old monumental root shrine so
-    # the player reads "home" rather than "boss object".
     if visual_gate_hearth_art == null:
-        visual_gate_hearth_art = ResourceLoader.load(VISUAL_GATE_HEARTH_ART_PATH) as Texture2D
+        visual_gate_hearth_art = ResourceLoader.load(VISUAL_GATE_HEARTH_PATH) as Texture2D
 
-    var pulse: float = (sin(Time.get_ticks_msec() * 0.005) + 1.0) * 0.5
-    var night_boost: float = 1.0 if night else 0.0
+    var t: float = float(Time.get_ticks_msec()) * 0.001
+    var night_mix: float = 1.0 if night else 0.0
+    var breath: float = 1.0 + sin(t * 2.4) * 0.012
+    var pulse: float = 0.5 + 0.5 * sin(t * 4.7)
 
-    # Grounded warmth: broad, low-alpha pools keep the centre inviting without
-    # washing out nearby resources or the hero.
-    draw_circle(base_position + Vector2(0, 9), 118.0, Color(0.95, 0.50, 0.17, 0.028 + night_boost * 0.040))
-    draw_circle(base_position + Vector2(0, 8), 78.0, Color(1.0, 0.55, 0.18, 0.050 + night_boost * 0.072))
-    draw_circle(base_position + Vector2(0, 8), 43.0, Color(1.0, 0.48, 0.12, 0.100 + night_boost * 0.090))
-    draw_set_transform(base_position + Vector2(0, 30), 0.0, Vector2(1.0, 0.30))
-    draw_circle(Vector2.ZERO, 45.0, Color(0.02, 0.025, 0.02, 0.30))
-    draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+    # Broad, soft warmth around the base. It is deliberately much subtler by
+    # day and becomes the visual anchor at night.
+    draw_circle(base_position + Vector2(0, 7), 138.0, Color(1.0, 0.43, 0.13, lerpf(0.018, 0.070, night_mix)))
+    draw_circle(base_position + Vector2(0, 6), 94.0, Color(1.0, 0.50, 0.16, lerpf(0.032, 0.115, night_mix)))
+    draw_circle(base_position + Vector2(0, 5), 58.0, Color(1.0, 0.58, 0.20, lerpf(0.070, 0.185, night_mix) + pulse * 0.012))
+
+    # Contact shadow keeps the illustrated hearth rooted in the clearing.
+    _draw_hearth_shadow(base_position + Vector2(0, 38), Vector2(71, 18), Color(0.015, 0.018, 0.012, 0.31))
 
     if visual_gate_hearth_art != null:
-        var frame_width: float = float(visual_gate_hearth_art.get_width()) / float(VISUAL_GATE_HEARTH_FRAMES)
+        var frame_count: int = 4
+        var frame_width: float = float(visual_gate_hearth_art.get_width()) / float(frame_count)
         var frame_height: float = float(visual_gate_hearth_art.get_height())
-        var frame: int = int(Time.get_ticks_msec() / 170) % VISUAL_GATE_HEARTH_FRAMES
-        var source := Rect2(frame_width * float(frame), 0.0, frame_width, frame_height)
+        var frame: int = int(floor(t * 4.6)) % frame_count
+        var source := Rect2(Vector2(frame_width * float(frame), 0.0), Vector2(frame_width, frame_height))
 
-        # Keep the stones and flame substantial, but do not let the hearth
-        # dwarf the hero or block the readability of the clearing.
-        var art_height: float = 132.0 + pulse * 2.5
-        var art_width: float = art_height * frame_width / maxf(1.0, frame_height)
+        var target_h: float = 126.0
+        var target_w: float = target_h * frame_width / maxf(1.0, frame_height)
+        var target_size := Vector2(target_w, target_h) * breath
         var destination := Rect2(
-            base_position + Vector2(-art_width * 0.5, -art_height * 0.66),
-            Vector2(art_width, art_height)
+            base_position + Vector2(-target_size.x * 0.5, -target_size.y * 0.59),
+            target_size
         )
         draw_texture_rect_region(visual_gate_hearth_art, destination, source, Color.WHITE)
 
-    # Sparse embers make the hearth feel alive even when the sprite animation
-    # pauses between frames.
+    # Small embers make the centre feel alive without turning it into VFX noise.
     for i: int in range(4):
-        var phase_offset: float = float(i) * 1.71
-        var ember_y: float = -20.0 - fmod(float(Time.get_ticks_msec()) * (0.011 + float(i) * 0.0016) + float(i) * 13.0, 38.0)
-        var ember_x: float = sin(float(Time.get_ticks_msec()) * 0.004 + phase_offset) * (8.0 + float(i) * 2.5)
-        var alpha: float = 0.38 + float(i % 2) * 0.14
-        draw_circle(base_position + Vector2(ember_x, ember_y), 1.2 + float(i % 2) * 0.5, Color(1.0, 0.67, 0.23, alpha))
+        var seed: float = float(i) * 1.71
+        var rise: float = fmod(t * (10.0 + float(i) * 1.7) + seed * 11.0, 32.0)
+        var ember_x: float = sin(t * 2.1 + seed) * (7.0 + float(i))
+        var ember_alpha: float = 0.20 + (1.0 - rise / 32.0) * 0.38
+        draw_circle(
+            base_position + Vector2(ember_x, -18.0 - rise),
+            1.2 + float(i % 2) * 0.4,
+            Color(1.0, 0.63, 0.22, ember_alpha)
+        )
+
+    # Deposit zone cue: only visible when the player actually carries loot or
+    # immediately after unloading, so the hearth remains clean most of the time.
+    var carried: int = 0
+    if player != null and is_instance_valid(player):
+        carried = player.inventory_total()
+    var deposit_alpha: float = 0.0
+    if carried > 0:
+        var near_ratio: float = 1.0 - clampf(player.global_position.distance_to(base_position) / 190.0, 0.0, 1.0)
+        deposit_alpha = 0.04 + near_ratio * 0.13
+    if deposit_pulse > 0.0:
+        deposit_alpha = maxf(deposit_alpha, deposit_pulse * 0.28)
+    if deposit_alpha > 0.0:
+        draw_arc(
+            base_position + Vector2(0, 22),
+            48.0 + (1.0 - deposit_pulse) * 7.0,
+            0.10,
+            TAU - 0.10,
+            36,
+            Color(0.94, 0.72, 0.34, deposit_alpha),
+            1.5
+        )
+
+func _draw_hearth_shadow(center: Vector2, radius: Vector2, color: Color) -> void:
+    draw_set_transform(center, 0.0, radius)
+    draw_circle(Vector2.ZERO, 1.0, color)
+    draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_palisade() -> void:
     var radius_x: float = 112.0 if biome_index == 0 else 78.0
