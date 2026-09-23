@@ -58,6 +58,13 @@ func _run() -> void:
         var hearth_texture := ResourceLoader.load(GameWorld.VISUAL_GATE_HEARTH_ART_PATH) as Texture2D
         if hearth_texture == null or hearth_texture.get_width() < GameWorld.VISUAL_GATE_HEARTH_FRAMES:
             _fail("Visual Gate hearth animation asset is invalid")
+
+    var preview_enemy := AxEnemy.new()
+    preview_enemy.configure("runner", 1.0, 1, Color.WHITE, false, 0)
+    preview_enemy.set_visual_gate(true)
+    if not preview_enemy.visual_gate_enabled:
+        _fail("Visual Gate enemy styling was not enabled")
+    preview_enemy.queue_free()
     for layout_key: String in world.player.visual_v2_frame_layouts:
         var layout: Dictionary = world.player.visual_v2_frame_layouts[layout_key]
         if absf(float(layout.get("target_height", 0.0)) - AxPlayer.VISUAL_V2_TARGET_HEIGHT) > 0.01:

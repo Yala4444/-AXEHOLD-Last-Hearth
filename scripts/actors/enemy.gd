@@ -48,6 +48,7 @@ var surge_windup: float = 0.0
 var surge_time: float = 0.0
 var surge_direction: Vector2 = Vector2.ZERO
 var visual_identity_version: int = 3
+var visual_gate_enabled: bool = false
 var forest_art_cache: Dictionary = {}
 
 func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss: bool = false, region_index: int = 0) -> void:
@@ -104,6 +105,10 @@ func configure(kind: String, difficulty: float, wave: int, color: Color, is_boss
     rotation = 0.0
     modulate = Color.WHITE
     scale = Vector2.ONE * base_scale
+    queue_redraw()
+
+func set_visual_gate(value: bool) -> void:
+    visual_gate_enabled = value
     queue_redraw()
 
 func visual_role_signature() -> Dictionary:
@@ -358,7 +363,14 @@ func _draw() -> void:
     var shadow_w: float = 34.0 if boss else (28.0 if elite else 22.0)
     if enemy_type == "guardian" and not boss:
         shadow_w = 30.0
-    _draw_shadow_ellipse(Vector2(0, 15), Vector2(shadow_w * 0.52, 4.8), Color(0.03, 0.035, 0.035, 0.28))
+    if visual_gate_enabled and biome_index == 0:
+        # Illustrated enemies need the same grounded treatment as the hero and
+        # resources. A broad faint layer plus a tighter contact layer prevents
+        # the art from reading like a sticker.
+        _draw_shadow_ellipse(Vector2(0, 16), Vector2(shadow_w * 0.66, 5.7), Color(0.018, 0.024, 0.019, 0.15))
+        _draw_shadow_ellipse(Vector2(0, 15), Vector2(shadow_w * 0.50, 4.1), Color(0.015, 0.020, 0.016, 0.24))
+    else:
+        _draw_shadow_ellipse(Vector2(0, 15), Vector2(shadow_w * 0.52, 4.8), Color(0.03, 0.035, 0.035, 0.28))
 
     if elite and not boss:
         var elite_pulse: float = (sin(animation_time * 4.8) + 1.0) * 0.5
@@ -424,7 +436,10 @@ func _draw() -> void:
     if hit_flash > 0.25 and biome_index != 0:
         draw_rect(Rect2(-17, -21, 34, 39), Color(1.0, 0.90, 0.72, hit_flash * 0.42), false, 2.0)
 
-    if not dying:
+    var show_health_bar: bool = not dying
+    if visual_gate_enabled and biome_index == 0:
+        show_health_bar = not dying and (boss or elite or hp < max_hp - 0.5 or hit_flash > 0.06)
+    if show_health_bar:
         var ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0)
         var width: float = 92.0 if boss and biome_index == 0 else (54.0 if boss else (38.0 if elite else (32.0 if enemy_type == "guardian" else 26.0)))
         var art_bar_y: float = -55.0
@@ -490,7 +505,18 @@ func _draw_illustrated_forest_identity() -> void:
     var art_tint := Color.WHITE.lerp(Color(1.0, 0.66, 0.54), clampf(hit_flash, 0.0, 1.0) * 0.82)
     if elite and not boss:
         art_tint = art_tint.lerp(elite_glow.lightened(0.30), 0.14)
-    draw_set_transform(Vector2(0, y_offset), tilt, Vector2(1.0 - squash, 1.0 + squash))
+
+    if visual_gate_enabled:
+        # The old global squash made high-quality enemy art breathe like a
+        # rubber sprite. Keep scale stable and use only a tiny vertical weight
+        # shift so the silhouette stays believable.
+        var grounded_bob: float = 0.0
+        if moving:
+            grounded_bob = sin(animation_time * pace * 0.55) * (0.9 if enemy_type == "runner" else 0.55)
+        var grounded_tilt: float = tilt * 0.42
+        draw_set_transform(Vector2(0, y_offset + grounded_bob), grounded_tilt, Vector2.ONE)
+    else:
+        draw_set_transform(Vector2(0, y_offset), tilt, Vector2(1.0 - squash, 1.0 + squash))
     draw_texture_rect(texture, Rect2(-size * 0.5, size), false, art_tint)
     draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
