@@ -134,6 +134,42 @@ func harvest(kind: String, pos: Vector2, amount: int, target: Vector2) -> void:
 
     _popup(pos + Vector2(0, -18), "+%d %s" % [amount, _resource_short(kind)], color.lightened(0.22), 0.62)
 
+func resource_hit(kind: String, pos: Vector2, direction: Vector2) -> void:
+    var color: Color = _resource_color(kind)
+    var dir: Vector2 = direction.normalized() if direction.length_squared() > 0.001 else Vector2.RIGHT
+    var side := Vector2(-dir.y, dir.x)
+    var count: int = 3
+    var gravity: float = 64.0
+    if kind == "wood":
+        color = Color("ba8250")
+        count = 4
+        gravity = 96.0
+    elif kind == "stone":
+        color = Color("b9c2bf")
+        count = 3
+        gravity = 128.0
+    elif kind == "ore":
+        color = Color("c28bdd")
+        count = 5
+        gravity = 42.0
+
+    for i: int in range(count):
+        var sign_value: float = -1.0 if i % 2 == 0 else 1.0
+        _particle(
+            pos + side * sign_value * randf_range(0.0, 5.0),
+            -dir * randf_range(16.0, 34.0) + side * sign_value * randf_range(8.0, 24.0),
+            color.lightened(randf_range(0.0, 0.18)),
+            randf_range(0.12, 0.22),
+            randf_range(1.2, 2.3),
+            gravity,
+            4.0
+        )
+    if visual_gate_enabled:
+        var slash := (dir + side * 0.42).normalized()
+        _streak(pos - slash * 10.0, pos + slash * 11.0, Color(color, 0.66), 0.09, 1.5)
+    if kind == "ore":
+        _pulse(pos, 4.0, 12.0, Color(color, 0.20), 0.12)
+
 func deposit(inventory: Dictionary, from_pos: Vector2, target: Vector2) -> void:
     var total: int = int(inventory.get("wood", 0)) + int(inventory.get("stone", 0)) + int(inventory.get("ore", 0))
     var kinds: Array[String] = ["wood", "stone", "ore"]
