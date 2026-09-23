@@ -110,6 +110,7 @@ func _ready() -> void:
     add_child(core_fx)
     hud = GameHud.new()
     add_child(hud)
+    hud.set_visual_gate(visual_v2_enabled)
     hud.action_requested.connect(_on_hud_action)
     _start_run()
 
@@ -277,7 +278,7 @@ func _setup_camera() -> void:
     player.add_child(camera)
     camera.position = Vector2.ZERO
     camera.position_smoothing_enabled = true
-    camera.position_smoothing_speed = 6.2
+    camera.position_smoothing_speed = 7.2 if visual_v2_enabled else 6.2
     var viewport_size: Vector2 = get_viewport_rect().size
     var half_view: Vector2 = viewport_size * 0.5
     camera.limit_left = int(world_rect.position.x + half_view.x)
@@ -292,8 +293,10 @@ func _update_camera_lookahead(delta: float) -> void:
         return
     var target_offset := Vector2.ZERO
     if player.velocity.length_squared() > 64.0:
-        target_offset = player.velocity.normalized() * 24.0
-    camera_lookahead = camera_lookahead.lerp(target_offset, clampf(delta * 4.6, 0.0, 1.0))
+        var lookahead_distance: float = 18.0 if visual_v2_enabled else 24.0
+        target_offset = player.velocity.normalized() * lookahead_distance
+    var lookahead_lerp: float = 5.4 if visual_v2_enabled else 4.6
+    camera_lookahead = camera_lookahead.lerp(target_offset, clampf(delta * lookahead_lerp, 0.0, 1.0))
 
     camera_shake_time = maxf(0.0, camera_shake_time - delta)
     camera_shake_strength = move_toward(camera_shake_strength, 0.0, delta * 18.0)
@@ -304,6 +307,9 @@ func _update_camera_lookahead(delta: float) -> void:
             sin(ticks * 53.0) + sin(ticks * 89.0) * 0.45,
             cos(ticks * 61.0) + sin(ticks * 97.0) * 0.35
         ) * camera_shake_strength
+        if visual_v2_enabled:
+            # Keep impact, remove handheld-looking jitter from the release look.
+            shake *= 0.72
     camera.position = camera_lookahead + shake
 
 func trigger_camera_shake(strength: float, duration: float = 0.14) -> void:
