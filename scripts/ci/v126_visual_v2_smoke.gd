@@ -23,6 +23,11 @@ func _run() -> void:
     for frame_id: String in AxPlayer.VISUAL_V2_FRAME_PATHS:
         if not ResourceLoader.exists(str(AxPlayer.VISUAL_V2_FRAME_PATHS[frame_id])):
             _fail("Missing coherent hero frame: " + frame_id)
+    for idle_id: String in AxPlayer.VISUAL_V2_IDLE_PATHS:
+        if not ResourceLoader.exists(str(AxPlayer.VISUAL_V2_IDLE_PATHS[idle_id])):
+            _fail("Missing neutral production idle frame: " + idle_id)
+    if not ResourceLoader.exists(ResourceSpot.PRODUCTION_TREE_STRIP_PATH):
+        _fail("Missing painted production tree damage strip")
     if not ResourceLoader.exists(AxPlayer.VISUAL_V2_HERO_PATH):
         _fail("Missing production hero asset")
     for enemy_role: String in AxEnemy.VISUAL_GATE_WALK_PATHS:
@@ -48,8 +53,12 @@ func _run() -> void:
         _fail("Production hero must load all six coherent animation frames")
     elif world.player.visual_v2_side_walk.size() != 6:
         _fail("VG-2 side walk must use six coherent stride frames")
-    elif world.player.visual_v2_frame_layouts.size() < 15:
-        _fail("VG-2 did not build normalized frame layouts")
+    elif world.player.visual_v2_idle_frames.size() != 3:
+        _fail("Master P0 must load front/side/back neutral idle art")
+    elif world.player.visual_v2_frame_layouts.size() < 18:
+        _fail("Master P0 did not normalize walk + idle frame layouts")
+    elif world.player.movement_acceleration < 1400.0 or world.player.movement_deceleration < 1700.0:
+        _fail("Master P0 movement responsiveness regressed to the sluggish tuning")
     elif world.player.weapon_style != "axes":
         _fail("Preview changed the equipped weapon profile")
     elif int(world.player.call("_visual_v2_orbit_count")) != world.player.axes:
@@ -82,6 +91,14 @@ func _run() -> void:
             if landmark.kind == "firepit":
                 _fail("Production forest spawned an inert dead firepit landmark")
                 break
+            if not landmark.visual_gate_enabled:
+                _fail("Production landmark missed Master P1 grounding mode")
+                break
+
+    for pad: BuildPad in world.pads:
+        if is_instance_valid(pad) and not pad.visual_gate_enabled:
+            _fail("Production camp build pad missed Master P4 styling")
+            break
 
     if world.activity_director != null:
         if world.activity_director.activities.size() > 4:
@@ -117,11 +134,19 @@ func _run() -> void:
     await _wait_frames(2)
     if world.player.velocity.length_squared() > 0.0001:
         _fail("Visual Gate idle test unexpectedly moved the hero")
+    var side_idle := world.player.visual_v2_idle_frames.get("side") as Texture2D
+    var frozen_walk := world.player.visual_v2_side_walk[3] if world.player.visual_v2_side_walk.size() >= 4 else null
+    if side_idle == null:
+        _fail("Master P0 side idle texture failed to load")
+    elif side_idle == frozen_walk:
+        _fail("Master P0 idle fell back to the old frozen walk frame")
 
     var damage_preview := ResourceSpot.new()
     world.add_child(damage_preview)
     damage_preview.configure("tree", 0, 0)
     damage_preview.set_visual_gate(true)
+    if damage_preview.radius < 19.5:
+        _fail("Master P2 production tree returned to prototype scale")
     if damage_preview.damage_stage() != 0:
         _fail("Fresh production resource starts damaged")
     damage_preview.hp = damage_preview.max_hp * 0.60
@@ -164,7 +189,26 @@ func _run() -> void:
     preview_enemy.set_visual_gate(true)
     if not preview_enemy.visual_gate_enabled:
         _fail("Visual Gate enemy styling was not enabled")
+    var runner_profile: Dictionary = preview_enemy.production_visual_profile()
+    if float(runner_profile.get("width",0.0)) < 130.0:
+        _fail("Master P3 runner silhouette became too small")
+    preview_enemy.configure("brute", 1.0, 1, Color.WHITE, false, 0)
+    preview_enemy.set_visual_gate(true)
+    var brute_profile: Dictionary = preview_enemy.production_visual_profile()
+    if float(brute_profile.get("height",0.0)) < 150.0:
+        _fail("Master P3 brute lost its heavy role scale")
+    preview_enemy.configure("boss", 1.0, 1, Color.WHITE, true, 0)
+    preview_enemy.set_visual_gate(true)
+    var boss_profile: Dictionary = preview_enemy.production_visual_profile()
+    if float(boss_profile.get("height",0.0)) < 250.0:
+        _fail("Master P3 boss no longer dominates hero scale")
     preview_enemy.queue_free()
+
+    var built_snapshot: Dictionary = world.built.duplicate(true)
+    world.built["wall"] = true
+    if world.production_camp_stage() < 1:
+        _fail("Master P4 Hearth camp did not visually progress after a build")
+    world.built = built_snapshot
     for layout_key: String in world.player.visual_v2_frame_layouts:
         var layout: Dictionary = world.player.visual_v2_frame_layouts[layout_key]
         if absf(float(layout.get("target_height", 0.0)) - AxPlayer.VISUAL_V2_TARGET_HEIGHT) > 0.01:
