@@ -54,3 +54,12 @@ func _production_frames_ready() -> bool:
     if visual_v2_back_walk.size() < 4:
         return false
     return true
+
+func apply_perk(id: String) -> void:
+    super.apply_perk(id)
+    # C7 visual/gameplay lock: never let the orbit become a weapon fan.
+    axes = clampi(axes, 1, 5)
+    queue_redraw()
+
+func _visual_v2_orbit_count() -> int:
+    return mini(5, super._visual_v2_orbit_count())
