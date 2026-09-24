@@ -82,7 +82,7 @@ func _ready() -> void:
     hud.set_visual_gate(true)
     hud.action_requested.connect(_on_clean_hud_action)
     hud.set_run_objective("ДЕНЬ 1 · СОБЕРИ РЕСУРСЫ И УКРЕПИ ОЧАГ")
-    hud.set_status("Новая сборка AXEHOLD: мир, герой и бой пересобраны с нуля.",1,3.4)
+    hud.set_status("AXEHOLD · production pass: чистый мир, орбитальный бой, mobile-first.",1,3.0)
 
     clean_canvas_modulate = CanvasModulate.new()
     add_child(clean_canvas_modulate)
@@ -164,11 +164,11 @@ func _create_clean_build_pads() -> void:
 
 func _spawn_initial_resources() -> void:
     resources.clear()
-    for _i: int in range(22):
+    for _i: int in range(16):
         _spawn_clean_resource("tree")
-    for _i: int in range(8):
+    for _i: int in range(6):
         _spawn_clean_resource("rock")
-    for _i: int in range(5):
+    for _i: int in range(4):
         _spawn_clean_resource("ore")
 
 func _spawn_clean_resource(kind: String) -> void:
@@ -201,13 +201,13 @@ func _clean_resource_position(kind: String) -> Vector2:
 func _seed_ground_details() -> void:
     clean_ground_marks.clear()
     clean_ground_patches.clear()
-    for _i: int in range(58):
+    for _i: int in range(32):
         clean_ground_patches.append({
             "pos":Vector2(clean_rng.randf_range(35,world_size.x-35),clean_rng.randf_range(40,world_size.y-40)),
             "radius":clean_rng.randf_range(48.0,128.0),
             "tone":clean_rng.randi_range(0,2)
         })
-    for _i: int in range(220):
+    for _i: int in range(110):
         var pos := Vector2(clean_rng.randf_range(20,world_size.x-20),clean_rng.randf_range(20,world_size.y-20))
         var roll: float = clean_rng.randf()
         clean_ground_marks.append({
@@ -666,7 +666,7 @@ func _draw_clean_ground() -> void:
     draw_rect(Rect2(Vector2.ZERO,world_size),Color(0.10,0.17,0.09,0.08))
     if clean_background != null:
         var scenic_rect := Rect2(Vector2(0,0),Vector2(world_size.x,900))
-        draw_texture_rect(clean_background,scenic_rect,false,Color(0.82,0.88,0.78,0.66))
+        draw_texture_rect(clean_background,scenic_rect,false,Color(0.82,0.88,0.78,0.52))
         # Gentle fade into the playable forest floor removes the old square seam.
         draw_rect(Rect2(0,700,world_size.x,70),Color(0.40,0.52,0.34,0.10))
         draw_rect(Rect2(0,770,world_size.x,70),Color(0.40,0.52,0.34,0.18))
@@ -694,15 +694,15 @@ func _draw_clean_paths() -> void:
         Vector2(base_position.x-35,1880),
         Vector2(base_position.x+30,2260)
     ])
-    draw_polyline(main_path,Color(0.31,0.22,0.14,0.18),62.0,true)
-    draw_polyline(main_path,Color(0.57,0.45,0.29,0.24),42.0,true)
+    draw_polyline(main_path,Color(0.31,0.22,0.14,0.14),48.0,true)
+    draw_polyline(main_path,Color(0.57,0.45,0.29,0.20),30.0,true)
 
     for pad: BuildPad in pads:
         if not is_instance_valid(pad):
             continue
         var branch := PackedVector2Array([base_position,pad.global_position])
-        draw_polyline(branch,Color(0.34,0.24,0.15,0.16),30.0,true)
-        draw_polyline(branch,Color(0.56,0.43,0.27,0.20),18.0,true)
+        draw_polyline(branch,Color(0.34,0.24,0.15,0.12),22.0,true)
+        draw_polyline(branch,Color(0.56,0.43,0.27,0.16),12.0,true)
 
 func _draw_clean_details() -> void:
     for item: Dictionary in clean_ground_marks:
