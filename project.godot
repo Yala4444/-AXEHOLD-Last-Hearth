@@ -1,9 +1,9 @@
-; AXEHOLD: Last Hearth
+; AXEHOLD
 ; Godot 4.7.2 project
 config_version=5
 
 [application]
-config/name="AXEHOLD: Last Hearth"
+config/name="AXEHOLD"
 config/icon="res://assets/ui/app_icon.svg"
 run/main_scene="res://scenes/app.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
