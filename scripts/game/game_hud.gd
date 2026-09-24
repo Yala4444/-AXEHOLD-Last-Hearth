@@ -41,6 +41,8 @@ var banner_queue: Array[Dictionary] = []
 var banner_running: bool = false
 var banner_current_text: String = ""
 var visual_gate_enabled: bool = false
+var context_button: Button
+var context_action: String = ""
 
 func _ready() -> void:
     layer = 60
@@ -75,6 +77,8 @@ func set_visual_gate(value: bool) -> void:
             storage_panel.add_theme_stylebox_override("panel", VisualSystem.panel(Color(0.030,0.040,0.034,0.58), Color(0.38,0.33,0.23,0.24), 6, 0, 1))
         if pause != null:
             pause.add_theme_stylebox_override("normal", VisualSystem.panel(Color(0.025,0.038,0.040,0.66), Color(0.31,0.36,0.34,0.28), 6, 0, 1))
+        if storage_part_label != null and storage_part_label.get_parent() != null:
+            storage_part_label.get_parent().visible = false
         objective_label.add_theme_color_override("font_color", Color("decfa4"))
         objective_label.add_theme_font_size_override("font_size", 7)
         status_panel.add_theme_stylebox_override("panel", VisualSystem.panel(Color(0.025,0.040,0.037,0.76), Color(0.38,0.46,0.39,0.28), 7, 0, 1))
@@ -166,6 +170,20 @@ func _build() -> void:
     pause_icon.configure("pause", VisualSystem.TEXT_SOFT, 0.60)
     pause_icon.position = Vector2(7, 6)
     pause.pressed.connect(func() -> void: action_requested.emit("pause"))
+
+    context_button = Button.new()
+    root.add_child(context_button)
+    context_button.visible = false
+    context_button.focus_mode = Control.FOCUS_NONE
+    context_button.text = ""
+    context_button.add_theme_font_size_override("font_size", 9)
+    context_button.add_theme_color_override("font_color", VisualSystem.TEXT)
+    context_button.add_theme_stylebox_override("normal", VisualSystem.button(true, false))
+    context_button.add_theme_stylebox_override("pressed", VisualSystem.button(true, true))
+    context_button.pressed.connect(func() -> void:
+        if not context_action.is_empty():
+            action_requested.emit(context_action)
+    )
 
     var storage_panel := _panel(root, Color(0.045, 0.055, 0.050, 0.76), Color(0.39, 0.34, 0.24, 0.38))
     storage_panel.name = "StoragePanel"
@@ -287,22 +305,24 @@ func _layout() -> void:
         hp_w = 64.0
         base_w = 68.0
         top_y = 9.0
-    var phase_w: float = width - margin * 2.0 - gap * 3.0 - pause_w - hp_w - base_w
-    if modal_panel != null:
-        modal_panel.custom_minimum_size = Vector2(clampf(width - 30.0, 250.0, 330.0), 0.0)
-
     var hp_panel := root.get_node("HeroPanel") as PanelContainer
     var phase_panel := root.get_node("PhasePanel") as PanelContainer
     var base_panel := root.get_node("BasePanel") as PanelContainer
     var pause := root.get_node("PauseButton") as Button
     var storage_panel := root.get_node("StoragePanel") as PanelContainer
+    var base_slot_w: float = base_w if base_panel.visible else 0.0
+    var base_gap: float = gap if base_panel.visible else 0.0
+    var phase_w: float = width - margin * 2.0 - gap * 2.0 - base_gap - pause_w - hp_w - base_slot_w
+    if modal_panel != null:
+        modal_panel.custom_minimum_size = Vector2(clampf(width - 30.0, 250.0, 330.0), 0.0)
 
     hp_panel.position = Vector2(margin, top_y)
     hp_panel.size = Vector2(hp_w, 33)
     phase_panel.position = Vector2(margin + hp_w + gap, top_y)
     phase_panel.size = Vector2(phase_w, 33)
-    base_panel.position = Vector2(margin + hp_w + gap + phase_w + gap, top_y)
-    base_panel.size = Vector2(base_w, 33)
+    if base_panel.visible:
+        base_panel.position = Vector2(margin + hp_w + gap + phase_w + gap, top_y)
+        base_panel.size = Vector2(base_w, 33)
     pause.position = Vector2(width - margin - pause_w, top_y)
     pause.size = Vector2(pause_w, 33)
 
@@ -328,7 +348,7 @@ func _layout() -> void:
     base_bar.size = Vector2(base_w - 14, 4)
 
     if visual_gate_enabled:
-        var storage_w: float = minf(246.0, width - margin * 2.0)
+        var storage_w: float = minf(198.0, width - margin * 2.0)
         storage_panel.position = Vector2((width - storage_w) * 0.5, top_y + 37.0)
         storage_panel.size = Vector2(storage_w, 22)
         objective_label.position = Vector2(margin + 14, top_y + 62.0)
@@ -366,7 +386,19 @@ func _layout() -> void:
     banner.position = Vector2(18, banner_y)
     banner.size = Vector2(width - 36, 34)
 
+    if context_button != null:
+        var button_w: float = minf(126.0, width * 0.32)
+        context_button.position = Vector2(width - margin - button_w, size.y - 62.0)
+        context_button.size = Vector2(button_w, 44.0)
+
 func update_stats(hero_hp: float, base_hp: float, bag: int, capacity: int, wave: int, phase: String, phase_value: float, xp: int, next_xp: int, level: int, storage: Dictionary, enemies_left: int, inventory: Dictionary = {}) -> void:
+    var base_panel_node := root.get_node_or_null("BasePanel") as PanelContainer
+    if base_panel_node != null and visual_gate_enabled:
+        var show_hearth_hp: bool = phase == "night" or base_hp < 269.5
+        if base_panel_node.visible != show_hearth_hp:
+            base_panel_node.visible = show_hearth_hp
+            _layout()
+
     hp_label.text = str(int(ceil(hero_hp)))
     base_label.text = str(int(ceil(maxf(base_hp, 0.0))))
     hp_bar.value = clampf(hero_hp / maxf(1.0, 100.0 + float(GameState.data.get("upgrades", {}).get("hp", 0)) * 10.0) * 100.0, 0.0, 100.0)
@@ -401,6 +433,20 @@ func set_run_objective(text: String) -> void:
         return
     objective_label.text = _safe(text)
     objective_label.visible = not objective_label.text.strip_edges().is_empty()
+
+func set_context_action(label: String, action: String) -> void:
+    if context_button == null:
+        return
+    context_action = action
+    context_button.text = _safe(label)
+    context_button.visible = not context_action.is_empty() and not context_button.text.strip_edges().is_empty()
+
+func clear_context_action() -> void:
+    context_action = ""
+    if context_button != null:
+        context_button.visible = false
+        context_button.text = ""
+
 
 func set_build_context(title: String, effect: String, cost: Dictionary, storage: Dictionary, ready: bool, progress: float = 0.0, parts_required: int = 0, parts_owned: int = 0) -> void:
     build_panel.visible = true

@@ -30,40 +30,37 @@ func _draw() -> void:
     _draw_grounding()
 
     if charge_windup > 0.0:
-        var t: float = 0.5 + 0.5 * sin(animation_time * 22.0)
-        draw_arc(Vector2(0,16), 33.0 + t * 4.0, 0.0, TAU, 32, Color(0.95,0.35,0.19,0.68), 2.2)
+        var t: float = 0.5 + 0.5 * sin(animation_time * 18.0)
+        draw_arc(Vector2(0,18), 29.0 + t * 3.0, 0.0, TAU, 28, Color(0.95,0.35,0.19,0.56), 1.8)
     elif windup > 0.0:
-        draw_arc(Vector2(0,16), 27.0, 0.0, TAU, 28, Color(0.92,0.74,0.28,0.54), 1.8)
+        draw_arc(Vector2(0,18), 24.0, 0.0, TAU, 24, Color(0.92,0.74,0.28,0.46), 1.5)
 
     if enemy_type == "normal":
-        _draw_strip(clean_husk_strip, 6, Vector2(83,91), -27.0)
+        _draw_strip(clean_husk_strip, 6, Vector2(86,104), 23.0)
     elif enemy_type == "runner":
-        _draw_strip(clean_hound_strip, 6, Vector2(92,68), -13.0)
+        _draw_strip(clean_hound_strip, 6, Vector2(112,79), 22.0)
     else:
         var key: String = "boss" if boss else enemy_type
         var texture: Texture2D = clean_art.get(key) as Texture2D
-        var size := Vector2(92,98)
-        var yoff: float = -27.0
+        var size := Vector2(92,108)
         match key:
             "brute":
-                size = Vector2(124,112)
-                yoff = -31.0
+                size = Vector2(122,128)
             "stalker":
-                size = Vector2(98,110)
-                yoff = -33.0
+                size = Vector2(88,126)
             "guardian":
-                size = Vector2(118,118)
-                yoff = -35.0
+                size = Vector2(126,132)
             "boss":
-                size = Vector2(174,156)
-                yoff = -48.0
-        _draw_static(texture,size,yoff)
+                size = Vector2(178,184)
+        _draw_static(texture,size,24.0)
 
-    if hp < max_hp and not dying:
+    # Ordinary enemies do not carry permanent UI bars. A short bar appears
+    # only as hit feedback; the boss uses the dedicated HUD boss bar.
+    if hp < max_hp and not dying and not boss and hit_flash > 0.025:
         var ratio: float = clampf(hp / maxf(1.0,max_hp),0.0,1.0)
-        var bar_y: float = -70.0 if not boss else -106.0
-        draw_rect(Rect2(-21,bar_y,42,4),Color(0.03,0.035,0.03,0.52))
-        draw_rect(Rect2(-21,bar_y,42.0*ratio,4),Color("b94843"))
+        var bar_y: float = -72.0 if enemy_type in ["normal","runner"] else -92.0
+        draw_rect(Rect2(-19,bar_y,38,3),Color(0.03,0.035,0.03,0.46))
+        draw_rect(Rect2(-19,bar_y,38.0*ratio,3),Color("b94843"))
 
 func _draw_grounding() -> void:
     var rx: float = 25.0
@@ -79,7 +76,7 @@ func _draw_grounding() -> void:
     draw_circle(Vector2.ZERO,rx*0.76,Color(0.12,0.09,0.05,0.15))
     draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)
 
-func _draw_strip(texture: Texture2D, frames: int, size: Vector2, y_offset: float) -> void:
+func _draw_strip(texture: Texture2D, frames: int, size: Vector2, foot_y: float) -> void:
     if texture == null:
         return
     var frame_w: float = texture.get_width() / float(frames)
@@ -90,17 +87,21 @@ func _draw_strip(texture: Texture2D, frames: int, size: Vector2, y_offset: float
     var tint := Color.WHITE
     if hit_flash > 0.0:
         tint = Color.WHITE.lerp(Color(1.0,0.36,0.28),hit_flash*0.72)
+    var y_offset: float = foot_y - size.y * 0.5
     draw_set_transform(Vector2(0,y_offset),0.0,Vector2(mirror,1.0))
     draw_texture_rect_region(texture,Rect2(-size*0.5,size),source,tint)
     draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)
 
-func _draw_static(texture: Texture2D, size: Vector2, y_offset: float) -> void:
+func _draw_static(texture: Texture2D, size: Vector2, foot_y: float) -> void:
     if texture == null:
         return
     var mirror: float = -1.0 if velocity.x < -0.5 else 1.0
     var tint := Color.WHITE
     if hit_flash > 0.0:
         tint = Color.WHITE.lerp(Color(1.0,0.34,0.25),hit_flash*0.68)
+    var breathe: float = 1.0 + sin(animation_time * 2.1) * 0.008
+    var animated_size := Vector2(size.x * breathe, size.y * breathe)
+    var y_offset: float = foot_y - animated_size.y * 0.5
     draw_set_transform(Vector2(0,y_offset),0.0,Vector2(mirror,1.0))
-    draw_texture_rect(texture,Rect2(-size*0.5,size),false,tint)
+    draw_texture_rect(texture,Rect2(-animated_size*0.5,animated_size),false,tint)
     draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)

@@ -8,6 +8,7 @@ const DRIFT_FACTOR := 0.42
 const DEADZONE := 0.10
 const TOP_SAFE_Y := 102.0
 const EDGE_MARGIN := 48.0
+const LEFT_TOUCH_ZONE_RATIO := 0.60
 
 var root: Control
 var base_panel: Panel
@@ -124,12 +125,18 @@ func _begin_touch(index: int, position: Vector2) -> void:
     _show_stick()
     _apply_direction_now()
 
+func _position_in_move_zone(position: Vector2) -> bool:
+    if position.y < TOP_SAFE_Y:
+        return false
+    var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+    # The dynamic stick owns the left side only. The right side stays free for
+    # the single contextual action button and other deliberate mobile taps.
+    return position.x <= viewport_size.x * LEFT_TOUCH_ZONE_RATIO
+
 func _touch_zone_allowed(position: Vector2) -> bool:
     if visible_for_test:
         return true
-    if position.y < TOP_SAFE_Y:
-        return false
-    return _touch_capable_runtime()
+    return _position_in_move_zone(position) and _touch_capable_runtime()
 
 func _touch_capable_runtime() -> bool:
     # Safari/Web can report touchscreen availability inconsistently.

@@ -15,22 +15,38 @@ func _draw() -> void:
                 _draw_shrine()
         _draw_level_badge_clean()
     else:
-        _draw_blueprint_clean()
+        if focused:
+            _draw_blueprint_clean()
+        else:
+            _draw_dormant_marker()
 
 func _draw_ground_socket() -> void:
-    var rx: float = 34.0 if built else 28.0
-    var ry: float = 8.0 if built else 6.0
+    var rx: float = 34.0 if built else (27.0 if focused else 19.0)
+    var ry: float = 8.0 if built else (6.0 if focused else 4.0)
+    var outer_alpha: float = 0.23 if built else (0.12 if focused else 0.035)
+    var inner_alpha: float = 0.15 if built else (0.09 if focused else 0.025)
     draw_set_transform(Vector2(0,22),0.0,Vector2(1.0,ry/rx))
-    draw_circle(Vector2.ZERO,rx,Color(0.02,0.03,0.02,0.23 if built else 0.14))
-    draw_circle(Vector2.ZERO,rx*0.82,Color(0.28,0.19,0.10,0.15))
+    draw_circle(Vector2.ZERO,rx,Color(0.02,0.03,0.02,outer_alpha))
+    draw_circle(Vector2.ZERO,rx*0.82,Color(0.28,0.19,0.10,inner_alpha))
     draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)
-    var grass := Color(0.24,0.40,0.18,0.38)
-    draw_line(Vector2(-27,21),Vector2(-25,13),grass,1.2)
-    draw_line(Vector2(26,22),Vector2(23,14),grass,1.2)
+    if built or focused:
+        var grass := Color(0.24,0.40,0.18,0.38 if built else 0.22)
+        draw_line(Vector2(-27,21),Vector2(-25,13),grass,1.2)
+        draw_line(Vector2(26,22),Vector2(23,14),grass,1.2)
+
+func _draw_dormant_marker() -> void:
+    # C7 mobile-first rule: unused build pads stay almost invisible until the
+    # player approaches them. The world should read as a forest, not a UI map.
+    var line := Color(0.50,0.36,0.19,0.22)
+    draw_line(Vector2(-10,7),Vector2(-10,-5),line,1.1)
+    draw_line(Vector2(10,7),Vector2(10,-5),line,1.1)
+    draw_line(Vector2(-10,-3),Vector2(10,-3),Color(0.64,0.48,0.27,0.16),1.0)
+    draw_arc(Vector2.ZERO,13.0,0.15,PI-0.15,16,Color(0.81,0.64,0.33,0.11),1.0)
+
 
 func _draw_blueprint_clean() -> void:
     var breathe: float = 0.5 + 0.5 * sin(idle_time * 2.6)
-    var ring := Color(0.86,0.67,0.31,0.72 if affordable or focused else 0.34)
+    var ring := Color(0.86,0.67,0.31,0.76 if affordable else 0.52)
     draw_arc(Vector2.ZERO,25.0 + breathe*1.5,0.0,TAU,28,ring,1.6)
     draw_circle(Vector2.ZERO,18.0,Color(0.05,0.08,0.06,0.16))
     match build_type:

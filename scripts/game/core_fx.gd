@@ -101,6 +101,9 @@ func harvest(kind: String, pos: Vector2, amount: int, target: Vector2) -> void:
             speed_min = 34.0
             speed_max = 72.0
 
+    if visual_gate_enabled:
+        burst_count = mini(burst_count, 6)
+
     for i: int in range(burst_count):
         var angle: float = TAU * float(i) / float(burst_count) + randf_range(-0.25, 0.25)
         var speed: float = randf_range(speed_min, speed_max)
@@ -126,7 +129,7 @@ func harvest(kind: String, pos: Vector2, amount: int, target: Vector2) -> void:
     elif kind == "ore":
         _pulse(pos, 9.0, 30.0, Color(0.70, 0.43, 0.82, 0.32), 0.24)
 
-    var token_count: int = clampi(int(ceil(float(amount) / 2.0)), 2, 5)
+    var token_count: int = clampi(int(ceil(float(amount) / 2.0)), 2, 4 if visual_gate_enabled else 5)
     for i: int in range(token_count):
         var start: Vector2 = pos + Vector2(randf_range(-8.0, 8.0), randf_range(-6.0, 6.0))
         var arc: Vector2 = start.lerp(target, 0.5) + Vector2(randf_range(-18.0, 18.0), randf_range(-42.0, -24.0))
@@ -189,8 +192,9 @@ func deposit(inventory: Dictionary, from_pos: Vector2, target: Vector2) -> void:
     _popup(target + Vector2(0, -26), "СКЛАД +%d" % total, Color("ffe0a0"), 0.82)
 
 func build_complete(pos: Vector2, title: String) -> void:
-    for i: int in range(22):
-        var angle: float = TAU * float(i) / 22.0
+    var count: int = 12 if visual_gate_enabled else 22
+    for i: int in range(count):
+        var angle: float = TAU * float(i) / float(count)
         var palette: Array[Color] = [Color("f3ce78"), Color("d59252"), Color("efe0af")]
         _particle(pos + Vector2(randf_range(-9.0, 9.0), randf_range(-8.0, 8.0)), Vector2(cos(angle), sin(angle)) * randf_range(48.0, 94.0), palette[i % palette.size()], 0.70, randf_range(2.0, 4.0), 48.0, 2.6)
     _pulse(pos, 28.0, 92.0, Color(1.0, 0.80, 0.35, 0.72), 0.72)
@@ -292,8 +296,9 @@ func boss_arrival(pos: Vector2, biome_index: int) -> void:
 
     _pulse(pos, 18.0, 86.0, Color(color.r, color.g, color.b, 0.70), 0.72)
     _pulse(pos, 8.0, 48.0, Color(1.0, 0.88, 0.64, 0.44), 0.44)
-    for i: int in range(26):
-        var angle: float = TAU * float(i) / 26.0
+    var arrival_count: int = 16 if visual_gate_enabled else 26
+    for i: int in range(arrival_count):
+        var angle: float = TAU * float(i) / float(arrival_count)
         var dir := Vector2(cos(angle), sin(angle))
         _particle(
             pos + dir * randf_range(5.0, 18.0),
@@ -316,6 +321,8 @@ func enemy_down(pos: Vector2, enemy_type: String, boss: bool, biome_index: int, 
         color = Color("b96349")
 
     var count: int = 30 if boss else (18 if elite else (12 if enemy_type == "guardian" or enemy_type == "brute" else 7))
+    if visual_gate_enabled:
+        count = 18 if boss else (10 if elite else (7 if enemy_type == "guardian" or enemy_type == "brute" else 4))
     for i: int in range(count):
         var angle: float = TAU * float(i) / float(maxi(1, count)) + randf_range(-0.22, 0.22)
         var dir := Vector2(cos(angle), sin(angle))
