@@ -254,9 +254,10 @@ func _update_world_tint(delta: float) -> void:
         return
     var target := Color.WHITE
     if phase == "night":
-        target = Color(0.54,0.62,0.73)
+        # Night stays readable on a phone: colder, not black.
+        target = Color(0.68,0.73,0.82)
     elif phase_time < 12.0:
-        target = Color(0.92,0.78,0.66)
+        target = Color(0.95,0.84,0.72)
     clean_canvas_modulate.color = clean_canvas_modulate.color.lerp(target,clampf(delta*1.8,0.0,1.0))
 
 func _update_resource_loop(delta: float) -> void:
@@ -718,8 +719,10 @@ func _draw_clean_details() -> void:
             draw_circle(pos,size*0.72,Color(0.70,0.69,0.47,0.10))
 
 func _draw_clean_hearth_socket() -> void:
-    draw_circle(base_position,128.0,Color(0.96,0.69,0.29,0.042))
-    draw_arc(base_position,128.0,0,TAU,64,Color(0.96,0.72,0.30,0.14),1.6)
-    draw_set_transform(base_position+Vector2(0,30),0.0,Vector2(1.0,0.27))
-    draw_circle(Vector2.ZERO,62.0,Color(0.03,0.035,0.025,0.22))
+    # The hearth is a world object, not a HUD marker. No giant yellow safety
+    # circle: just a quiet warm stain and a contact shadow under the camp.
+    draw_circle(base_position,92.0,Color(0.96,0.69,0.29,0.020 if phase == "day" else 0.045))
+    draw_circle(base_position,58.0,Color(0.98,0.58,0.22,0.022 if phase == "day" else 0.055))
+    draw_set_transform(base_position+Vector2(0,30),0.0,Vector2(1.0,0.24))
+    draw_circle(Vector2.ZERO,58.0,Color(0.03,0.035,0.025,0.22))
     draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)
