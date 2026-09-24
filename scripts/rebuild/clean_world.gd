@@ -190,6 +190,11 @@ func _clean_resource_position(kind: String) -> Vector2:
         )
         if pos.distance_to(base_position) < min_base_distance:
             continue
+        # Keep a broad central travel corridor readable. Resources can frame
+        # the route, but should not repeatedly cover the hero or turn the path
+        # into a wall of trees and rocks on a phone screen.
+        if pos.y > base_position.y + 150.0 and absf(pos.x - base_position.x) < 92.0:
+            continue
         var clear: bool = true
         for existing: ResourceSpot in resources:
             if is_instance_valid(existing) and existing.global_position.distance_to(pos) < min_other:
