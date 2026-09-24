@@ -41,10 +41,10 @@ func _test_mobile_autoloads() -> void:
         controls.call("release_test_input")
         controls.call("force_visible_for_test", false)
         var viewport_size: Vector2 = get_viewport().get_visible_rect().size
-        if bool(controls.call("_touch_zone_allowed", Vector2(viewport_size.x * 0.88, viewport_size.y * 0.78))):
-            _fail("Dynamic joystick still captures the right-side contextual-action zone")
-        elif not bool(controls.call("_touch_zone_allowed", Vector2(viewport_size.x * 0.24, viewport_size.y * 0.78))):
-            _fail("Dynamic joystick no longer accepts the intended left-side touch zone")
+        if bool(controls.call("_position_in_move_zone", Vector2(viewport_size.x * 0.88, viewport_size.y * 0.78))):
+            _fail("Dynamic joystick still owns the right-side contextual-action zone")
+        elif not bool(controls.call("_position_in_move_zone", Vector2(viewport_size.x * 0.24, viewport_size.y * 0.78))):
+            _fail("Dynamic joystick move zone no longer covers the intended left side")
     if sanitizer == null:
         _fail("UISanitizer autoload is missing")
     if web_runtime == null:
