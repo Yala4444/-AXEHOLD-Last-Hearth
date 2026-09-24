@@ -80,6 +80,16 @@ func _run() -> void:
     var pad: BuildPad = game.pads[0]
     if not pad.can_build(game.storage):
         _fail("Clean build economy is not functional")
+    else:
+        game.player.global_position = pad.global_position
+        game.call("_update_build_loop", 0.016)
+        if game.clean_focused_pad != pad:
+            _fail("Context build focus did not select the nearby pad")
+        if game.hud.context_button == null or not game.hud.context_button.visible:
+            _fail("Context mobile build button did not appear")
+        game.call("_on_clean_hud_action", "clean_build_" + pad.build_type)
+        if not pad.built:
+            _fail("Context mobile build action did not construct the pad")
 
     game.queue_free()
     await _frames(3)
