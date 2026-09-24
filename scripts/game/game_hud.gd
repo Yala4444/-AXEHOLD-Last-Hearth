@@ -41,6 +41,8 @@ var banner_queue: Array[Dictionary] = []
 var banner_running: bool = false
 var banner_current_text: String = ""
 var visual_gate_enabled: bool = false
+var context_button: Button
+var context_action: String = ""
 
 func _ready() -> void:
     layer = 60
@@ -168,6 +170,20 @@ func _build() -> void:
     pause_icon.configure("pause", VisualSystem.TEXT_SOFT, 0.60)
     pause_icon.position = Vector2(7, 6)
     pause.pressed.connect(func() -> void: action_requested.emit("pause"))
+
+    context_button = Button.new()
+    root.add_child(context_button)
+    context_button.visible = false
+    context_button.focus_mode = Control.FOCUS_NONE
+    context_button.text = ""
+    context_button.add_theme_font_size_override("font_size", 9)
+    context_button.add_theme_color_override("font_color", VisualSystem.TEXT)
+    context_button.add_theme_stylebox_override("normal", VisualSystem.button(true, false))
+    context_button.add_theme_stylebox_override("pressed", VisualSystem.button(true, true))
+    context_button.pressed.connect(func() -> void:
+        if not context_action.is_empty():
+            action_requested.emit(context_action)
+    )
 
     var storage_panel := _panel(root, Color(0.045, 0.055, 0.050, 0.76), Color(0.39, 0.34, 0.24, 0.38))
     storage_panel.name = "StoragePanel"
@@ -370,6 +386,11 @@ func _layout() -> void:
     banner.position = Vector2(18, banner_y)
     banner.size = Vector2(width - 36, 34)
 
+    if context_button != null:
+        var button_w: float = minf(126.0, width * 0.32)
+        context_button.position = Vector2(width - margin - button_w, size.y - 62.0)
+        context_button.size = Vector2(button_w, 44.0)
+
 func update_stats(hero_hp: float, base_hp: float, bag: int, capacity: int, wave: int, phase: String, phase_value: float, xp: int, next_xp: int, level: int, storage: Dictionary, enemies_left: int, inventory: Dictionary = {}) -> void:
     var base_panel_node := root.get_node_or_null("BasePanel") as PanelContainer
     if base_panel_node != null and visual_gate_enabled:
@@ -412,6 +433,20 @@ func set_run_objective(text: String) -> void:
         return
     objective_label.text = _safe(text)
     objective_label.visible = not objective_label.text.strip_edges().is_empty()
+
+func set_context_action(label: String, action: String) -> void:
+    if context_button == null:
+        return
+    context_action = action
+    context_button.text = _safe(label)
+    context_button.visible = not context_action.is_empty() and not context_button.text.strip_edges().is_empty()
+
+func clear_context_action() -> void:
+    context_action = ""
+    if context_button != null:
+        context_button.visible = false
+        context_button.text = ""
+
 
 func set_build_context(title: String, effect: String, cost: Dictionary, storage: Dictionary, ready: bool, progress: float = 0.0, parts_required: int = 0, parts_owned: int = 0) -> void:
     build_panel.visible = true
