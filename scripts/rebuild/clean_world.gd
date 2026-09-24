@@ -164,11 +164,11 @@ func _create_clean_build_pads() -> void:
 
 func _spawn_initial_resources() -> void:
     resources.clear()
-    for _i: int in range(16):
+    for _i: int in range(22):
         _spawn_clean_resource("tree")
-    for _i: int in range(6):
+    for _i: int in range(8):
         _spawn_clean_resource("rock")
-    for _i: int in range(4):
+    for _i: int in range(5):
         _spawn_clean_resource("ore")
 
 func _spawn_clean_resource(kind: String) -> void:
