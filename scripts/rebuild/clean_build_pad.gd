@@ -21,15 +21,18 @@ func _draw() -> void:
             _draw_dormant_marker()
 
 func _draw_ground_socket() -> void:
-    var rx: float = 34.0 if built else 28.0
-    var ry: float = 8.0 if built else 6.0
+    var rx: float = 34.0 if built else (27.0 if focused else 19.0)
+    var ry: float = 8.0 if built else (6.0 if focused else 4.0)
+    var outer_alpha: float = 0.23 if built else (0.12 if focused else 0.035)
+    var inner_alpha: float = 0.15 if built else (0.09 if focused else 0.025)
     draw_set_transform(Vector2(0,22),0.0,Vector2(1.0,ry/rx))
-    draw_circle(Vector2.ZERO,rx,Color(0.02,0.03,0.02,0.23 if built else 0.14))
-    draw_circle(Vector2.ZERO,rx*0.82,Color(0.28,0.19,0.10,0.15))
+    draw_circle(Vector2.ZERO,rx,Color(0.02,0.03,0.02,outer_alpha))
+    draw_circle(Vector2.ZERO,rx*0.82,Color(0.28,0.19,0.10,inner_alpha))
     draw_set_transform(Vector2.ZERO,0.0,Vector2.ONE)
-    var grass := Color(0.24,0.40,0.18,0.38)
-    draw_line(Vector2(-27,21),Vector2(-25,13),grass,1.2)
-    draw_line(Vector2(26,22),Vector2(23,14),grass,1.2)
+    if built or focused:
+        var grass := Color(0.24,0.40,0.18,0.38 if built else 0.22)
+        draw_line(Vector2(-27,21),Vector2(-25,13),grass,1.2)
+        draw_line(Vector2(26,22),Vector2(23,14),grass,1.2)
 
 func _draw_dormant_marker() -> void:
     # C7 mobile-first rule: unused build pads stay almost invisible until the
