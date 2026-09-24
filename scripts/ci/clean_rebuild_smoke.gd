@@ -33,9 +33,11 @@ func _run() -> void:
 
     if game.player is AXEHOLDCleanPlayer:
         var hero := game.player as AXEHOLDCleanPlayer
-        if hero.clean_front == null or hero.clean_side == null or hero.clean_back == null:
-            _fail("Hero directional presentation is incomplete")
-        hero.clean_facing = Vector2.UP
+        if not hero.production_ready:
+            _fail("Hero production animation set is incomplete")
+        if hero.visual_v2_side_walk.size() < 6 or hero.visual_v2_front_walk.size() < 4 or hero.visual_v2_back_walk.size() < 4:
+            _fail("Hero directional walk cycles are incomplete")
+        hero.visual_facing_direction = Vector2.UP
         hero.queue_redraw()
         await _frames(2)
 
