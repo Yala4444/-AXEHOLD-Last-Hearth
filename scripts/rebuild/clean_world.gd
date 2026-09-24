@@ -26,6 +26,7 @@ var clean_boss_spawned: bool = false
 var clean_boss_dead: bool = false
 var clean_run_time: float = 0.0
 var clean_night_cap: float = 0.0
+var clean_focused_pad: BuildPad = null
 
 func configure(index: int, selected_threat: int = 1, mode: String = "expedition") -> void:
     biome_index = clampi(index, 0, GameRules.BIOMES.size() - 1)
@@ -325,32 +326,49 @@ func _update_deposit_loop() -> void:
     clean_deposit_cooldown = 0.7
     hud.show_banner("РЕСУРСЫ ДОСТАВЛЕНЫ К ОЧАГУ",Color("e2c56d"),0)
 
-func _update_build_loop(delta: float) -> void:
-    var any_focus: bool = false
+func _update_build_loop(_delta: float) -> void:
+    clean_focused_pad = null
+    var nearest_distance: float = INF
+
     for pad: BuildPad in pads:
         if not is_instance_valid(pad):
             continue
-        var close: bool = player.global_position.distance_to(pad.global_position) < 63.0
-        var afford: bool = pad.can_build(storage)
-        pad.set_context_state(afford,close)
-        if close:
-            any_focus = true
-            if pad.built:
-                hud.set_built_context(pad.label,pad.effect)
-            else:
-                hud.set_build_context(pad.label,pad.effect,pad.cost,storage,afford,pad.construction_progress)
-                if afford and pad.advance_construction(delta):
-                    pad.consume(storage)
-                    built[pad.build_type] = true
-                    builds += 1
-                    _apply_clean_build_effect(pad.build_type)
-                    hud.show_banner("%s ПОСТРОЕНА" % pad.label,Color("e8c565"),0)
-            if not afford and not pad.built:
-                pad.reset_construction()
-        elif not pad.built:
+        var distance: float = player.global_position.distance_to(pad.global_position)
+        if distance < 66.0 and distance < nearest_distance:
+            nearest_distance = distance
+            clean_focused_pad = pad
+
+    for pad: BuildPad in pads:
+        if not is_instance_valid(pad):
+            continue
+        var focused: bool = pad == clean_focused_pad
+        pad.set_context_state(pad.can_build(storage), focused)
+        if not focused and not pad.built:
             pad.reset_construction()
-    if not any_focus:
+
+    if clean_focused_pad == null:
         hud.hide_build_context()
+        hud.clear_context_action()
+        return
+
+    if clean_focused_pad.built:
+        hud.set_built_context(clean_focused_pad.label,clean_focused_pad.effect)
+        hud.clear_context_action()
+        return
+
+    var afford: bool = clean_focused_pad.can_build(storage)
+    hud.set_build_context(
+        clean_focused_pad.label,
+        clean_focused_pad.effect,
+        clean_focused_pad.cost,
+        storage,
+        afford,
+        clean_focused_pad.construction_progress
+    )
+    if afford:
+        hud.set_context_action("ПОСТРОИТЬ", "clean_build_" + clean_focused_pad.build_type)
+    else:
+        hud.clear_context_action()
 
 func _apply_clean_build_effect(kind: String) -> void:
     match kind:
@@ -522,6 +540,18 @@ func _offer_clean_upgrade() -> void:
     hud.show_modal("star","НОВЫЙ УРОВЕНЬ","Выбери одно усиление. Игра полностью остановлена.",buttons)
 
 func _on_clean_hud_action(action: String) -> void:
+    if action.begins_with("clean_build_"):
+        var build_id: String = action.trim_prefix("clean_build_")
+        if clean_focused_pad != null         and is_instance_valid(clean_focused_pad)         and clean_focused_pad.build_type == build_id         and not clean_focused_pad.built         and player.global_position.distance_to(clean_focused_pad.global_position) < 72.0         and clean_focused_pad.can_build(storage):
+            clean_focused_pad.consume(storage)
+            built[clean_focused_pad.build_type] = true
+            builds += 1
+            _apply_clean_build_effect(clean_focused_pad.build_type)
+            hud.show_banner("%s ПОСТРОЕНА" % clean_focused_pad.label,Color("e8c565"),0)
+            hud.set_built_context(clean_focused_pad.label,clean_focused_pad.effect)
+            hud.clear_context_action()
+        return
+
     if action.begins_with("clean_upgrade_"):
         var id: String = action.trim_prefix("clean_upgrade_")
         _apply_clean_upgrade(id)
