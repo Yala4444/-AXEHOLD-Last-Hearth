@@ -27,6 +27,8 @@ var clean_boss_dead: bool = false
 var clean_run_time: float = 0.0
 var clean_night_cap: float = 0.0
 var clean_focused_pad: BuildPad = null
+var clean_orbit_fx_cooldown: float = 0.0
+var clean_resource_fx_cooldown: float = 0.0
 
 func configure(index: int, selected_threat: int = 1, mode: String = "expedition") -> void:
     biome_index = clampi(index, 0, GameRules.BIOMES.size() - 1)
@@ -237,6 +239,8 @@ func _process(delta: float) -> void:
 
     clean_deposit_cooldown = maxf(0.0,clean_deposit_cooldown-delta)
     clean_turret_cooldown = maxf(0.0,clean_turret_cooldown-delta)
+    clean_orbit_fx_cooldown = maxf(0.0,clean_orbit_fx_cooldown-delta)
+    clean_resource_fx_cooldown = maxf(0.0,clean_resource_fx_cooldown-delta)
 
     _resolve_player_resource_overlap()
     _update_resource_loop(delta)
@@ -274,6 +278,10 @@ func _update_resource_loop(delta: float) -> void:
             continue
         var reach: float = player.orbit_radius + spot.radius * 0.45
         if player.global_position.distance_to(spot.global_position) <= reach:
+            var hit_direction: Vector2 = spot.global_position - player.global_position
+            if clean_resource_fx_cooldown <= 0.0 and core_fx != null:
+                core_fx.resource_hit(spot.resource_type, spot.global_position, hit_direction)
+                clean_resource_fx_cooldown = 0.16
             if spot.damage(player.damage * delta * 0.78):
                 var resource_kind: String = "wood" if spot.resource_type == "tree" else ("stone" if spot.resource_type == "rock" else "ore")
                 var amount: int = 5 if resource_kind == "wood" else (4 if resource_kind == "stone" else 3)
@@ -282,6 +290,8 @@ func _update_resource_loop(delta: float) -> void:
                     if spot.resource_type == "tree":
                         trees_cut += 1
                     hud.set_status("+%d %s в рюкзак" % [gained,_clean_resource_name(resource_kind)],0,1.1)
+                    if core_fx != null:
+                        core_fx.harvest(spot.resource_type, spot.global_position, gained, player.global_position)
                 clean_respawns.append({"kind":spot.resource_type,"time":10.0 + clean_rng.randf_range(0.0,5.0)})
                 dead.append(spot)
                 spot.queue_free()
@@ -329,6 +339,8 @@ func _update_deposit_loop() -> void:
     for key: String in ["wood","stone","ore"]:
         storage[key] = int(storage.get(key,0)) + int(bag.get(key,0))
     clean_deposit_cooldown = 0.7
+    if core_fx != null:
+        core_fx.deposit(bag,player.global_position,base_position)
     hud.show_banner("РЕСУРСЫ ДОСТАВЛЕНЫ К ОЧАГУ",Color("e2c56d"),0)
 
 func _update_build_loop(_delta: float) -> void:
@@ -426,6 +438,10 @@ func _update_clean_night(delta: float) -> void:
     if spawn_left <= 0 and clean_boss_pending and not clean_boss_spawned and enemies.size() <= 2:
         _spawn_clean_enemy(true)
         clean_boss_spawned = true
+        if core_fx != null and not enemies.is_empty():
+            var boss_enemy: AxEnemy = enemies[enemies.size()-1]
+            if is_instance_valid(boss_enemy):
+                core_fx.boss_arrival(boss_enemy.global_position,0)
         hud.show_banner("ЛЕСНОЙ ХРАНИТЕЛЬ ПРОБУДИЛСЯ",Color("d96d55"),3)
 
     _update_enemy_targets_and_combat(delta)
@@ -485,6 +501,14 @@ func _update_enemy_targets_and_combat(delta: float) -> void:
         if distance_to_player <= player.orbit_radius + 24.0:
             var dps: float = player.damage * (0.74 + float(player.axes-1)*0.22)
             enemy.take_damage(dps * delta)
+            if clean_orbit_fx_cooldown <= 0.0 and core_fx != null:
+                core_fx.enemy_hit(
+                    enemy.global_position,
+                    false,
+                    enemy.global_position - player.global_position,
+                    player.weapon_style
+                )
+                clean_orbit_fx_cooldown = 0.11
 
         if distance_to_player <= 27.0 and enemy.hit_cooldown <= 0.0:
             player.take_damage(enemy.contact_damage)
@@ -499,6 +523,8 @@ func _on_clean_enemy_killed(enemy: AxEnemy) -> void:
     if enemy == null:
         return
     var was_boss: bool = enemy.boss
+    if core_fx != null and is_instance_valid(enemy):
+        core_fx.enemy_down(enemy.global_position,enemy.enemy_type,was_boss,0,enemy.elite)
     enemies.erase(enemy)
     if is_instance_valid(enemy):
         enemy.queue_free()
@@ -552,6 +578,8 @@ func _on_clean_hud_action(action: String) -> void:
             built[clean_focused_pad.build_type] = true
             builds += 1
             _apply_clean_build_effect(clean_focused_pad.build_type)
+            if core_fx != null:
+                core_fx.build_complete(clean_focused_pad.global_position,clean_focused_pad.label)
             hud.show_banner("%s ПОСТРОЕНА" % clean_focused_pad.label,Color("e8c565"),0)
             hud.set_built_context(clean_focused_pad.label,clean_focused_pad.effect)
             hud.clear_context_action()
