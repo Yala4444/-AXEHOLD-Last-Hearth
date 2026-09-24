@@ -75,6 +75,8 @@ func set_visual_gate(value: bool) -> void:
             storage_panel.add_theme_stylebox_override("panel", VisualSystem.panel(Color(0.030,0.040,0.034,0.58), Color(0.38,0.33,0.23,0.24), 6, 0, 1))
         if pause != null:
             pause.add_theme_stylebox_override("normal", VisualSystem.panel(Color(0.025,0.038,0.040,0.66), Color(0.31,0.36,0.34,0.28), 6, 0, 1))
+        if storage_part_label != null and storage_part_label.get_parent() != null:
+            storage_part_label.get_parent().visible = false
         objective_label.add_theme_color_override("font_color", Color("decfa4"))
         objective_label.add_theme_font_size_override("font_size", 7)
         status_panel.add_theme_stylebox_override("panel", VisualSystem.panel(Color(0.025,0.040,0.037,0.76), Color(0.38,0.46,0.39,0.28), 7, 0, 1))
@@ -287,22 +289,24 @@ func _layout() -> void:
         hp_w = 64.0
         base_w = 68.0
         top_y = 9.0
-    var phase_w: float = width - margin * 2.0 - gap * 3.0 - pause_w - hp_w - base_w
-    if modal_panel != null:
-        modal_panel.custom_minimum_size = Vector2(clampf(width - 30.0, 250.0, 330.0), 0.0)
-
     var hp_panel := root.get_node("HeroPanel") as PanelContainer
     var phase_panel := root.get_node("PhasePanel") as PanelContainer
     var base_panel := root.get_node("BasePanel") as PanelContainer
     var pause := root.get_node("PauseButton") as Button
     var storage_panel := root.get_node("StoragePanel") as PanelContainer
+    var base_slot_w: float = base_w if base_panel.visible else 0.0
+    var base_gap: float = gap if base_panel.visible else 0.0
+    var phase_w: float = width - margin * 2.0 - gap * 2.0 - base_gap - pause_w - hp_w - base_slot_w
+    if modal_panel != null:
+        modal_panel.custom_minimum_size = Vector2(clampf(width - 30.0, 250.0, 330.0), 0.0)
 
     hp_panel.position = Vector2(margin, top_y)
     hp_panel.size = Vector2(hp_w, 33)
     phase_panel.position = Vector2(margin + hp_w + gap, top_y)
     phase_panel.size = Vector2(phase_w, 33)
-    base_panel.position = Vector2(margin + hp_w + gap + phase_w + gap, top_y)
-    base_panel.size = Vector2(base_w, 33)
+    if base_panel.visible:
+        base_panel.position = Vector2(margin + hp_w + gap + phase_w + gap, top_y)
+        base_panel.size = Vector2(base_w, 33)
     pause.position = Vector2(width - margin - pause_w, top_y)
     pause.size = Vector2(pause_w, 33)
 
@@ -328,7 +332,7 @@ func _layout() -> void:
     base_bar.size = Vector2(base_w - 14, 4)
 
     if visual_gate_enabled:
-        var storage_w: float = minf(246.0, width - margin * 2.0)
+        var storage_w: float = minf(198.0, width - margin * 2.0)
         storage_panel.position = Vector2((width - storage_w) * 0.5, top_y + 37.0)
         storage_panel.size = Vector2(storage_w, 22)
         objective_label.position = Vector2(margin + 14, top_y + 62.0)
@@ -367,6 +371,13 @@ func _layout() -> void:
     banner.size = Vector2(width - 36, 34)
 
 func update_stats(hero_hp: float, base_hp: float, bag: int, capacity: int, wave: int, phase: String, phase_value: float, xp: int, next_xp: int, level: int, storage: Dictionary, enemies_left: int, inventory: Dictionary = {}) -> void:
+    var base_panel_node := root.get_node_or_null("BasePanel") as PanelContainer
+    if base_panel_node != null and visual_gate_enabled:
+        var show_hearth_hp: bool = phase == "night" or base_hp < 269.5
+        if base_panel_node.visible != show_hearth_hp:
+            base_panel_node.visible = show_hearth_hp
+            _layout()
+
     hp_label.text = str(int(ceil(hero_hp)))
     base_label.text = str(int(ceil(maxf(base_hp, 0.0))))
     hp_bar.value = clampf(hero_hp / maxf(1.0, 100.0 + float(GameState.data.get("upgrades", {}).get("hp", 0)) * 10.0) * 100.0, 0.0, 100.0)
